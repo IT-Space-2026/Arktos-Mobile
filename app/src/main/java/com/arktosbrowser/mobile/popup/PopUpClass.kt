@@ -52,7 +52,7 @@ import com.arktosbrowser.mobile.settings.activity.SettingsActivity
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.isSpecialUrl
-import com.github.ahmadaghazadeh.editor.widget.CodeEditor
+import io.github.rosemoe.sora.widget.CodeEditor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import javax.inject.Inject
 import kotlin.math.roundToInt
@@ -368,10 +368,10 @@ class PopUpClass {
                                 builder.setTitle(R.string.page_source)
                                 val dialogLayout = inflater.inflate(R.layout.dialog_view_source, null)
                                 val editText = dialogLayout.findViewById<CodeEditor>(R.id.dialog_multi_line)
-                                editText.setText(name, 1)
+                                editText.setText(name)
                                 builder.setView(dialogLayout)
                                 builder.setPositiveButton("OK") { _, _ ->
-                                    editText.setText(editText.text?.toString()?.replace("\'", "\\\'"), 1);
+                                    editText.setText(editText.text.toString().replace("\'", "\\\'"));
                                     currentTab.webView?.evaluateJavascript(
     "document.documentElement.innerHTML = " + org.json.JSONObject.quote(editText.text.toString()) + ";",
     null
