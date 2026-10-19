@@ -9,10 +9,30 @@
             android:singleLineTitle="false"
             android:title="@string/location"/>
         <SwitchPreference
+            android:defaultValue="true"
+            android:key="cb_javascript"
+            android:singleLineTitle="false"
+            android:title="@string/java"/>
+        <Preference
+            android:key="block_javascript"
+            android:singleLineTitle="false"
+            android:title="@string/block_javascript"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="allow_cookies"
+            android:singleLineTitle="false"
+            android:summary="@string/recommended"
+            android:title="@string/cookies" />
+        <SwitchPreference
             android:defaultValue="false"
             android:key="third_party"
             android:singleLineTitle="false"
             android:title="@string/third_party"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="incognito_cookies"
+            android:singleLineTitle="false"
+            android:title="@string/incognito_cookies" />
         <SwitchPreference
             android:defaultValue="true"
             android:key="password"
@@ -48,7 +68,20 @@
             android:title="@string/lists_settings_title"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/security_set">
-    </PreferenceCategory>
+        <Preference
+            android:key="proxy"
+            android:singleLineTitle="false"
+            android:title="@string/http_proxy"/>
+        <Preference
+            android:key="agent"
+            android:singleLineTitle="false"
+            android:title="@string/agent"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="show_ssl"
+            android:singleLineTitle="false"
+            android:title="@string/show_ssl"
+            android:summary="@string/warn"/>
         <SwitchPreference
             android:defaultValue="false"
             android:key="prefer_https"
@@ -72,6 +105,8 @@
             android:key="block_lan_requests"
             android:summary="@string/block_lan_requests_summary"
             android:title="@string/block_lan_requests"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/privacy_data_category">
         <SwitchPreference
             android:defaultValue="false"
             android:key="clear_cache_exit"
@@ -98,10 +133,10 @@
             android:singleLineTitle="false"
             android:title="@string/only_clear"
             android:summary="@string/only_clear_summary"/>
-    <Preference
-        android:key="app_lock"
-        android:singleLineTitle="false"
-        android:title="@string/app_lock"/>
+        <Preference
+            android:key="app_lock"
+            android:singleLineTitle="false"
+            android:title="@string/app_lock"/>
         <Preference
             android:key="clear_cache"
             android:singleLineTitle="false"
@@ -118,5 +153,5 @@
             android:key="clear_webstorage"
             android:singleLineTitle="false"
             android:title="@string/clear_web_storage"/>
-
+    </PreferenceCategory>
 </PreferenceScreen>

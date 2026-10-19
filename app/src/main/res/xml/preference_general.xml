@@ -15,11 +15,6 @@
             android:summary="@string/crash_warning"/>
         <SwitchPreference
             android:defaultValue="false"
-            android:key="load_tabs"
-            android:singleLineTitle="false"
-            android:title="@string/load_tabs"/>
-        <SwitchPreference
-            android:defaultValue="false"
             android:key="translate"
             android:singleLineTitle="false"
             android:title="@string/translator"/>
@@ -28,38 +23,6 @@
             android:key="amp"
             android:singleLineTitle="false"
             android:title="@string/amp_to_html"/>
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="cb_colormode"
-            android:singleLineTitle="false"
-            android:title="@string/color_mode"/>
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="force_zoom"
-            android:singleLineTitle="false"
-            android:title="@string/force_zoom"/>
-        <SwitchPreference
-            android:defaultValue="true"
-            android:key="last_tab"
-            android:singleLineTitle="false"
-            android:title="@string/close_on_last_tab"/>
-        <SwitchPreference
-            android:defaultValue="true"
-            android:key="cb_javascript"
-            android:singleLineTitle="false"
-            android:title="@string/java"/>
-        <Preference
-            android:key="block_javascript"
-            android:singleLineTitle="false"
-            android:title="@string/block_javascript"/>
-        <Preference
-            android:key="proxy"
-            android:singleLineTitle="false"
-            android:title="@string/http_proxy"/>
-        <Preference
-            android:key="agent"
-            android:singleLineTitle="false"
-            android:title="@string/agent"/>
         <Preference
             android:key="download"
             android:singleLineTitle="false"
@@ -76,5 +39,28 @@
             android:key="suggestions_number"
             android:singleLineTitle="false"
             android:title="@string/suggest"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/tabs">
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="load_tabs"
+            android:singleLineTitle="false"
+            android:title="@string/load_tabs"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="restore_tabs"
+            android:singleLineTitle="false"
+            android:title="@string/restore" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="last_tab"
+            android:singleLineTitle="false"
+            android:title="@string/close_on_last_tab"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:singleLineTitle="false"
+            android:key="new_tabs_foreground"
+            android:title="@string/new_tab_foreground"
+            android:summary="@string/new_tab_foreground_summary"/>
     </PreferenceCategory>
 </PreferenceScreen>

@@ -3,15 +3,12 @@ package com.arktosbrowser.mobile.settings.fragment
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
-import com.arktosbrowser.mobile.DeviceCapabilities
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.browser.SearchBoxDisplayChoice
 import com.arktosbrowser.mobile.constant.TEXT_ENCODINGS
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
-import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.view.RenderingMode
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -53,18 +50,6 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
             onClick = this::showTextEncodingDialogPicker
         )
 
-        clickableDynamicPreference(
-            preference = SETTINGS_URL_CONTENT,
-            summary = userPreferences.urlBoxContentChoice.toDisplayString(),
-            onClick = this::showUrlBoxDialogPicker
-        )
-
-        switchPreference(
-            preference = SETTINGS_TRIM_URL_BAR,
-            isChecked = userPreferences.trimUrlBarEnabled,
-            onCheckChange = { userPreferences.trimUrlBarEnabled = it }
-        )
-
         switchPreference(
             preference = SETTINGS_NEW_WINDOW,
             isChecked = userPreferences.popupsEnabled,
@@ -72,59 +57,9 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
-            preference = SETTINGS_ENABLE_COOKIES,
-            isChecked = userPreferences.cookiesEnabled,
-            onCheckChange = { userPreferences.cookiesEnabled = it }
-        )
-        switchPreference(
                 preference = SETTINGS_BLOCK_INTENT,
                 isChecked = userPreferences.blockIntent,
                 onCheckChange = { userPreferences.blockIntent = it }
-        )
-
-        switchPreference(
-            preference = SETTINGS_COOKIES_INCOGNITO,
-            isChecked = userPreferences.incognitoCookiesEnabled,
-            onCheckChange = { userPreferences.incognitoCookiesEnabled = it }
-        )
-
-        switchPreference(
-                preference = SETTINGS_SHOW_SSL,
-                isChecked = userPreferences.ssl,
-                onCheckChange = { userPreferences.ssl = it }
-        )
-
-        switchPreference(
-            preference = SETTINGS_RESTORE_TABS,
-            isChecked = userPreferences.restoreLostTabsEnabled,
-            onCheckChange = { userPreferences.restoreLostTabsEnabled = it }
-        )
-
-        val incognitoCheckboxPreference = switchPreference(
-                preference = SETTINGS_COOKIES_INCOGNITO,
-                isEnabled = !DeviceCapabilities.FULL_INCOGNITO.isSupported,
-                isChecked = if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
-                    userPreferences.cookiesEnabled
-                } else {
-                    userPreferences.incognitoCookiesEnabled
-                },
-                summary = if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
-                    getString(R.string.incognito_cookies_new)
-                } else {
-                    null
-                },
-                onCheckChange = { userPreferences.incognitoCookiesEnabled = it }
-        )
-
-        switchPreference(
-                preference = SETTINGS_ENABLE_COOKIES,
-                isChecked = userPreferences.cookiesEnabled,
-                onCheckChange = {
-                    userPreferences.cookiesEnabled = it
-                    if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
-                        incognitoCheckboxPreference?.isChecked = it
-                    }
-                }
         )
     }
 
@@ -170,34 +105,6 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
                 }
                 setPositiveButton(resources.getString(R.string.action_ok), null)
             }.resizeAndShow()
-        }
-    }
-
-    /**
-     * Shows the dialog which allows the user to choose the browser's URL box display options.
-     *
-     * @param summaryUpdater the command which allows the summary to be updated.
-     */
-    private fun showUrlBoxDialogPicker(summaryUpdater: SummaryUpdater) {
-        activity?.let { MaterialAlertDialogBuilder(it) }?.apply {
-            setTitle(resources.getString(R.string.url_contents))
-
-            val items = SearchBoxDisplayChoice.values().map { Pair(it, it.toDisplayString()) }
-
-            withSingleChoiceItems(items, userPreferences.urlBoxContentChoice) {
-                userPreferences.urlBoxContentChoice = it
-                summaryUpdater.updateSummary(it.toDisplayString())
-            }
-            setPositiveButton(resources.getString(R.string.action_ok), null)
-        }?.resizeAndShow()
-    }
-
-    private fun SearchBoxDisplayChoice.toDisplayString(): String {
-        val stringArray = resources.getStringArray(R.array.url_content_array)
-        return when (this) {
-            SearchBoxDisplayChoice.URL -> stringArray[0]
-            SearchBoxDisplayChoice.DOMAIN -> stringArray[1]
-            SearchBoxDisplayChoice.TITLE -> stringArray[2]
         }
     }
 
@@ -257,15 +164,9 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
 
     companion object {
         private const val SETTINGS_NEW_WINDOW = "allow_new_window"
-        private const val SETTINGS_ENABLE_COOKIES = "allow_cookies"
-        private const val SETTINGS_COOKIES_INCOGNITO = "incognito_cookies"
-        private const val SETTINGS_RESTORE_TABS = "restore_tabs"
         private const val SETTINGS_RENDERING_MODE = "rendering_mode"
-        private const val SETTINGS_URL_CONTENT = "url_contents"
-        private const val SETTINGS_TRIM_URL_BAR = "trim_url_bar"
         private const val SETTINGS_TEXT_ENCODING = "text_encoding"
         private const val SETTINGS_BLOCK_INTENT = "block_intent"
-        private const val SETTINGS_SHOW_SSL = "show_ssl"
         private const val SETTINGS_LEGACY_DOWNLOADER = "downloader"
         private const val SETTINGS_TRANSLATION_ENDPOINT = "translation_endpoint"
         private const val SETTINGS_NEWS_ENDPOINT = "news_endpoint"

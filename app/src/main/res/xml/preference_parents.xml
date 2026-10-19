@@ -6,9 +6,6 @@
             android:key="siteblock"
             android:singleLineTitle="false"
             android:title="@string/block_sites" />
-        <!-- <Preference
-            android:key="agent"
-            android:title="Time limit" /> -->
         <SwitchPreference
             android:defaultValue="false"
             android:key="safe_search"

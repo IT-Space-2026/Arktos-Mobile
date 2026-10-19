@@ -16,32 +16,10 @@
             android:title="@string/block_intent" />
         <SwitchPreference
             android:defaultValue="true"
-            android:key="allow_cookies"
-            android:singleLineTitle="false"
-            android:summary="@string/recommended"
-            android:title="@string/cookies" />
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="incognito_cookies"
-            android:singleLineTitle="false"
-            android:title="@string/incognito_cookies" />
-        <SwitchPreference
-            android:defaultValue="true"
-            android:key="restore_tabs"
-            android:singleLineTitle="false"
-            android:title="@string/restore" />
-        <SwitchPreference
-            android:defaultValue="true"
             android:key="downloader"
             android:singleLineTitle="false"
             android:title="@string/legacy_download_manager"
             android:summary="@string/legacy_download_manager_desc"/>
-        <SwitchPreference
-            android:defaultValue="true"
-            android:key="show_ssl"
-            android:singleLineTitle="false"
-            android:title="@string/show_ssl"
-            android:summary="@string/warn"/>
         <Preference
             android:key="webview_devtools"
             android:title="@string/webview_devtools">
@@ -60,16 +38,6 @@
             android:key="rendering_mode"
             android:singleLineTitle="false"
             android:title="@string/rendering_mode" />
-        <Preference
-            android:key="url_contents"
-            android:singleLineTitle="false"
-            android:title="@string/url_contents" />
-        <SwitchPreference
-            android:defaultValue="false"
-            android:key="trim_url_bar"
-            android:singleLineTitle="false"
-            android:summary="@string/trim_url_bar_summary"
-            android:title="@string/trim_url_bar" />
         <Preference
             android:key="translation_endpoint"
             android:singleLineTitle="false"

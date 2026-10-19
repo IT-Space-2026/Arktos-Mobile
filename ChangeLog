@@ -6,7 +6,7 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
-17.0 — Arktos Mobile: first release
+1.0 — Arktos Mobile: first release
 Rebrand / project:
 - Rebranded the project from SmartCookieWeb to Arktos Mobile: package
   com.cookiegames.smartcookie → com.arktosbrowser.mobile, Arktos logo

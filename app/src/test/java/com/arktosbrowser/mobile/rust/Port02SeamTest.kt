@@ -75,7 +75,7 @@ class Port02SeamTest {
             "<div id=\"header\">",
             "<div id=\"content\">",
             "<div id=\"buttons\">",
-            "file:///android_asset/arktos.webp",
+            "data:image/webp;base64,",
             "<li>hint</li>",
             "border-radius: 0.8em",
             "#228 0%, #66a 90%"

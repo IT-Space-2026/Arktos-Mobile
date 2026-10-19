@@ -36,7 +36,7 @@ class ChangelogPageTest {
         assertTrue(changelogPage.contains("id=\"header\""))
         assertTrue(changelogPage.contains("html.arktos-dark"))
         // One card per release, latest version first.
-        assertTrue(changelogPage.contains("<h2>17.0"))
+        assertTrue(changelogPage.contains("<h2>1.0"))
     }
 
     @Test
@@ -114,7 +114,7 @@ class ChangelogPageTest {
         val repoChangelog = listOf("ChangeLog", "../ChangeLog")
             .map(::File).first { it.isFile }.readText()
         // Desktop format: "x.y — title" header line.
-        assertTrue(repoChangelog.contains("17.0 — "))
+        assertTrue(repoChangelog.contains("1.0 — "))
     }
 
 }
