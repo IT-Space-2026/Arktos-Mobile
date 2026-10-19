@@ -53,11 +53,11 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         injector.inject(this)
 
         val color: Int
-        if (mUserPreferences!!.useTheme === AppTheme.LIGHT) {
+        if (mUserPreferences!!.resolvedTheme(this) === AppTheme.LIGHT) {
             setTheme(R.style.Theme_SettingsTheme)
             color = ThemeUtils.getColorBackground(this)
             window.setBackgroundDrawable(ColorDrawable(color))
-        } else if (mUserPreferences!!.useTheme === AppTheme.DARK) {
+        } else if (mUserPreferences!!.resolvedTheme(this) === AppTheme.DARK) {
             setTheme(R.style.Theme_SettingsTheme_Dark)
             color = ThemeUtils.getColorBackground(this)
             window.setBackgroundDrawable(ColorDrawable(color))

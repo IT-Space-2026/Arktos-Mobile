@@ -3,6 +3,7 @@ package com.arktosbrowser.mobile.settings.activity
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.extensions.isNightMode
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import android.graphics.Color
@@ -19,7 +20,7 @@ abstract class ThemableSettingsActivity : AppCompatPreferenceActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         injector.inject(this)
-        themeId = userPreferences.useTheme
+        themeId = userPreferences.resolvedTheme(this)
 
         // set the theme
         when (themeId) {
@@ -31,6 +32,9 @@ abstract class ThemableSettingsActivity : AppCompatPreferenceActivity() {
             }
             AppTheme.BLACK -> {
                 setTheme(R.style.Theme_SettingsTheme_Black)
+            }
+            AppTheme.SYSTEM -> {
+                setTheme(if (isNightMode) R.style.Theme_SettingsTheme_Dark else R.style.Theme_SettingsTheme)
             }
         }
 
@@ -52,7 +56,7 @@ abstract class ThemableSettingsActivity : AppCompatPreferenceActivity() {
     override fun onResume() {
         super.onResume()
         resetPreferences()
-        if (userPreferences.useTheme != themeId) {
+        if (userPreferences.resolvedTheme(this) != themeId) {
             recreate()
         }
     }

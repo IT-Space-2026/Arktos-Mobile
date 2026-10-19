@@ -11,6 +11,7 @@ import androidx.appcompat.widget.Toolbar
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.extensions.isNightMode
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.settings.fragment.SettingsFragment
 import javax.inject.Inject
@@ -35,6 +36,9 @@ class SettingsActivity : AppCompatActivity() {
             }
             AppTheme.BLACK -> {
                 setTheme(R.style.Theme_SettingsTheme_Black)
+            }
+            AppTheme.SYSTEM -> {
+                setTheme(if (isNightMode) R.style.Theme_SettingsTheme_Dark else R.style.Theme_SettingsTheme)
             }
         }
 

@@ -153,7 +153,7 @@ class SmartCookieWebClient(
         if (shouldRequestBeBlocked(currentUrl, request.url.toString())) {
             val empty = ByteArrayInputStream(emptyResponseByteArray)
             if(request.isForMainFrame && request.url.host.toString() != lastBlockedDomain){
-                if(userPreferences.useTheme == AppTheme.LIGHT){
+                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
                     color = ""
                 }
                 lastBlockedDomain = request.url.host.toString()
@@ -368,7 +368,7 @@ class SmartCookieWebClient(
         if (smartCookieView.invertPage) {
             view.evaluateJavascript(invertPageJs.provideJs(activity), null)
         }
-        if (userPreferences.darkModeExtension && !WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+        if (userPreferences.darkWebAddonEnabled(activity) && !WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             view.evaluateJavascript(darkMode.provideJs(activity), null)
         }
 
@@ -378,7 +378,7 @@ class SmartCookieWebClient(
             val lines =  inputString.split(",").toTypedArray()
             if (stringContainsItemFromList(url, lines)) {
                 view.settings.javaScriptEnabled = true
-                if(userPreferences.useTheme == AppTheme.LIGHT){
+                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
                     color = ""
                 }
                 val title = activity.getString(R.string.malware_title)
@@ -406,7 +406,7 @@ class SmartCookieWebClient(
                         if (url.contains("file:///android_asset") or url.contains("about:blank")) {
                             return
                         } else {
-                            if(userPreferences.useTheme == AppTheme.LIGHT){
+                            if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
@@ -428,7 +428,7 @@ class SmartCookieWebClient(
                         if (url.contains("file:///android_asset") or url.contains("about:blank")) {
                             return
                         } else {
-                            if(userPreferences.useTheme == AppTheme.LIGHT){
+                            if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
@@ -582,7 +582,7 @@ class SmartCookieWebClient(
                 return
             } else if (userPreferences.forceHTTPSenabled) {
                 view.settings.javaScriptEnabled = true
-                if(userPreferences.useTheme == AppTheme.LIGHT){
+                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
                     color = ""
                 }
                 val title = activity.getString(R.string.https_title)
@@ -733,7 +733,7 @@ class SmartCookieWebClient(
             errored = true
             Thread.sleep(500)
             webview.settings.javaScriptEnabled = true
-            if (userPreferences.useTheme == AppTheme.LIGHT) {
+            if (userPreferences.resolvedTheme(activity) == AppTheme.LIGHT) {
                 color = ""
             }
             val reloadCode = "window.location.href = '" + failingUrl + "';"

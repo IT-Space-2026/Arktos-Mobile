@@ -95,8 +95,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mInvert = mUserPreferences!!.invertColors
         tts = TextToSpeech(this, this)
         val color: Int
+        val theme = mUserPreferences!!.resolvedTheme(this)
         if (mInvert) {
-            if (mUserPreferences!!.useTheme === AppTheme.LIGHT) {
+            if (theme === AppTheme.LIGHT) {
                 setTheme(R.style.Theme_SettingsTheme_Black)
                 color = ThemeUtils.getPrimaryColor(this)
                 window.setBackgroundDrawable(ColorDrawable(color))
@@ -106,9 +107,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 window.setBackgroundDrawable(ColorDrawable(color))
             }
         } else {
-            if (mUserPreferences!!.useTheme === AppTheme.LIGHT) {
+            if (theme === AppTheme.LIGHT) {
                 setTheme(R.style.Theme_SettingsTheme)
-            } else if (mUserPreferences!!.useTheme === AppTheme.DARK) {
+            } else if (theme === AppTheme.DARK) {
                 setTheme(R.style.Theme_SettingsTheme_Dark)
             } else {
                 setTheme(R.style.Theme_SettingsTheme_Black)

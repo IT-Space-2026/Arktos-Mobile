@@ -365,7 +365,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         //TODO make sure dark theme flag gets set correctly
-        isDarkTheme = userPreferences.useTheme == AppTheme.DARK || userPreferences.useTheme == AppTheme.BLACK || isIncognito()
+        isDarkTheme = userPreferences.resolvedTheme(this) == AppTheme.DARK ||
+                userPreferences.resolvedTheme(this) == AppTheme.BLACK || isIncognito()
         shouldShowTabsInDrawer = userPreferences.showTabsInDrawer
         swapBookmarksAndTabs = userPreferences.bookmarksAndTabsSwapped
 
@@ -1510,7 +1511,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     override fun changeToolbarColor(tabBackground: Drawable?){
         val primaryColor = ThemeUtils.getColorBackground(this)
 
-        if(userPreferences.darkModeExtension) currentTabView?.setBackgroundColor(if (loadState(50)) Color.WHITE else primaryColor); currentTabView?.invalidate()
+        if(userPreferences.darkWebAddonEnabled(this)) currentTabView?.setBackgroundColor(if (loadState(50)) Color.WHITE else primaryColor); currentTabView?.invalidate()
 
         if(userPreferences.navbarColChoice == ChooseNavbarCol.COLOR && !isIncognito()){
             tabBackground?.tint(userPreferences.colorNavbar)
@@ -1528,10 +1529,10 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         } //Reset theme without needing a restart
         else if(userPreferences.navbarColChoice == ChooseNavbarCol.NONE){
             var currentColor = Color.WHITE
-            if(userPreferences.useTheme == AppTheme.LIGHT && !isIncognito()){
+            if(userPreferences.resolvedTheme(this) == AppTheme.LIGHT && !isIncognito()){
                 currentColor = ContextCompat.getColor(this, R.color.primary_color)
             }
-            else if(userPreferences.useTheme == AppTheme.DARK || isIncognito()){
+            else if(userPreferences.resolvedTheme(this) == AppTheme.DARK || isIncognito()){
                 currentColor = ContextCompat.getColor(this, R.color.primary_color_dark)
             }
             else{

@@ -1,10 +1,14 @@
 package com.arktosbrowser.mobile.preference
 
+import android.content.Context
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.constant.DEFAULT_ENCODING
 import com.arktosbrowser.mobile.constant.SCHEME_HOMEPAGE
 import com.arktosbrowser.mobile.device.ScreenSize
 import com.arktosbrowser.mobile.di.UserPrefs
+import com.arktosbrowser.mobile.extensions.isNightMode
+import com.arktosbrowser.mobile.isDarkWebAddonEnabled
+import com.arktosbrowser.mobile.resolve
 import com.arktosbrowser.mobile.preference.delegates.*
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.search.engine.GoogleSearch
@@ -397,6 +401,19 @@ class UserPreferences @Inject constructor(
 
     // Switches between 3 types for the default homepage
     var homepageType by preferences.enumPreference(HOMEPAGE_TYPE, HomepageTypeChoice.DEFAULT)
+
+    /**
+     * The concrete theme to apply — resolves [AppTheme.SYSTEM] against the
+     * device's current night mode. Never returns [AppTheme.SYSTEM].
+     */
+    fun resolvedTheme(context: Context): AppTheme = useTheme.resolve(context.isNightMode)
+
+    /**
+     * True when web-content darkening is active — the dark-mode addon toggle
+     * is on, or the theme follows the system and the system is in night mode.
+     */
+    fun darkWebAddonEnabled(context: Context): Boolean =
+        isDarkWebAddonEnabled(darkModeExtension, useTheme, context.isNightMode)
 }
 
 private const val FIRST_LAUNCH = "firstLaunch"
