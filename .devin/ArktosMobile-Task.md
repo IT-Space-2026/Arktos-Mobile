@@ -64,9 +64,10 @@ NO SUDO — everything user-local.
 | DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | done | 0 | #168 N/A (own icon set); #314 decided: GitHub Releases + in-repo fastlane metadata (README); #315 userscript + proxy bullets in README + fastlane full_description; #325 answer = built-in Settings→General→HTTP proxy (ProxyUtils/netcipher); decision record + userscript @require caveat in details; docs-only, engine-audit PASS |
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | done | 0 | desktop notfound/certerror card ported into rust pages.rs (#box/#header/#content, gradient band, floated arktos.webp, h2 divider + hint <ul>, pill buttons); new hint params + error_page_hint/page_blocked_hint strings wired at all call sites; arktos-dark class emitted off non-empty color (fragment de-!importanted); reloadCode/$!!!/showButton-proceed contracts kept — cargo 120/120, 211 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
-| UI02 | Start page styled like Arktos desktop (no search bar) — details below | pending | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
+| UI02 | Start page styled like Arktos desktop (no search bar) — details below | in_progress | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
 | J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
 | RENAM01 | Rename residual SmartCookie* identifiers to Arktos* — details below | pending | 0 | needs:tool:java — user-requested: SmartCookieView→ArktosCookieView + siblings; upstream-citation comments keep the name |
+| CHLOG01 | Changelog: repo file + in-app page — details below | pending | 0 | needs:tool:java — root ChangeLog (desktop format) + assets/changelog.html + Settings→About entry; optional arktos://changelog URL + open-once-on-upgrade |
 
 ## Task details
 
@@ -372,3 +373,30 @@ Rename the remaining `SmartCookie*` type/file identifiers to `Arktos*`
 - Verify: `grep -rn "SmartCookie[A-Za-z]*" --include="*.kt"` shows no
   identifiers (only prose citations), `./gradlew assembleScMainDebug`
   + `testScMainDebugUnitTest` green, engine-audit PASS.
+
+### CHLOG01
+Changelog, user-visible in-app (user request: "create a changelog
+like the arktos desktop, available also in the app").
+
+- Create root `ChangeLog` in the desktop repo's format: version
+  headers (`x.y — title`) + prose bullets. Seed it from WORKLOG and
+  git history (rebrand, upstream issue fixes by number, rust core,
+  JS/translation work). This file is the source of truth.
+- Create `app/src/main/assets/changelog.html` rendering the same
+  entries, styled like the Arktos pages — aurora-wave header +
+  `arktos-plain.svg` logo (reuse the UI02 asset style once landed,
+  or port `src/htmls/startpage.css` look directly). Keep both files
+  in sync; note the two-file convention in ChangeLog's header
+  comment or a CONTRIBUTING note.
+- Wire it into the app: clickable `changelog` Preference in
+  `preference_about.xml` under the About category → opens
+  `file:///android_asset/changelog.html` in a new tab (same
+  mechanism as homepage/incognito/downloads pages — check how
+  `loadHomepage`/downloads page load and mirror it).
+- Nice-to-have, only if it lands cleanly:
+  `arktos://changelog` recognized by the special-URL system
+  (`isSpecialUrl`/`pages.rs`), and a one-shot "what's new" — on
+  first launch after a versionCode bump, open the changelog tab
+  once (store last-seen versionCode in prefs; never re-show).
+- Verify: `./gradlew assembleScMainDebug` + `testScMainDebugUnitTest`
+  green, engine-audit PASS, changelog opens from Settings → About.
