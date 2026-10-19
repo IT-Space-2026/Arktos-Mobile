@@ -55,6 +55,7 @@ import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.IncognitoActivity
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.*
 import com.arktosbrowser.mobile.browser.bookmarks.BookmarksDrawerView
 import com.arktosbrowser.mobile.browser.tabs.TabsDesktopView
@@ -225,6 +226,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     @Inject
     lateinit var proxyUtils: ProxyUtils
+
+    @Inject
+    lateinit var allowListModel: AllowListModel
 
     @Inject
     lateinit var logger: Logger
@@ -529,6 +533,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
             }
             toolbarBinding.searchSslStatus.updateVisibilityForContent()
+
+            toolbarBinding.siteShieldButton.setOnClickListener {
+                onSiteShieldClicked()
+            }
+            updateSiteShield()
 
             if (isDarkTheme) {
                 toolbarBinding.searchRefresh.setImageResource(R.drawable.ic_action_refresh_light)
@@ -1171,14 +1180,46 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         if (searchView?.hasFocus() == false) {
             toolbarBinding.searchSslStatus.updateVisibilityForContent()
         }
+        updateSiteShield()
     }
 
     private fun ImageView.updateVisibilityForContent() {
         drawable?.let { visibility = VISIBLE } ?: run { visibility = GONE }
     }
 
+    /**
+     * Desktop-parity site shield: visible on real web pages, dimmed when
+     * content blocking is off globally or the site is allowlisted.
+     */
+    private fun updateSiteShield() {
+        val url = tabsManager.currentTab?.url.orEmpty()
+        val isPage = url.startsWith("http://") || url.startsWith("https://")
+        toolbarBinding.siteShieldButton.visibility = if (isPage && !url.isSpecialUrl()) VISIBLE else GONE
+        if (!isPage) return
+        val blockingActive = userPreferences.adBlockEnabled && !allowListModel.isUrlAllowedAds(url)
+        toolbarBinding.siteShieldImageView.alpha = if (blockingActive) 1f else 0.35f
+        toolbarBinding.siteShieldButton.contentDescription = getString(
+            if (blockingActive) R.string.dialog_adblock_disable_for_site
+            else R.string.dialog_adblock_enable_for_site
+        )
+    }
+
+    private fun onSiteShieldClicked() {
+        val url = tabsManager.currentTab?.url ?: return
+        if (allowListModel.isUrlAllowedAds(url)) {
+            allowListModel.removeUrlFromAllowList(url)
+            snackbar(R.string.dialog_adblock_enable_for_site)
+        } else {
+            allowListModel.addUrlToAllowList(url)
+            snackbar(R.string.dialog_adblock_disable_for_site)
+        }
+        tabsManager.currentTab?.reload()
+        updateSiteShield()
+    }
+
     override fun tabChanged(tab: ArktosCookieView) {
         presenter?.tabChangeOccurred(tab)
+        updateSiteShield()
     }
 
     override fun removeTabView() {
