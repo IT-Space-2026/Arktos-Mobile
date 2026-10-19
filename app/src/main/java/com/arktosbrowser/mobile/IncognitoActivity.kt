@@ -8,7 +8,7 @@ import android.view.Menu
 import android.webkit.CookieManager
 import android.webkit.CookieSyncManager
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
-import io.reactivex.Completable
+import io.reactivex.rxjava3.core.Completable
 
 
 class IncognitoActivity : BrowserActivity() {

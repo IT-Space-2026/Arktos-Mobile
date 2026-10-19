@@ -55,9 +55,9 @@ import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.Observable
-import io.reactivex.Scheduler
-import io.reactivex.subjects.PublishSubject
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.subjects.PublishSubject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.*

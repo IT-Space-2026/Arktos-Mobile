@@ -29,8 +29,8 @@ import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.arktosbrowser.mobile.utils.WebUtils
 import com.arktosbrowser.mobile.view.ArktosCookieView
-import io.reactivex.Completable
-import io.reactivex.Scheduler
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Scheduler
 import java.io.File
 import javax.inject.Inject
 

@@ -9,8 +9,8 @@ import com.arktosbrowser.mobile.html.HtmlPageFactory
 import com.arktosbrowser.mobile.html.ListPageReader
 import com.arktosbrowser.mobile.html.jsoup.*
 import dagger.Reusable
-import io.reactivex.Completable
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Single
 import java.io.File
 import java.io.FileWriter
 import java.text.DateFormat.getDateTimeInstance

@@ -369,7 +369,7 @@
     <string name="site_not_secure">Deze site maakt geen gebruik van HTTPS</string>
     <string name="language_not_supported">Taal niet ondersteund</string>
     <string name="language_not_supported_text">Helaas is de extensiewinkel nog niet beschikbaar in jouw taal. Gebruik de onderstaande knop om toch door te gaan in het Engels.</string>
-    <string name="extensions">Add-ons</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Extensies inschakelen</string>
     <string name="extensions_settings">Extensies instellingen</string>
     <string name="extensions_description">Add-ons downloaden ...</string>

@@ -381,7 +381,7 @@
     <string name="site_not_secure">Bu siteyle bağlantı güvenli değil.</string>
     <string name="language_not_supported">Dil Desteklenmiyor</string>
     <string name="language_not_supported_text">Ne yazık ki, eklentiler deposu henüz sizin dilinizde mevcut değil. Yine de İngilizce devam etmek için aşağıdaki düğmeyi kullanın.</string>
-    <string name="extensions">Eklentiler</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Eklentileri etkinleştir</string>
     <string name="extensions_settings">Eklenti ayarları</string>
     <string name="extensions_description">Eklenti indir...</string>

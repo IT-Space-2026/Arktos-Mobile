@@ -1,6 +1,6 @@
 package com.arktosbrowser.mobile.html
 
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 /**
  * A factory that builds an HTML page.

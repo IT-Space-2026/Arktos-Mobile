@@ -8,7 +8,7 @@ import com.arktosbrowser.mobile.search.engine.*
 import com.arktosbrowser.mobile.search.suggestions.*
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import dagger.Reusable
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 

@@ -20,8 +20,8 @@ import com.arktosbrowser.mobile.html.homepage.HomePageFactory
 import com.arktosbrowser.mobile.html.incognito.IncognitoPageFactory
 import com.arktosbrowser.mobile.preference.UserPreferences
 import dagger.Reusable
-import io.reactivex.Scheduler
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import javax.inject.Inject
 
 /**

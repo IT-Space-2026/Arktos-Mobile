@@ -45,8 +45,8 @@ import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.Scheduler
-import io.reactivex.disposables.Disposable
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.disposables.Disposable
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request

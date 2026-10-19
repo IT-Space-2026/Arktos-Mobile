@@ -22,9 +22,9 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Filter
 import android.widget.Filterable
-import io.reactivex.*
-import io.reactivex.Observable
-import io.reactivex.subjects.PublishSubject
+import io.reactivex.rxjava3.core.*
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.*
 import javax.inject.Inject
 
@@ -171,19 +171,19 @@ class SuggestionsAdapter(
             val searchEntries = upstream
                 .flatMapSingle(suggestionsRepository::resultsForSearch)
                 .subscribeOn(networkScheduler)
-                .startWith(emptyList<List<SearchSuggestion>>())
+                .startWithIterable(emptyList())
                 .share()
 
             val bookmarksEntries = upstream
                 .flatMapSingle(::getBookmarksForQuery)
                 .subscribeOn(databaseScheduler)
-                .startWith(emptyList<List<Bookmark.Entry>>())
+                .startWithIterable(emptyList())
                 .share()
 
             val historyEntries = upstream
                 .flatMapSingle(historyRepository::findHistoryEntriesContaining)
                 .subscribeOn(databaseScheduler)
-                .startWith(emptyList<HistoryEntry>())
+                .startWithIterable(emptyList())
                 .share()
 
             // Entries priority and ideal count:

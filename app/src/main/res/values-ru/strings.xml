@@ -380,7 +380,7 @@
     <string name="site_not_secure">Подключение к этому сайту не безопасно.</string>
     <string name="language_not_supported">Язык не поддерживается</string>
     <string name="language_not_supported_text">К сожалению, магазин расширений пока недоступен на вашем языке. Используйте кнопку ниже, чтобы продолжить на английском языке.</string>
-    <string name="extensions">Расширения</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Включить расширения</string>
     <string name="extensions_settings">Настройки расширений</string>
     <string name="extensions_description">Скачать расширения...</string>

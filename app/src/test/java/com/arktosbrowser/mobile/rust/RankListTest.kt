@@ -6,11 +6,11 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.uniffi.RankListSource
 import com.arktosbrowser.mobile.uniffi.RankListSourceKind
-import com.nhaarman.mockito_kotlin.doReturn
-import com.nhaarman.mockito_kotlin.mock
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
 import com.sun.net.httpserver.HttpServer
-import io.reactivex.Single
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.schedulers.Schedulers
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.InetSocketAddress

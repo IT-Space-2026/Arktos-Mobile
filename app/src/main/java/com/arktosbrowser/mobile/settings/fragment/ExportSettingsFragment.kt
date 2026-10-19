@@ -36,11 +36,11 @@ import com.arktosbrowser.mobile.utils.Preconditions.checkNonNull
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.Utils.close
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.Completable
-import io.reactivex.Scheduler
-import io.reactivex.Single
-import io.reactivex.disposables.Disposable
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import org.json.JSONObject
 import java.io.*
 import javax.inject.Inject
@@ -433,7 +433,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                     context?.contentResolver?.openInputStream(uri).let { inputStream ->
                         val mimeType = context?.contentResolver?.getType(uri)
                         importSubscription?.dispose()
-                        importSubscription = Single.just(inputStream)
+                        importSubscription = Single.just(requireNotNull(inputStream))
                             .map {
                                 var settingsReader: BufferedReader? = null
                                 try {
@@ -510,7 +510,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                     context?.contentResolver?.openInputStream(uri).let { inputStream ->
                         val mimeType = context?.contentResolver?.getType(uri)
                         importSubscription?.dispose()
-                        importSubscription = Single.just(inputStream)
+                        importSubscription = Single.just(requireNotNull(inputStream))
                             .map {
                                 if (mimeType == "text/html") {
                                     netscapeBookmarkFormatImporter.importBookmarks(it)

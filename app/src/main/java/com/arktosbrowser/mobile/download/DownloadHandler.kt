@@ -22,8 +22,8 @@ import com.arktosbrowser.mobile.di.NetworkScheduler
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ProxyUtils
-import io.reactivex.Maybe
-import io.reactivex.Scheduler
+import io.reactivex.rxjava3.core.Maybe
+import io.reactivex.rxjava3.core.Scheduler
 import javax.inject.Inject
 import javax.inject.Singleton
 

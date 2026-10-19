@@ -2,9 +2,9 @@ package com.arktosbrowser.mobile.database.allowlist
 
 import com.arktosbrowser.mobile.uniffi.ArktosStore
 import com.arktosbrowser.mobile.uniffi.StoreAllowListEntry
-import io.reactivex.Completable
-import io.reactivex.Maybe
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Maybe
+import io.reactivex.rxjava3.core.Single
 import javax.inject.Inject
 import javax.inject.Singleton
 

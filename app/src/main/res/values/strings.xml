@@ -464,12 +464,12 @@
     <string name="site_not_secure">The connection to this site is not secure.</string>
     <string name="language_not_supported">Language Not Supported</string>
     <string name="language_not_supported_text">Unfortunately, the extensions store is not available in your language yet. Use the button below to continue in English anyway.</string>
-    <string name="extensions">Extensions</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Enable extensions</string>
 
     <string name="extensions_settings">Extensions settings</string>
 
-    <string name="extensions_description">Download extensions...</string>
+    <string name="extensions_description">Install and manage userscripts</string>
     <string name="extensions_store">Extensions store</string>
     <string name="extensions_list">Extensions list</string>
     <string name="uninstall_extension">Uninstall extension</string>

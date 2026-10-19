@@ -53,7 +53,7 @@
 
     <FrameLayout
         android:id="@+id/site_shield_button"
-        android:layout_width="?attr/actionBarSize"
+        android:layout_width="40dp"
         android:layout_height="match_parent"
         android:background="?attr/actionBarItemBackground"
         android:clickable="true"
@@ -156,7 +156,7 @@
 
     <FrameLayout
         android:id="@+id/new_tab_button"
-        android:layout_width="?attr/actionBarSize"
+        android:layout_width="40dp"
         android:layout_height="match_parent"
         android:background="?attr/actionBarItemBackground"
         android:clickable="true"

@@ -10,7 +10,7 @@ import com.arktosbrowser.mobile.html.jsoup.*
 import com.arktosbrowser.mobile.preference.UserPreferences
 import android.app.Application
 import dagger.Reusable
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import java.io.File
 import java.io.FileWriter
 import javax.inject.Inject

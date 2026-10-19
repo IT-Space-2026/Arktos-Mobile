@@ -3,7 +3,7 @@ package com.arktosbrowser.mobile.adblock.source
 import com.arktosbrowser.mobile.extensions.onIOExceptionResumeNext
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import java.io.File
 
 /**

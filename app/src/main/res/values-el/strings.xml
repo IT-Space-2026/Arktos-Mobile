@@ -369,7 +369,7 @@
     <string name="site_not_secure">Αυτός ο ιστότοπος δεν χρησιμοποιεί το HTTPS</string>
     <string name="language_not_supported">Η γλώσσα δεν υποστηρίζεται</string>
     <string name="language_not_supported_text">Δυστυχώς, το κατάστημα επεκτάσεων δεν είναι ακόμα διαθέσιμο στη γλώσσα σας. Χρησιμοποιήστε το παρακάτω κουμπί για να συνεχίσετε στα Αγγλικά ούτως ή άλλως.</string>
-    <string name="extensions">Πρόσθετα</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Ενεργοποίηση επεκτάσεων</string>
     <string name="extensions_settings">Ρυθμίσεις επεκτάσεων</string>
     <string name="extensions_description">Λήψη πρόσθετων ...</string>

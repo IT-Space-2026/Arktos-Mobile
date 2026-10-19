@@ -8,7 +8,7 @@ import com.arktosbrowser.mobile.bookmark.legacyExportJson
 import com.arktosbrowser.mobile.database.Bookmark
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.Utils
-import io.reactivex.Completable
+import io.reactivex.rxjava3.core.Completable
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStream

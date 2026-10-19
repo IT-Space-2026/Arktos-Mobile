@@ -360,10 +360,10 @@
     <string name="site_not_secure">Ez a webhely nem használja a HTTPS-t</string>
     <string name="language_not_supported">A nyelv nem támogatott</string>
     <string name="language_not_supported_text">Sajnos a mellékbolt még nem érhető el az Ön nyelvén. Használja az alábbi gombot az angol nyelvű folytatáshoz.</string>
-    <string name="extensions">Bővítmények</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Enable extensions</string>
     <string name="extensions_settings">Extensions settings</string>
-    <string name="extensions_description">Kiegészítők letöltése ...</string>
+    <string name="extensions_description">Felhasználói szkriptek telepítése és kezelése</string>
     <string name="extensions_store">Kiegészítők áruház</string>
     <string name="extensions_list">Bővítmények listája</string>
     <string name="uninstall_extension">Távolítsa el a kiegészítőt</string>

@@ -39,8 +39,8 @@ import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.isBookmarkUrl
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.Reusable
-import io.reactivex.Scheduler
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import java.util.Locale
 import java.util.Locale.getDefault
 import javax.inject.Inject

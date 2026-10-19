@@ -21,9 +21,9 @@ import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.TabInitializer
 import com.arktosbrowser.mobile.view.UrlInitializer
 import com.arktosbrowser.mobile.view.find.FindResults
-import io.reactivex.Scheduler
-import io.reactivex.disposables.Disposable
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.kotlin.subscribeBy
 
 /**
  * Presenter in charge of keeping track of the current tab and setting the current tab of the
