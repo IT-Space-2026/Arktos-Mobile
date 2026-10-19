@@ -139,6 +139,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var isImmersiveMode = false
     private var shouldShowTabsInDrawer: Boolean = false
     private var swapBookmarksAndTabs: Boolean = false
+    private var swapDrawerIcons: Boolean = false
 
     private var originalOrientation: Int = 0
     private var currentUiColor = Color.BLACK
@@ -369,6 +370,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 userPreferences.resolvedTheme(this) == AppTheme.BLACK || isIncognito()
         shouldShowTabsInDrawer = userPreferences.showTabsInDrawer
         swapBookmarksAndTabs = userPreferences.bookmarksAndTabsSwapped
+        swapDrawerIcons = userPreferences.bookmarksAndTabsIconsSwapped
 
         if(!userPreferences.bottomBar){
             isFullScreen = userPreferences.fullScreenEnabled
@@ -482,6 +484,18 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         customView.findViewById<FrameLayout>(R.id.more_button).setOnClickListener(this)
         customView.findViewById<FrameLayout>(R.id.download_button).setOnClickListener(this)
+
+        // Icon swap (upstream #297): the bookmark icon takes the toolbar's
+        // start slot while the tab drawer icon moves next to the overflow.
+        toolbarBinding.bookmarksButton.setOnClickListener { openBookmarksDrawer() }
+        if (swapDrawerIcons) {
+            toolbarBinding.bookmarksButton.visibility = VISIBLE
+            toolbarBinding.root.removeView(toolbarBinding.homeButton)
+            toolbarBinding.root.addView(
+                    toolbarBinding.homeButton,
+                    toolbarBinding.root.indexOfChild(toolbarBinding.moreButton)
+            )
+        }
 
         // Drawer mode hides the tab strip (and its + button), so surface a
         // persistent one-tap new-tab button in the toolbar instead.
@@ -802,6 +816,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
         else{
             extraBar.visibility = VISIBLE
+            extraBar.menu.clear()
+            extraBar.inflateMenu(
+                    if (userPreferences.bookmarksAndTabsIconsSwapped) {
+                        R.menu.bottom_menu_swapped
+                    } else {
+                        R.menu.bottom_menu
+                    }
+            )
             if(!userPreferences.showTabsInDrawer){
                 extraBar.menu.removeItem(R.id.tabs)
             }
@@ -1465,7 +1487,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     override fun onResume() {
         super.onResume()
         logger.log(TAG, "onResume")
-        if (swapBookmarksAndTabs != userPreferences.bookmarksAndTabsSwapped) {
+        if (swapBookmarksAndTabs != userPreferences.bookmarksAndTabsSwapped
+                || swapDrawerIcons != userPreferences.bookmarksAndTabsIconsSwapped) {
             restart()
         }
 

@@ -281,6 +281,7 @@
     <string name="cookie_category">Cookie dialog block</string>
     <string name="tabs_in_drawer">Show tabs in drawer</string>
     <string name="swap_bookmarks_and_tabs">Swap bookmark and tab drawers</string>
+    <string name="swap_bookmarks_and_tabs_icons">Swap bookmark and tab icons</string>
     <string name="do_not_track">Request \'Do Not Track\'</string>
     <string name="remove_identifying_headers">Remove identifying HTTP headers</string>
     <string name="action_add_to_homescreen">Add to home screen</string>

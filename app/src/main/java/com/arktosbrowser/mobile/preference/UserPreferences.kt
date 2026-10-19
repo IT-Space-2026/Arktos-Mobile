@@ -296,6 +296,14 @@ class UserPreferences @Inject constructor(
     var bookmarksAndTabsSwapped by preferences.booleanPreference(SWAP_BOOKMARKS_AND_TABS, false)
 
     /**
+     * True if the tab and bookmark drawer icons swap positions — the bookmark
+     * icon takes the toolbar's start slot while the tab icon moves to the end,
+     * and the two icons trade places in the bottom navigation bar. Mirrors
+     * [bookmarksAndTabsSwapped], which swaps the drawers themselves.
+     */
+    var bookmarksAndTabsIconsSwapped by preferences.booleanPreference(SWAP_BOOKMARKS_AND_TABS_ICONS, false)
+
+    /**
      * True if the status bar of the app should always be high contrast, false if it should follow
      * the theme of the app.
      */
@@ -460,6 +468,7 @@ private const val DO_NOT_TRACK = "doNotTrack"
 private const val SAVE_DATA = "saveData"
 private const val IDENTIFYING_HEADERS = "removeIdentifyingHeaders"
 private const val SWAP_BOOKMARKS_AND_TABS = "swapBookmarksAndTabs"
+private const val SWAP_BOOKMARKS_AND_TABS_ICONS = "swapBookmarksAndTabsIcons"
 private const val BLACK_STATUS_BAR = "blackStatusBar"
 private const val PROXY_CHOICE = "proxyChoice"
 private const val SEARCH_SUGGESTIONS_NUM = "suggNum"
