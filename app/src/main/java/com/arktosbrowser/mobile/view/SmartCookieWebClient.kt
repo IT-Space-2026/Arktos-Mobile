@@ -2,6 +2,7 @@ package com.arktosbrowser.mobile.view
 
 import android.annotation.TargetApi
 import android.app.Activity
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -40,6 +41,7 @@ import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.ssl.SslState
+import com.arktosbrowser.mobile.ssl.SslWarningGate
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
 import com.arktosbrowser.mobile.utils.ERROR_PAGE_ORIGIN
 import com.arktosbrowser.mobile.utils.IntentUtils
@@ -129,6 +131,14 @@ class SmartCookieWebClient(
         }
 
     private var whitelistIntent = false
+
+    /**
+     * One SSL warning per page load (upstream #296). [sslWarningDialog] keeps
+     * the currently shown prompt so a new page load can cancel its pending
+     * [SslErrorHandler] instead of leaving a stale dialog on screen.
+     */
+    private val sslWarningGate = SslWarningGate()
+    private var sslWarningDialog: Dialog? = null
 
     private val sslStateSubject: PublishSubject<SslState> = PublishSubject.create()
 
@@ -561,6 +571,9 @@ class SmartCookieWebClient(
     }
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+        sslWarningDialog?.cancel()
+        sslWarningDialog = null
+        sslWarningGate.reset()
         if (url != errorPageOriginalUrl && !url.isGeneratedPageUrl()) {
             errorPageOriginalUrl = null
         }
@@ -823,22 +836,38 @@ class SmartCookieWebClient(
 
         if(!userPreferences.ssl){
             handler.proceed()
-            Toast.makeText(activity, errorCodeMessageCodes[0], Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, errorCodeMessageCodes.firstOrNull()
+                    ?: R.string.message_certificate_untrusted, Toast.LENGTH_SHORT).show()
             return
         }
 
-        MaterialAlertDialogBuilder(activity).apply {
+        // One warning per page load: extra failing requests while the dialog
+        // is up are cancelled, and the chosen answer covers the rest of the
+        // load (upstream #296 — a dialog per request flickered and froze).
+        when (sslWarningGate.claimPrompt()) {
+            SslWarningPreferences.Behavior.PROCEED -> return handler.proceed()
+            SslWarningPreferences.Behavior.CANCEL -> return handler.cancel()
+            null -> Unit
+        }
+
+        sslWarningDialog = MaterialAlertDialogBuilder(activity).apply {
             val view = LayoutInflater.from(activity).inflate(R.layout.dialog_ssl_warning, null)
             val dontAskAgain = view.findViewById<CheckBox>(R.id.checkBoxDontAskAgain)
             setTitle(activity.getString(R.string.title_warning))
             setMessage(alertMessage)
             setCancelable(true)
             setView(view)
-            setOnCancelListener { handler.cancel() }
+            setOnCancelListener {
+                sslWarningDialog = null
+                sslWarningGate.onPromptDismissed(SslWarningPreferences.Behavior.CANCEL)
+                handler.cancel()
+            }
             setPositiveButton(activity.getString(R.string.action_yes)) { _, _ ->
                 if (dontAskAgain.isChecked) {
                     sslWarningPreferences.rememberBehaviorForDomain(webView.url.orEmpty(), SslWarningPreferences.Behavior.PROCEED)
                 }
+                sslWarningDialog = null
+                sslWarningGate.onPromptDismissed(SslWarningPreferences.Behavior.PROCEED)
                 handler.proceed()
                 webView.clearSslPreferences()
             }
@@ -846,6 +875,8 @@ class SmartCookieWebClient(
                 if (dontAskAgain.isChecked) {
                     sslWarningPreferences.rememberBehaviorForDomain(webView.url.orEmpty(), SslWarningPreferences.Behavior.CANCEL)
                 }
+                sslWarningDialog = null
+                sslWarningGate.onPromptDismissed(SslWarningPreferences.Behavior.CANCEL)
                 handler.cancel()
             }
         }.resizeAndShow()
