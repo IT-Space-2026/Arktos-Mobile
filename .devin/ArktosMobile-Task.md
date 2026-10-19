@@ -66,6 +66,7 @@ NO SUDO — everything user-local.
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | done | 0 | desktop notfound/certerror card ported into rust pages.rs (#box/#header/#content, gradient band, floated arktos.webp, h2 divider + hint <ul>, pill buttons); new hint params + error_page_hint/page_blocked_hint strings wired at all call sites; arktos-dark class emitted off non-empty color (fragment de-!importanted); reloadCode/$!!!/showButton-proceed contracts kept — cargo 120/120, 211 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
 | UI02 | Start page styled like Arktos desktop (no search bar) — details below | pending | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
 | J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
+| RENAM01 | Rename residual SmartCookie* identifiers to Arktos* — details below | pending | 0 | needs:tool:java — user-requested: SmartCookieView→ArktosCookieView + siblings; upstream-citation comments keep the name |
 
 ## Task details
 
@@ -348,3 +349,26 @@ Convert the remaining `.java` sources to Kotlin — target zero
 - Verify: `find app/src/main -name "*.java"` → empty (or only
   files justified in Notes), `./gradlew assembleScMainDebug` +
   `testScMainDebugUnitTest` green, engine-audit PASS.
+
+### RENAM01
+Rename the remaining `SmartCookie*` type/file identifiers to `Arktos*`
+(user request: `SmartCookieView.onDestroy` should read
+`ArktosCookieView.onDestroy`).
+
+- Identifiers/files to rename (class + file + all references):
+  `SmartCookieView` → `ArktosCookieView`,
+  `SmartCookieWebClient` → `ArktosCookieWebClient`,
+  `SmartCookieChromeClient` → `ArktosCookieChromeClient`,
+  `SmartCookieViewTitle` → `ArktosCookieViewTitle`.
+- Sweep for other `SmartCookie[A-Za-z]*` identifiers (variables,
+  comments-as-identifiers) and rename consistently; e.g. a
+  `smartCookieView` field becomes `arktosCookieView`.
+- DO NOT touch upstream citations in comments — strings like
+  "upstream SmartCookieWeb #311" or "SmartCookieWeb fork" that refer
+  to the original project stay; they are attribution, not branding.
+  `SmartCookieWeb` as a project name in prose/docs also stays.
+- Update `.devin/ENGINE.md` touchpoint paths that name the renamed
+  files so the engine audit still maps correctly.
+- Verify: `grep -rn "SmartCookie[A-Za-z]*" --include="*.kt"` shows no
+  identifiers (only prose citations), `./gradlew assembleScMainDebug`
+  + `testScMainDebugUnitTest` green, engine-audit PASS.
