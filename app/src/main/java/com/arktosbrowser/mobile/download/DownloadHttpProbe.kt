@@ -2,6 +2,7 @@ package com.arktosbrowser.mobile.download
 
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.Proxy
 import java.net.URI
 import java.net.URL
 
@@ -52,14 +53,15 @@ object DownloadHttpProbe {
         url: String,
         cookies: String? = null,
         userAgent: String? = null,
-        referer: String? = null
+        referer: String? = null,
+        proxy: Proxy? = null
     ): Result? {
-        val head = fetch(url, "HEAD", cookies, userAgent, referer)
+        val head = fetch(url, "HEAD", cookies, userAgent, referer, proxy)
         val needsGet = head == null || head.statusCode >= 400 ||
             (head.statusCode in 200..299 && head.contentType == null && head.contentDisposition == null)
         if (needsGet) {
             // HEAD rejected or told us nothing useful — retry as GET.
-            val get = fetch(url, "GET", cookies, userAgent, referer)
+            val get = fetch(url, "GET", cookies, userAgent, referer, proxy)
             if (get != null && (head == null || get.statusCode in 200..299)) {
                 return get
             }
@@ -72,13 +74,15 @@ object DownloadHttpProbe {
         method: String,
         cookies: String?,
         userAgent: String?,
-        referer: String?
+        referer: String?,
+        proxy: Proxy? = null
     ): Result? {
         var current = url
         var hops = 0
         while (hops <= MAX_REDIRECTS) {
             val connection = try {
-                URL(current).openConnection() as? HttpURLConnection
+                (if (proxy != null) URL(current).openConnection(proxy)
+                else URL(current).openConnection()) as? HttpURLConnection
             } catch (e: Exception) {
                 null
             } ?: return null
