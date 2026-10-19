@@ -95,6 +95,23 @@ pub struct StoreJavaScriptEntry {
     pub requirements: Option<String>,
 }
 
+/// Ad-block filter-list subscription row (LIST01). `id` is the fetch
+/// URL for remote lists and a `builtin:`/`file:` pseudo-URL for local
+/// ones; `last_updated` is ms since epoch (0 = never fetched);
+/// `host_count` is the domain count from the last successful load;
+/// `custom` marks user-added rows (shown in their own settings group).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct StoreAdblockSubscription {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub category: String,
+    pub enabled: bool,
+    pub last_updated: u64,
+    pub host_count: u64,
+    pub custom: bool,
+}
+
 fn now_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -169,7 +186,17 @@ impl ArktosStore {
                 code TEXT,
                 requirements TEXT
             );
-            PRAGMA user_version = 1;",
+            CREATE TABLE IF NOT EXISTS adblock_subscription(
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT '',
+                enabled INTEGER NOT NULL DEFAULT 0,
+                last_updated INTEGER NOT NULL DEFAULT 0,
+                host_count INTEGER NOT NULL DEFAULT 0,
+                custom INTEGER NOT NULL DEFAULT 0
+            );
+            PRAGMA user_version = 2;",
         )?;
         Ok(())
     }
@@ -664,6 +691,107 @@ impl ArktosStore {
             .map(|c| c as u64)
             .map_err(Into::into)
     }
+
+    // ---- ad-block subscriptions (LIST01) ---------------------------
+
+    /// All subscriptions in insertion (seed) order — the settings UI
+    /// re-groups them by category.
+    pub fn all_adblock_subscriptions(&self) -> StoreResult<Vec<StoreAdblockSubscription>> {
+        let conn = self.db()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, name, url, category, enabled, last_updated, host_count, custom
+             FROM adblock_subscription ORDER BY rowid",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(StoreAdblockSubscription {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                url: r.get(2)?,
+                category: r.get(3)?,
+                enabled: r.get::<_, i64>(4)? != 0,
+                last_updated: r.get::<_, i64>(5)? as u64,
+                host_count: r.get::<_, i64>(6)? as u64,
+                custom: r.get::<_, i64>(7)? != 0,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    /// Insert only when `entry.id` is new — returns true when a row
+    /// was added. Used both for catalog seeding and custom lists.
+    pub fn add_adblock_subscription(
+        &self,
+        entry: StoreAdblockSubscription,
+    ) -> StoreResult<bool> {
+        let conn = self.db()?;
+        let n = conn.execute(
+            "INSERT OR IGNORE INTO adblock_subscription
+                (id, name, url, category, enabled, last_updated, host_count, custom)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                entry.id,
+                entry.name,
+                entry.url,
+                entry.category,
+                entry.enabled as i64,
+                entry.last_updated as i64,
+                entry.host_count as i64,
+                entry.custom as i64,
+            ],
+        )?;
+        Ok(n > 0)
+    }
+
+    pub fn set_adblock_subscription_enabled(
+        &self,
+        id: String,
+        enabled: bool,
+    ) -> StoreResult<()> {
+        self.db()?.execute(
+            "UPDATE adblock_subscription SET enabled = ?2 WHERE id = ?1",
+            params![id, enabled as i64],
+        )?;
+        Ok(())
+    }
+
+    /// Stamp a list after a load: `last_updated` ms epoch and the
+    /// extracted domain count for the settings row.
+    pub fn set_adblock_subscription_state(
+        &self,
+        id: String,
+        last_updated: u64,
+        host_count: u64,
+    ) -> StoreResult<()> {
+        self.db()?.execute(
+            "UPDATE adblock_subscription SET last_updated = ?2, host_count = ?3
+             WHERE id = ?1",
+            params![id, last_updated as i64, host_count as i64],
+        )?;
+        Ok(())
+    }
+
+    /// Update a custom row's display name/URL (preset rows keep their
+    /// catalog identity).
+    pub fn update_adblock_subscription(
+        &self,
+        id: String,
+        name: String,
+        url: String,
+    ) -> StoreResult<()> {
+        self.db()?.execute(
+            "UPDATE adblock_subscription SET name = ?2, url = ?3 WHERE id = ?1",
+            params![id, name, url],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_adblock_subscription(&self, id: String) -> StoreResult<()> {
+        self.db()?.execute(
+            "DELETE FROM adblock_subscription WHERE id = ?1",
+            params![id],
+        )?;
+        Ok(())
+    }
 }
 
 fn row_to_bookmark(r: &rusqlite::Row<'_>) -> rusqlite::Result<StoreBookmark> {
@@ -1019,5 +1147,57 @@ mod tests {
         s.add_javascript_if_not_exists(entry).unwrap();
         s.delete_all_javascript().unwrap();
         assert_eq!(s.javascript_count().unwrap(), 0);
+    }
+
+    // ---- ad-block subscriptions (LIST01) ----
+
+    fn sub(id: &str, enabled: bool, custom: bool) -> StoreAdblockSubscription {
+        StoreAdblockSubscription {
+            id: id.into(),
+            name: format!("name-{id}"),
+            url: id.into(),
+            category: "Core & Privacy".into(),
+            enabled,
+            last_updated: 0,
+            host_count: 0,
+            custom,
+        }
+    }
+
+    #[test]
+    fn subscriptions_seed_toggle_and_stamp() {
+        let s = store();
+        assert!(s.all_adblock_subscriptions().unwrap().is_empty());
+
+        assert!(s.add_adblock_subscription(sub("https://a.example/list.txt", true, false)).unwrap());
+        assert!(s.add_adblock_subscription(sub("https://b.example/list.txt", false, true)).unwrap());
+        // INSERT OR IGNORE — a second add of the same id is a no-op.
+        assert!(!s.add_adblock_subscription(sub("https://a.example/list.txt", false, false)).unwrap());
+
+        let all = s.all_adblock_subscriptions().unwrap();
+        assert_eq!(all.len(), 2);
+        assert!(all[0].enabled && !all[0].custom);
+        assert!(!all[1].enabled && all[1].custom);
+
+        s.set_adblock_subscription_enabled("https://b.example/list.txt".into(), true).unwrap();
+        s.set_adblock_subscription_state("https://b.example/list.txt".into(), 1234, 42).unwrap();
+
+        let all = s.all_adblock_subscriptions().unwrap();
+        assert!(all[1].enabled);
+        assert_eq!(all[1].last_updated, 1234);
+        assert_eq!(all[1].host_count, 42);
+        // Untouched row keeps its values.
+        assert!(all[0].enabled);
+        assert_eq!(all[0].last_updated, 0);
+
+        s.update_adblock_subscription("https://b.example/list.txt".into(), "renamed".into(), "file:///x".into()).unwrap();
+        let all = s.all_adblock_subscriptions().unwrap();
+        assert_eq!(all[1].name, "renamed");
+        assert_eq!(all[1].url, "file:///x");
+
+        s.delete_adblock_subscription("https://a.example/list.txt".into()).unwrap();
+        let all = s.all_adblock_subscriptions().unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "https://b.example/list.txt");
     }
 }

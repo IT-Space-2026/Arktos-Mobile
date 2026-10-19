@@ -43,6 +43,9 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
   public→local-network request blocking all share one per-request verdict
+- Multi-list ad-block subscriptions: the desktop preset catalog
+  (EasyList, uBlock, AdGuard, regional lists, …) plus custom remote or
+  local lists, each toggleable and auto-refreshed on a 7-day cadence
 - Bookmarks, history, downloads, the ad-block allow list and
   userscripts persist through a single Rust `ArktosStore` (SQLite via
   bundled rusqlite) behind the existing repository interfaces;

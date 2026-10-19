@@ -19,7 +19,7 @@
 //! takes a read lock and does not allocate beyond the two FFI strings.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, RwLock};
 
@@ -68,13 +68,33 @@ pub struct BlocklistConfig {
     pub lan_block_enabled: bool,
 }
 
+/// Key under which the single-source hosts set lives when loaded via
+/// [`BlocklistEngine::load_ad_hosts`] (the pre-LIST01 one-shot API).
+const BASELINE_KEY: &str = "__baseline__";
+
 #[derive(Default)]
 struct Inner {
     config: BlocklistConfig,
+    /// Merged view over [`Inner::subscription_hosts`] — the only set
+    /// the per-request verdict path touches.
     ad_hosts: HashSet<String>,
+    /// Per-subscription domain sets (LIST01). Each enabled list is
+    /// parsed on load; the merged `ad_hosts` is rebuilt on change, so
+    /// the verdict hot path stays a single HashSet lookup.
+    subscription_hosts: HashMap<String, HashSet<String>>,
     malware: Option<AhoCorasick>,
     site_block_mode: SiteBlockMode,
     site_block_entries: Vec<String>,
+}
+
+impl Inner {
+    fn rebuild_ad_hosts(&mut self) {
+        self.ad_hosts = self
+            .subscription_hosts
+            .values()
+            .flat_map(|set| set.iter().cloned())
+            .collect();
+    }
 }
 
 /// The unified blocklist engine. One instance lives behind the
@@ -103,11 +123,44 @@ impl BlocklistEngine {
 
     /// Parse hosts-file `content` and replace the ad hosts set.
     /// Returns the number of blocked domains loaded.
+    ///
+    /// Single-source API from BLOCK01: replaces every loaded list,
+    /// including any subscriptions — kept for the asset-baseline call
+    /// and backwards compatibility. Multi-list loading goes through
+    /// [`BlocklistEngine::load_subscription_hosts`].
     pub fn load_ad_hosts(&self, content: String) -> u32 {
         let hosts: HashSet<String> = parse_hosts_file(&content).into_iter().collect();
         let count = hosts.len() as u32;
-        self.inner.write().unwrap().ad_hosts = hosts;
+        let mut inner = self.inner.write().unwrap();
+        inner.subscription_hosts.clear();
+        inner.subscription_hosts.insert(BASELINE_KEY.to_owned(), hosts);
+        inner.rebuild_ad_hosts();
         count
+    }
+
+    /// Parse one subscription's list `content` and merge its domains
+    /// into the ad hosts set under `id` (LIST01). Re-loading the same
+    /// `id` replaces that list's contribution only. Returns the number
+    /// of domains extracted from this list.
+    ///
+    /// Content may be hosts-file format or an AdBlockPlus-style
+    /// filter list — `parse_list_domains` understands both.
+    pub fn load_subscription_hosts(&self, id: String, content: String) -> u32 {
+        let hosts: HashSet<String> = parse_list_domains(&content).into_iter().collect();
+        let count = hosts.len() as u32;
+        let mut inner = self.inner.write().unwrap();
+        inner.subscription_hosts.insert(id, hosts);
+        inner.rebuild_ad_hosts();
+        count
+    }
+
+    /// Drop a subscription's contribution to the ad hosts set (LIST01)
+    /// — called when a list is disabled or removed.
+    pub fn remove_subscription_hosts(&self, id: String) {
+        let mut inner = self.inner.write().unwrap();
+        if inner.subscription_hosts.remove(&id).is_some() {
+            inner.rebuild_ad_hosts();
+        }
     }
 
     /// Load comma-separated malware terms (`malware.txt` format).
@@ -294,6 +347,70 @@ fn parse_hosts_line(line: &str, domains: &mut Vec<String>) {
     if !rest.is_empty() {
         domains.push(rest.to_owned());
     }
+}
+
+/// Parse subscription list content into blocked domains (LIST01).
+///
+/// The preset catalog mixes hosts-file lists (Dan Pollock, MVPS) with
+/// AdBlockPlus-syntax filter lists (EasyList, uBlock, AdGuard). ABP
+/// cosmetic/element rules can't be applied by a domain engine, so
+/// this extracts what's enforceable:
+///
+/// * `||domain^` host anchors (the network-level domain rules),
+/// * hosts-file / bare-domain lines via [`parse_hosts_line`].
+///
+/// Skipped: `!`/`[` comments and headers, `@@` exception rules (the
+/// engine has no allow syntax), cosmetic rules (`##`, `#@#`, `#?#`),
+/// URL-pattern rules containing scheme/`$` options/`*` wildcards.
+/// Domains are lowercased (no parity constraint — new format).
+pub fn parse_list_domains(content: &str) -> Vec<String> {
+    let mut domains = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty()
+            || trimmed.starts_with('!')
+            || trimmed.starts_with('[')
+            || trimmed.starts_with("@@")
+            || trimmed.contains("##")
+            || trimmed.contains("#@#")
+            || trimmed.contains("#?#")
+        {
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("||") {
+            // Host anchor: the domain runs to the next `^`, `/` or `|`.
+            let host = rest
+                .split(|c| c == '^' || c == '/' || c == '|')
+                .next()
+                .unwrap_or("");
+            if is_plausible_host(host) {
+                domains.push(host.to_lowercase());
+            }
+            continue;
+        }
+        // URL-pattern / option / wildcard rules can't map to a bare
+        // domain — skip anything that isn't a plain hosts line.
+        if trimmed.contains("://")
+            || trimmed.contains('$')
+            || trimmed.contains('*')
+            || trimmed.starts_with('|')
+        {
+            continue;
+        }
+        parse_hosts_line(trimmed, &mut domains);
+    }
+    domains
+}
+
+/// Rough host sanity check for `||` anchors: non-empty, contains a
+/// dot, and made of domain characters only (no wildcards/scheme
+/// leftovers).
+fn is_plausible_host(host: &str) -> bool {
+    !host.is_empty()
+        && host.contains('.')
+        && host
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-' || b == b'_')
 }
 
 /// Extract the probable domain from a URL — port of
@@ -612,6 +729,136 @@ mod tests {
                 false
             ),
             RequestVerdict::Allow
+        );
+    }
+
+    // ---- subscription lists (LIST01) -------------------------------
+
+    #[test]
+    fn list_parser_handles_hosts_and_abp_syntax() {
+        let content = "\
+! Title: Mixed list
+[Adblock Plus 2.0]
+0.0.0.0 host.example
+plain-domain.example
+||ads.example.com^
+||Tracker.Example.org^$third-party
+||wild*.example.com^
+@@||allowed.example.com^
+example.com##.banner
+example.com#@#.unblock
+/advertising/*$image
+|https://subscribe.example.com/feed
+||no-dot^
+";
+        let mut domains = parse_list_domains(content);
+        domains.sort_unstable();
+        assert_eq!(
+            domains,
+            vec![
+                "ads.example.com",
+                "host.example",
+                "plain-domain.example",
+                "tracker.example.org"
+            ]
+        );
+    }
+
+    #[test]
+    fn subscription_merge_and_remove() {
+        let e = engine();
+        e.configure(BlocklistConfig {
+            ads_enabled: true,
+            ..Default::default()
+        });
+
+        e.load_subscription_hosts(
+            "list-a".into(),
+            "0.0.0.0 shared.example a-only.example\n".into(),
+        );
+        e.load_subscription_hosts(
+            "list-b".into(),
+            "0.0.0.0 shared.example b-only.example\n".into(),
+        );
+
+        for url in [
+            "https://a-only.example/x",
+            "https://b-only.example/x",
+            "https://shared.example/x",
+        ] {
+            assert_eq!(
+                e.verdict(url.into(), "".into(), false),
+                RequestVerdict::BlockAds,
+                "expected blocked: {url}"
+            );
+        }
+
+        // Removing list-b keeps list-a's domains (incl. the shared one).
+        e.remove_subscription_hosts("list-b".into());
+        assert_eq!(
+            e.verdict("https://b-only.example/x".into(), "".into(), false),
+            RequestVerdict::Allow
+        );
+        assert_eq!(
+            e.verdict("https://shared.example/x".into(), "".into(), false),
+            RequestVerdict::BlockAds
+        );
+        assert_eq!(
+            e.verdict("https://a-only.example/x".into(), "".into(), false),
+            RequestVerdict::BlockAds
+        );
+
+        // Removing an unknown id is a harmless no-op.
+        e.remove_subscription_hosts("missing".into());
+        assert_eq!(
+            e.verdict("https://shared.example/x".into(), "".into(), false),
+            RequestVerdict::BlockAds
+        );
+    }
+
+    #[test]
+    fn subscription_reload_replaces_only_that_list() {
+        let e = engine();
+        e.configure(BlocklistConfig {
+            ads_enabled: true,
+            ..Default::default()
+        });
+        e.load_subscription_hosts("a".into(), "0.0.0.0 old.example\n".into());
+        e.load_subscription_hosts("b".into(), "0.0.0.0 keep.example\n".into());
+        // Reload "a" with different content.
+        e.load_subscription_hosts("a".into(), "0.0.0.0 new.example\n".into());
+
+        assert_eq!(
+            e.verdict("https://old.example/".into(), "".into(), false),
+            RequestVerdict::Allow
+        );
+        assert_eq!(
+            e.verdict("https://new.example/".into(), "".into(), false),
+            RequestVerdict::BlockAds
+        );
+        assert_eq!(
+            e.verdict("https://keep.example/".into(), "".into(), false),
+            RequestVerdict::BlockAds
+        );
+    }
+
+    #[test]
+    fn load_ad_hosts_replaces_subscriptions() {
+        let e = engine();
+        e.configure(BlocklistConfig {
+            ads_enabled: true,
+            ..Default::default()
+        });
+        e.load_subscription_hosts("a".into(), "0.0.0.0 sub.example\n".into());
+        e.load_ad_hosts("0.0.0.0 base.example\n".into());
+        // Single-source API keeps BLOCK01 semantics: full replacement.
+        assert_eq!(
+            e.verdict("https://sub.example/".into(), "".into(), false),
+            RequestVerdict::Allow
+        );
+        assert_eq!(
+            e.verdict("https://base.example/".into(), "".into(), false),
+            RequestVerdict::BlockAds
         );
     }
 }
