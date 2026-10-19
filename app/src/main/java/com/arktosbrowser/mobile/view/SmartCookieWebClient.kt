@@ -41,6 +41,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.ConnectivityGate
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
+import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.SslWarningGate
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
@@ -460,6 +461,17 @@ class SmartCookieWebClient(
         if (url != errorPageOriginalUrl && !url.isGeneratedPageUrl()) {
             errorPageOriginalUrl = null
         }
+
+        // Forced SafeSearch backstop (upstream #327): any navigation that
+        // reached a search engine without the strict parameter — redirects
+        // or script navigations that bypassed shouldOverrideUrlLoading —
+        // is reloaded with it, like the HTTPS upgrade below.
+        val safeUrl = SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced)
+        if (safeUrl != url) {
+            view.loadUrl(safeUrl)
+            return
+        }
+
         errored = true
         if(isPackageInstalled(activity.resources.getString(R.string.ytdl_package_name), activity.packageManager) && stringContainsItemFromList(url, knownUndetectedVideoUrls)){
             activity.findViewById<FrameLayout>(R.id.download_button).visibility = View.VISIBLE
@@ -774,6 +786,15 @@ class SmartCookieWebClient(
         }
 
         val headers = smartCookieView.requestHeaders
+
+        // Forced SafeSearch (parental controls, upstream #327): a link,
+        // redirect or script navigation to a search engine that dropped
+        // the strict parameter is re-issued with it restored.
+        val safeUrl = SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced)
+        if (safeUrl != url) {
+            if (headers.isEmpty()) view.loadUrl(safeUrl) else view.loadUrl(safeUrl, headers)
+            return true
+        }
 
         if (smartCookieView.isIncognito || userPreferences.blockIntent && !isMailOrIntent(url, view)) {
 

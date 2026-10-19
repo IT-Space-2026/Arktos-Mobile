@@ -446,6 +446,8 @@
     <string name="only_allow_sites">Only allow listed sites</string>
     <string name="parental_controls">Parental controls settings</string>
     <string name="settings_parents">Block sites, set password...</string>
+    <string name="safe_search">Force SafeSearch</string>
+    <string name="safe_search_summary">Require strict safe-search filtering on supported search engines</string>
     <string name="label_realm">Server message: %s</string>
     <string name="new_tab_foreground">Bring tabs to foreground</string>
     <string name="new_tab_foreground_summary">Open a new tab when it is created</string>

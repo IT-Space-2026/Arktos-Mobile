@@ -9,6 +9,12 @@
         <!-- <Preference
             android:key="agent"
             android:title="Time limit" /> -->
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="safe_search"
+            android:singleLineTitle="false"
+            android:summary="@string/safe_search_summary"
+            android:title="@string/safe_search" />
         <Preference
             android:key="password"
             android:singleLineTitle="false"

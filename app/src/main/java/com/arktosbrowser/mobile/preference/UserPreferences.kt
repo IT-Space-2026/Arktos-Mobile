@@ -30,6 +30,14 @@ class UserPreferences @Inject constructor(
     var siteBlockChoice by preferences.enumPreference(SITE_BLOCK, SiteBlockChoice.NONE)
     var siteBlockNames by preferences.stringPreference(USE_SITE_BLOCK, "")
 
+    /**
+     * True if strict safe-search filtering is forced on supported search
+     * engines (parental controls, upstream #327). Enforced by
+     * [com.arktosbrowser.mobile.search.SafeSearch] at the page-load layer,
+     * so the parameter survives edits to the loaded URL.
+     */
+    var safeSearchForced by preferences.booleanPreference(SAFE_SEARCH, false)
+
     var javaScriptChoice by preferences.enumPreference(USE_JS_BLOCK, JavaScriptChoice.NONE)
     var javaScriptBlocked by preferences.stringPreference(BLOCK_JS, "")
 
@@ -523,6 +531,7 @@ private const val HOSTS_REMOTE_FILE = "hostsRemoteFile"
 private const val PREFER_HTTPS = "preferHTTPS"
 private const val FORCE_HTTPS = "forceHTTPS"
 private const val SITE_BLOCK = "siteBlock"
+private const val SAFE_SEARCH = "safeSearch"
 private const val NAVBAR_COLOR = "navcol"
 private const val USE_SITE_BLOCK = "useSiteBlock"
 private const val USE_JS_BLOCK = "useJSblock"

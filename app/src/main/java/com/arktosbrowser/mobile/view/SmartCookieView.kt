@@ -43,6 +43,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.NetworkConnectivityModel
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.preference.userAgent
+import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.find.FindResults
@@ -822,7 +823,12 @@ class SmartCookieView(
             return
         }
 
-        webView?.loadUrl(url, requestHeaders)
+        // Forced SafeSearch (parental controls, upstream #327): re-add the
+        // strict parameter even when the submitted URL dropped it.
+        webView?.loadUrl(
+            SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced),
+            requestHeaders
+        )
     }
 
     /**
