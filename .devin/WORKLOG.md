@@ -48,3 +48,7 @@ Pre-loop work (done outside the task loop):
 - All post-fork commits preserved; x-access-token author normalized to Devin; single contributor.
 - master + rust-work force-pushed. Local safety net: branch `backup-before-rewrite` (do not push).
 - Arktos-Mobile-rust worktree holds the OLD rust-work SHA — fetch/reset before any future push from it.
+
+## J2K01 — Java → Kotlin (2026-10-19)
+
+All remaining .java converted: StringBuilderUtils, WebUtils, DrawableUtils, MemoryLeakUtils, ThemeUtils, ProxyUtils, IntentUtils, FileUtils (objects); BookmarkExporter (object); Vertical/HorizontalItemAnimator (faithful ports, axis differences preserved); ProxyUtils (class, @Inject/@Singleton). 0 .java files remain. 232 unit tests, 0 failures; assemble + engine-audit PASS.
