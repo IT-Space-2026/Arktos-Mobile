@@ -3,7 +3,7 @@ package com.arktosbrowser.mobile.utils;
 import android.app.Activity;
 import android.util.Log;
 
-import net.i2p.android.ui.I2PAndroidHelper;
+import com.arktosbrowser.mobile.i2p.I2PAndroidHelper;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
