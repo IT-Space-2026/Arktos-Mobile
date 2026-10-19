@@ -1,0 +1,26 @@
+[package]
+name = "arktos-core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# cdylib name must match what the generated Kotlin bindings pass to
+# System.loadLibrary — see uniffi.toml (`cdylib_name`) and
+# ArktosCore.ensureLoaded() on the Kotlin side.
+[lib]
+name = "arktos"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+# Off by default so Android builds don't pull clap/camino into the
+# dependency graph; enabled only when running the bindgen binary.
+cli = ["uniffi/cli"]
+
+[dependencies]
+uniffi = "=0.32.2"

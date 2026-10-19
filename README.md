@@ -26,6 +26,13 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 
  `gradlew assembleDebug` or `./gradlew assembleDebug`
 
+- The build cross-compiles the Rust core (`rust/arktos-core` →
+  `libarktos.so`, consumed through UniFFI-generated Kotlin bindings).
+  Required on PATH: a Rust toolchain (`rustup`/`cargo`) with the Android
+  targets (`aarch64-linux-android`, `armv7-linux-androideabi`,
+  `x86_64-linux-android`), `cargo-ndk`, and an Android NDK under the
+  configured SDK (`ndk/` side-by-side or `ndk-bundle`).
+
 ---
 
 ## Features
