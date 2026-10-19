@@ -38,6 +38,7 @@ import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
+import com.arktosbrowser.mobile.network.ConnectivityGate
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
@@ -109,6 +110,7 @@ class SmartCookieWebClient(
     @Inject internal lateinit var blocklistLoader: BlocklistLoader
     @Inject internal lateinit var rankListLoader: RankListLoader
     @Inject internal lateinit var siteSettings: SiteSettings
+    @Inject internal lateinit var connectivityGate: ConnectivityGate
 
     @Volatile private var isRunning = false
     private var zoomScale = 0.0f
@@ -173,6 +175,22 @@ class SmartCookieWebClient(
     private fun blockedPageResponse(html: String): WebResourceResponse =
         WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(html.toByteArray()))
 
+    /**
+     * The offline variant of the generated error page (upstream #323).
+     * The reload button navigates back to [url], which re-runs the
+     * connectivity check — still offline shows this page again, a
+     * restored link loads the page for real.
+     */
+    private fun offlineErrorPage(url: String): String =
+        buildErrorPage(
+            blockPageColor(),
+            activity.getString(R.string.error_offline_title),
+            activity.getString(R.string.error_offline_message),
+            activity.getString(R.string.error_reload),
+            true,
+            "window.location.href = '" + url + "';"
+        )
+
     private fun emptyResponse(): WebResourceResponse =
         WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(emptyResponseByteArray))
 
@@ -191,7 +209,17 @@ class SmartCookieWebClient(
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val requestUrl = request.url.toString()
         return when (ArktosCore.requestVerdict(requestUrl, currentUrl, request.isForMainFrame)) {
-            RequestVerdict.ALLOW -> super.shouldInterceptRequest(view, request)
+            // No network route → answer the main-frame request with the
+            // offline page right away instead of letting the load fail
+            // into the generic error page (upstream #323).
+            RequestVerdict.ALLOW ->
+                if (request.isForMainFrame
+                    && ConnectivityGate.isNetworkPageRequest(requestUrl)
+                    && !connectivityGate.isConnected()) {
+                    blockedPageResponse(offlineErrorPage(requestUrl))
+                } else {
+                    super.shouldInterceptRequest(view, request)
+                }
             RequestVerdict.BLOCK_ADS ->
                 if (whitelistModel.isUrlAllowedAds(currentUrl)) {
                     super.shouldInterceptRequest(view, request)
@@ -588,11 +616,18 @@ class SmartCookieWebClient(
                 color = ""
             }
             val reloadCode = "window.location.href = '" + failingUrl + "';"
-            val title = activity.getString(R.string.error_title)
+            // A connectivity loss gets its own wording so the user sees
+            // "no internet connection" rather than a generic failure
+            // (upstream #323).
+            val offline = ConnectivityGate.isOfflineError(connectivityGate.isConnected(), error)
+            val title = activity.getString(
+                if (offline) R.string.error_offline_title else R.string.error_title)
+            val errorText =
+                if (offline) activity.getString(R.string.error_offline_message) else error
             val reload = activity.getString(R.string.error_reload)
             webview.loadUrl("about:blank")
             errorPageOriginalUrl = failingUrl
-            webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, error, reload, true, reloadCode), "text/html", "UTF-8", null)
+            webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, errorText, reload, true, reloadCode), "text/html", "UTF-8", null)
             uiController.updateUrl(failingUrl, false)
             currentUrl = failingUrl
             webview.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(failingUrl)
