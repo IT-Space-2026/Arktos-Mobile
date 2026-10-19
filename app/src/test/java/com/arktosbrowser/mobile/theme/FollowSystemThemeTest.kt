@@ -22,14 +22,14 @@ import javax.xml.parsers.DocumentBuilderFactory
 class FollowSystemThemeTest {
 
     @Test
-    fun `system theme resolves to dark under night mode and light otherwise`() {
-        assertEquals(AppTheme.DARK, AppTheme.SYSTEM.resolve(systemNightMode = true))
-        assertEquals(AppTheme.LIGHT, AppTheme.SYSTEM.resolve(systemNightMode = false))
+    fun `system theme resolves to arktos dark under night mode and arktos light otherwise`() {
+        assertEquals(AppTheme.ARKTOS_DARK, AppTheme.SYSTEM.resolve(systemNightMode = true))
+        assertEquals(AppTheme.ARKTOS_LIGHT, AppTheme.SYSTEM.resolve(systemNightMode = false))
     }
 
     @Test
     fun `manual themes ignore the system night mode`() {
-        for (theme in listOf(AppTheme.LIGHT, AppTheme.DARK, AppTheme.BLACK)) {
+        for (theme in listOf(AppTheme.LIGHT, AppTheme.DARK, AppTheme.BLACK, AppTheme.ARKTOS_LIGHT, AppTheme.ARKTOS_DARK)) {
             assertEquals(theme, theme.resolve(systemNightMode = true))
             assertEquals(theme, theme.resolve(systemNightMode = false))
         }

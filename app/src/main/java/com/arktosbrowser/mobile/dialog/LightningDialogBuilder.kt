@@ -29,6 +29,7 @@ import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.download.DownloadHandler
 import com.arktosbrowser.mobile.extensions.copyToClipboard
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.toast
 import com.arktosbrowser.mobile.history.HistoryActivity
@@ -118,7 +119,7 @@ class LightningDialogBuilder @Inject constructor(
             IntentUtils(activity).shareUrl(entry.url, entry.title)
         },
         DialogItem(title = R.string.dialog_copy_link, icon = ContextCompat.getDrawable(activity, R.drawable.ic_content_copy_black)) {
-            clipboardManager.copyToClipboard(entry.url)
+            clipboardManager.copyToClipboard(ArktosCore.stripUrl(entry.url))
         },
         DialogItem(title = R.string.dialog_remove_bookmark, icon = ContextCompat.getDrawable(activity, R.drawable.ic_action_delete)) {
             bookmarkManager.deleteBookmark(entry)
@@ -293,7 +294,7 @@ class LightningDialogBuilder @Inject constructor(
             IntentUtils(activity).shareUrl(url, null)
         },
         DialogItem(title = R.string.dialog_copy_link) {
-            clipboardManager.copyToClipboard(url)
+            clipboardManager.copyToClipboard(ArktosCore.stripUrl(url))
         },
         DialogItem(title = R.string.dialog_remove_from_history) {
             historyModel.deleteHistoryEntry(url)
@@ -326,7 +327,7 @@ class LightningDialogBuilder @Inject constructor(
             IntentUtils(activity).shareUrl(url, null)
         },
         DialogItem(title = R.string.dialog_copy_link) {
-            clipboardManager.copyToClipboard(url)
+            clipboardManager.copyToClipboard(ArktosCore.stripUrl(url))
         },
         DialogItem(title = R.string.dialog_download_image) {
             val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
@@ -365,7 +366,7 @@ class LightningDialogBuilder @Inject constructor(
             IntentUtils(activity).shareUrl(url, null)
         },
         DialogItem(title = R.string.dialog_copy_link) {
-            clipboardManager.copyToClipboard(url)
+            clipboardManager.copyToClipboard(ArktosCore.stripUrl(url))
         },
         // Per-site JS/cookie quick-toggles (#305) keyed on the long-pressed
         // link's host; applied to the open page at once when it is on the

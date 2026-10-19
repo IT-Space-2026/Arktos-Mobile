@@ -73,6 +73,7 @@ import com.arktosbrowser.mobile.uniffi.siteRankSources as uniffiSiteRankSources
 import com.arktosbrowser.mobile.uniffi.siteRankUpdateIfStale as uniffiSiteRankUpdateIfStale
 import com.arktosbrowser.mobile.uniffi.siteRankUpdateNow as uniffiSiteRankUpdateNow
 import com.arktosbrowser.mobile.uniffi.smartUrlFilter as uniffiSmartUrlFilter
+import com.arktosbrowser.mobile.uniffi.stripUrl as uniffiStripUrl
 import com.arktosbrowser.mobile.uniffi.suggestionQueryUrl as uniffiSuggestionQueryUrl
 import com.arktosbrowser.mobile.uniffi.verifyPassword as uniffiVerifyPassword
 
@@ -297,6 +298,13 @@ object ArktosCore {
 
     /** `Utils.getDomainName` — display-only domain extraction (PORT02). */
     fun domainName(url: String): String = uniffiDomainName(url)
+
+    /**
+     * Desktop-parity copy-link cleaning (urlstrip module): removes
+     * tracking query params (utm_*, fbclid, …), resolves redirector
+     * wrappers, and returns the input unchanged when nothing fired.
+     */
+    fun stripUrl(url: String): String = uniffiStripUrl(url)
 
     /** `Utils.guessFileExtension` (PORT02). */
     fun fileExtension(filename: String): String? = uniffiFileExtension(filename)

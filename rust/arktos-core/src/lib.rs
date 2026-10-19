@@ -19,6 +19,7 @@ mod storage;
 mod subscriptions;
 mod suggestions;
 mod translate;
+mod urlstrip;
 mod urlutils;
 mod userscript;
 mod util;
