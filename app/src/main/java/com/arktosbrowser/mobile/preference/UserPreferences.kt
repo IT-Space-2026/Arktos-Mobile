@@ -65,6 +65,24 @@ class UserPreferences @Inject constructor(
 
     var cookieBlockEnabled by preferences.booleanPreference(COOKIE_BLOCK, false)
 
+    /**
+     * Remote-list consent (PREFS01) — the mobile mirror of the
+     * desktop `AdBlockManager::remoteListsAllowed`. True while remote
+     * filter/rank-list downloads may happen automatically (the 7-day
+     * staleness path); manual refresh actions always work regardless.
+     * Defaults true to preserve the pre-PREFS01 behavior where an
+     * enabled ad blocker was the implicit consent signal.
+     */
+    var remoteListsConsentEnabled by preferences.booleanPreference(REMOTE_LISTS_CONSENT, true)
+
+    /**
+     * Per-source participation for the two site-rank lists (PREFS01).
+     * A disabled source is skipped by rank-list updates and its
+     * committed drop file is removed so it stops contributing ranks.
+     */
+    var trancoListEnabled by preferences.booleanPreference(TRANCO_LIST_ENABLED, true)
+    var majesticListEnabled by preferences.booleanPreference(MAJESTIC_LIST_ENABLED, true)
+
     var preferHTTPSenabled by preferences.booleanPreference(PREFER_HTTPS, false)
 
     var forceHTTPSenabled by preferences.booleanPreference(FORCE_HTTPS, false)
@@ -465,6 +483,9 @@ private const val PASSWORD_LOCK = "passwordLock"
 private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
+private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"
+private const val TRANCO_LIST_ENABLED = "trancoListEnabled"
+private const val MAJESTIC_LIST_ENABLED = "majesticListEnabled"
 private const val START_THEME = "startPageTheme"
 private const val FOREGROUND = "tabsToForeground"
 private const val EXTRA = "showExtraOptions"

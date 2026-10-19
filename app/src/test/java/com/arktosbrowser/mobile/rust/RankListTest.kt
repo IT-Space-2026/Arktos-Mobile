@@ -204,12 +204,80 @@ class RankListTest {
         }
     }
 
-    private fun loader(filesDirPath: File): RankListLoader {
+    // ---- PREFS01 — per-source enable + dedicated consent ----------
+
+    @Test
+    fun `per source enable flags gate the update list`() {
+        val sources = ArktosCore.rankListSources()
+        assertEquals(2, loader(File("/x")).enabledSources(sources).size)
+        val trancoOff = loader(File("/x"), trancoEnabled = false)
+        assertEquals(
+            listOf(RankListSourceKind.MAJESTIC),
+            trancoOff.enabledSources(sources).map { it.kind }
+        )
+        val majesticOff = loader(File("/x"), majesticEnabled = false)
+        assertEquals(
+            listOf(RankListSourceKind.TRANCO),
+            majesticOff.enabledSources(sources).map { it.kind }
+        )
+        assertTrue(
+            loader(File("/x"), trancoEnabled = false, majesticEnabled = false)
+                .enabledSources(sources).isEmpty()
+        )
+    }
+
+    @Test
+    fun `disabling a source drops its contribution and stamp`() {
+        val dir = tempDir("disable")
+        val rankDir = File(dir, "site-rank").apply { mkdirs() }
+        ArktosCore.setRankListDataDir(rankDir.absolutePath)
+        File(rankDir, "majestic-million.csv").writeText(
+            "GlobalRank,TldRank,Domain,TLD\n5,2,mj-gone.example,example\n"
+        )
+        ArktosCore.reloadRankLists()
+        assertTrue(ArktosCore.siteRank("mj-gone.example") > 0)
+
+        loader(dir, majesticEnabled = false)
+            .setSourceEnabled(RankListSourceKind.MAJESTIC, false)
+
+        assertFalse(File(rankDir, "majestic-million.csv").exists())
+        assertEquals(0L, ArktosCore.rankListLastUpdate(RankListSourceKind.MAJESTIC))
+        assertEquals(0L, ArktosCore.siteRank("mj-gone.example"))
+    }
+
+    @Test
+    fun `consent off skips the automatic update`() {
+        val dir = tempDir("consent")
+        ArktosCore.setRankListDataDir(File(dir, "site-rank").absolutePath)
+        val loader = loader(dir, consent = false)
+        loader.ensureInitialized()
+        // No consent → rankUpdateIfStale returns nothing → no fetch.
+        assertEquals(0, File(dir, "site-rank").list()?.size ?: 0)
+    }
+
+    @Test
+    fun `updateSource is a no-op for a disabled source`() {
+        val dir = tempDir("src-off")
+        ArktosCore.setRankListDataDir(File(dir, "site-rank").absolutePath)
+        val loader = loader(dir, trancoEnabled = false)
+        loader.updateSource(RankListSourceKind.TRANCO)
+        assertFalse(File(dir, "site-rank/tranco-list.dat").exists())
+    }
+
+    private fun loader(
+        filesDirPath: File,
+        consent: Boolean = true,
+        trancoEnabled: Boolean = true,
+        majesticEnabled: Boolean = true
+    ): RankListLoader {
         val application = mock<Application> { on { filesDir } doReturn filesDirPath }
         // userAgentChoice = 3 → MOBILE_USER_AGENT constant, avoiding
         // the WebSettings path that only exists on-device.
         val preferences = mock<UserPreferences> {
             on { adBlockEnabled } doReturn true
+            on { remoteListsConsentEnabled } doReturn consent
+            on { trancoListEnabled } doReturn trancoEnabled
+            on { majesticListEnabled } doReturn majesticEnabled
             on { userAgentChoice } doReturn 3
         }
         val logger = object : Logger {

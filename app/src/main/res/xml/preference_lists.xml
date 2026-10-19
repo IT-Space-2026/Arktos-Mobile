@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PREFS01 — list management screen mirroring the desktop
+     AdBlockDialog: master toggle + remote-list consent gate +
+     refresh actions; the subscription and site-rank rows are added
+     dynamically by ListsSettingsFragment. -->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory android:title="@string/lists_general_category">
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="lists_adblock_master"
+            android:singleLineTitle="false"
+            android:title="@string/block_ads"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="lists_remote_consent"
+            android:singleLineTitle="false"
+            android:summary="@string/lists_remote_consent_summary"
+            android:title="@string/lists_remote_consent"/>
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/lists_updates_category">
+        <androidx.preference.Preference
+            android:key="lists_refresh_cadence"
+            android:selectable="false"
+            android:singleLineTitle="false"
+            android:summary="@string/lists_refresh_cadence_summary"
+            android:title="@string/lists_refresh_cadence"/>
+        <androidx.preference.Preference
+            android:key="lists_refresh_all"
+            android:singleLineTitle="false"
+            android:summary="@string/lists_refresh_all_summary"
+            android:title="@string/lists_refresh_all"/>
+    </PreferenceCategory>
+</PreferenceScreen>
