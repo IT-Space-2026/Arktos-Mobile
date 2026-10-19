@@ -8,12 +8,9 @@ import android.app.*
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
-import android.provider.MediaStore
 import android.webkit.CookieManager
 import android.webkit.URLUtil
-import androidx.core.content.FileProvider
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
@@ -25,9 +22,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import io.reactivex.Scheduler
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import java.io.OutputStream
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -87,35 +82,18 @@ class DownloadHandler @Inject constructor(
         if (manager.useThirdPartyDownloaderApps) {
             // Show dialog listing third party downloaders
         } else {
-            val filename = URLUtil.guessFileName(url, contentDisposition, mimeType)
-            val outputStream: OutputStream?
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
-                }
-                val uri: Uri? = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                outputStream = uri?.let { context.contentResolver.openOutputStream(it) }
-            } else {
-                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename)
-                outputStream = FileOutputStream(file)
-            }
-
-            outputStream?.use {
-                downloadManager.enqueue(
-                    DownloadManager.Request(Uri.parse(url))
-                        .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-                        .setAllowedOverRoaming(false)
-                        .setTitle(filename)
-                        .setDescription(contentSize)
-                        .setMimeType(mimeType)
-                        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        .setDestinationUri(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) null else Uri.fromFile(File(it.toString())))
-                        .addRequestHeader(COOKIE_REQUEST_HEADER, CookieManager.getInstance().getCookie(url))
-                )
-            }
+            val filename = sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
+            downloadManager.enqueue(
+                DownloadManager.Request(Uri.parse(url))
+                    .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
+                    .setAllowedOverRoaming(false)
+                    .setTitle(filename)
+                    .setDescription(contentSize)
+                    .setMimeType(mimeType)
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                    .addRequestHeader(COOKIE_REQUEST_HEADER, CookieManager.getInstance().getCookie(url))
+            )
         }
     }
 
@@ -127,15 +105,24 @@ class DownloadHandler @Inject constructor(
             return if (contentDisposition?.contains("filename=") == true) {
                 var fileName: String? = ContentDispositionFileNameParser.parse(contentDisposition)
                 fileName = URLDecoder.decode(fileName, StandardCharsets.ISO_8859_1.toString())
-                fileName
+                sanitizeFileName(fileName)
             } else {
                 var substring: String? = url!!.substring(url.lastIndexOf('/') + 1).split("\\?")[0].split("#")[0]
                 if (substring?.contains(".") == true) {
-                    substring
+                    sanitizeFileName(substring)
                 } else {
-                    URLUtil.guessFileName(url, contentDisposition, mimeType)
+                    sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
                 }
             }
+        }
+
+        internal fun sanitizeFileName(name: String?): String {
+            val cleaned = name.orEmpty()
+                .substringAfterLast('/')
+                .substringAfterLast('\\')
+                .replace("..", "")
+                .trim()
+            return cleaned.ifBlank { "download" }
         }
 
         private fun isWriteAccessAvailable(fileUri: Uri): Boolean {
