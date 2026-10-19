@@ -23,6 +23,7 @@ import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.favicon.FaviconModel
+import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.view.webrtc.WebRtcPermissionsModel
 import com.arktosbrowser.mobile.view.webrtc.WebRtcPermissionsView
@@ -40,6 +41,7 @@ class SmartCookieChromeClient(
     @Inject internal lateinit var faviconModel: FaviconModel
     @Inject internal lateinit var userPreferences: UserPreferences
     @Inject internal lateinit var webRtcPermissionsModel: WebRtcPermissionsModel
+    @Inject internal lateinit var logger: Logger
     @Inject @field:DiskScheduler internal lateinit var diskScheduler: Scheduler
 
     init {
@@ -161,8 +163,19 @@ class SmartCookieChromeClient(
 
     override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean,
                                 resultMsg: Message): Boolean {
-        uiController.onCreateWindow(resultMsg)
-        return true
+        // Only claim the window request when the transport is deliverable and
+        // the new tab actually gets created. Otherwise decline so the WebView
+        // loads the link in the current window (upstream #306 — a malformed
+        // transport or a tab-creation failure crashed on the unchecked cast).
+        if (!NewWindowTransport.isDeliverable(resultMsg)) {
+            return false
+        }
+        return try {
+            uiController.onCreateWindow(resultMsg)
+        } catch (e: Exception) {
+            logger.log(TAG, "Failed to create window for transport", e)
+            false
+        }
     }
 
     override fun onCloseWindow(window: WebView) = uiController.onCloseWindow(smartCookieView)
@@ -228,5 +241,9 @@ class SmartCookieChromeClient(
     override fun onShowCustomView(view: View, requestedOrientation: Int,
                                   callback: CustomViewCallback) =
         uiController.onShowCustomView(view, callback, requestedOrientation)
+
+    companion object {
+        private const val TAG = "SmartCookieChromeClient"
+    }
 
 }

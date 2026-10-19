@@ -168,9 +168,13 @@ abstract class HtmlPageFactoryInitializer(
 class ResultMessageInitializer(private val resultMessage: Message) : TabInitializer {
 
     override fun initialize(webView: WebView, headers: Map<String, String>) {
-        resultMessage.apply {
-            (obj as WebView.WebViewTransport).webView = webView
-        }.sendToTarget()
+        // Checked again here (onCreateWindow pre-validates): a missing or wrong
+        // payload must abort tab creation so the caller can decline the window
+        // request instead of crashing on the cast (upstream #306).
+        val transport = resultMessage.obj as? WebView.WebViewTransport
+            ?: throw IllegalArgumentException("New-window message has no WebViewTransport payload")
+        transport.webView = webView
+        resultMessage.sendToTarget()
     }
 
 }
