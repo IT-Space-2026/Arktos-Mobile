@@ -35,6 +35,16 @@ class ArktosCoreTest {
         }
     }
 
+    @Test
+    fun `openStore call fails fast when libarktos is absent`() {
+        assertLinkageFailure { ArktosCore.openStore("/tmp/arktos-test.db") }
+    }
+
+    @Test
+    fun `netscape import call fails fast when libarktos is absent`() {
+        assertLinkageFailure { ArktosCore.importNetscapeBookmarks("<DL/>") }
+    }
+
     private fun assertLinkageFailure(call: () -> Unit) {
         val error = runCatching(call).exceptionOrNull()
         assertTrue(

@@ -7,6 +7,8 @@
 //! from Gradle build to Kotlin call.
 
 mod blocklist;
+mod netscape;
+mod storage;
 
 uniffi::setup_scaffolding!();
 

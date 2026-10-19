@@ -43,6 +43,10 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
   public→local-network request blocking all share one per-request verdict
+- Bookmarks, history, downloads, the ad-block allow list and
+  userscripts persist through a single Rust `ArktosStore` (SQLite via
+  bundled rusqlite) behind the existing repository interfaces;
+  Netscape bookmark imports are parsed in Rust too
 
 ---
 
