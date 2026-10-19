@@ -2,10 +2,6 @@ package com.arktosbrowser.mobile.di
 
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.adblock.allowlist.SessionAllowListModel
-import com.arktosbrowser.mobile.adblock.source.AssetsHostsDataSource
-import com.arktosbrowser.mobile.adblock.source.HostsDataSource
-import com.arktosbrowser.mobile.adblock.source.HostsDataSourceProvider
-import com.arktosbrowser.mobile.adblock.source.PreferencesHostsDataSourceProvider
 import com.arktosbrowser.mobile.database.allowlist.AdBlockAllowListRepository
 import com.arktosbrowser.mobile.database.allowlist.RustAllowListRepository
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
@@ -47,10 +43,4 @@ abstract class AppBindsModule {
 
     @Binds
     abstract fun providesSslWarningPreferences(sessionSslWarningPreferences: SessionSslWarningPreferences): SslWarningPreferences
-
-    @Binds
-    abstract fun providesHostsDataSource(assetsHostsDataSource: AssetsHostsDataSource): HostsDataSource
-
-    @Binds
-    abstract fun providesHostsDataSourceProvider(preferencesHostsDataSourceProvider: PreferencesHostsDataSourceProvider): HostsDataSourceProvider
 }

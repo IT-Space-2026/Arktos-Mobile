@@ -12,6 +12,7 @@ mod download;
 mod netscape;
 mod readability;
 mod storage;
+mod subscriptions;
 mod suggestions;
 mod userscript;
 

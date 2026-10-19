@@ -10,6 +10,7 @@ package com.arktosbrowser.mobile.rust
 // explicit System.loadLibrary here.
 
 import com.arktosbrowser.mobile.browser.SiteBlockChoice
+import com.arktosbrowser.mobile.uniffi.AdBlockListPreset
 import com.arktosbrowser.mobile.uniffi.ArktosStore
 import com.arktosbrowser.mobile.uniffi.BlocklistConfig
 import com.arktosbrowser.mobile.uniffi.BlocklistEngine
@@ -19,6 +20,7 @@ import com.arktosbrowser.mobile.uniffi.SiteBlockMode
 import com.arktosbrowser.mobile.uniffi.StoreBookmark
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import com.arktosbrowser.mobile.uniffi.UserScriptMeta
+import com.arktosbrowser.mobile.uniffi.adblockPresets
 import com.arktosbrowser.mobile.uniffi.contentDispositionFilename as uniffiContentDispositionFilename
 import com.arktosbrowser.mobile.uniffi.corePing
 import com.arktosbrowser.mobile.uniffi.coreVersion as uniffiCoreVersion
@@ -63,6 +65,26 @@ object ArktosCore {
      * Returns the number of blocked domains.
      */
     fun loadAdHosts(content: String): Int = blocklistEngine.loadAdHosts(content).toInt()
+
+    /**
+     * Parse one subscription list's content (hosts-file or
+     * AdBlockPlus syntax) and merge its domains into the ad-block set
+     * under [id] (LIST01). Returns the extracted domain count.
+     */
+    fun loadSubscriptionHosts(id: String, content: String): Int =
+        blocklistEngine.loadSubscriptionHosts(id, content).toInt()
+
+    /**
+     * Drop a subscription's domains from the ad-block set (LIST01) —
+     * called when a list is disabled or removed.
+     */
+    fun removeSubscriptionHosts(id: String) = blocklistEngine.removeSubscriptionHosts(id)
+
+    /**
+     * The curated filter-list catalog (LIST01) — a verbatim port of
+     * the desktop's `adblockpresets.cpp`.
+     */
+    fun adBlockPresets(): List<AdBlockListPreset> = adblockPresets()
 
     /**
      * Load comma-separated malware terms (`malware.txt` format);
