@@ -14,6 +14,11 @@
         <SwitchPreference
             android:defaultValue="false"
             android:singleLineTitle="false"
+            android:key="cb_swapicons"
+            android:title="@string/swap_bookmarks_and_tabs_icons"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:singleLineTitle="false"
             android:key="stack_from_bottom"
             android:title="@string/stack_items_reverse"/>
         <Preference

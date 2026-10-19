@@ -1,0 +1,31 @@
+<!-- Copyright 2020 CookieJarApps MPL -->
+<!-- Same items as bottom_menu.xml with the bookmarks and tabs icons swapped,
+     used when the "swap bookmark and tab icons" option is enabled. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/bookmarks"
+        android:icon="@drawable/ic_action_star"
+        app:itemIconTint="?attr/iconColor"
+        android:title="@string/action_bookmarks"/>
+    <item
+        android:id="@+id/back"
+        android:icon="@drawable/ic_action_back"
+        app:itemIconTint="?attr/iconColor"
+        android:title="@string/action_back"/>
+    <item
+        android:id="@+id/home"
+        android:icon="@drawable/ic_action_home"
+        app:itemIconTint="?attr/iconColor"
+        android:title="@string/home"/>
+    <item
+        android:id="@+id/forward"
+        android:icon="@drawable/ic_action_forward"
+        app:itemIconTint="?attr/iconColor"
+        android:title="@string/action_forward"/>
+    <item
+        android:id="@+id/tabs"
+        android:icon="@drawable/ic_action_tabs"
+        app:itemIconTint="?attr/iconColor"
+        android:title="@string/tabs"/>
+</menu>

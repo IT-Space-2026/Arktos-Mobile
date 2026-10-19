@@ -46,6 +46,12 @@ class DrawerSettingsFragment : AbstractSettingsFragment() {
             isChecked = userPreferences.bookmarksAndTabsSwapped,
             onCheckChange = { userPreferences.bookmarksAndTabsSwapped = it }
         )
+
+        switchPreference(
+            preference = SETTINGS_SWAPICONS,
+            isChecked = userPreferences.bookmarksAndTabsIconsSwapped,
+            onCheckChange = { userPreferences.bookmarksAndTabsIconsSwapped = it }
+        )
         clickablePreference(
                 preference = SETTINGS_LINES,
                 onClick = ::showDrawerLines
@@ -103,6 +109,7 @@ class DrawerSettingsFragment : AbstractSettingsFragment() {
     companion object {
         private const val SETTINGS_DRAWERTABS = "cb_drawertabs"
         private const val SETTINGS_SWAPTABS = "cb_swapdrawers"
+        private const val SETTINGS_SWAPICONS = "cb_swapicons"
         private const val SETTINGS_LINES = "drawer_lines"
         private const val SETTINGS_SIZE = "drawer_size"
         private const val SETTINGS_STACK_FROM_BOTTOM = "stack_from_bottom"
