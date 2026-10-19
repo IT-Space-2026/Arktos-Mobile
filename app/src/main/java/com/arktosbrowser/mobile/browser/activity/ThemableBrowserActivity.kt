@@ -43,6 +43,8 @@ abstract class ThemableBrowserActivity : AppCompatActivity() {
             AppTheme.LIGHT -> R.style.Theme_LightTheme
             AppTheme.DARK -> R.style.Theme_DarkTheme
             AppTheme.BLACK -> R.style.Theme_BlackTheme
+            AppTheme.ARKTOS_LIGHT -> R.style.Theme_ArktosLightTheme
+            AppTheme.ARKTOS_DARK -> R.style.Theme_ArktosDarkTheme
             AppTheme.SYSTEM -> if (isNightMode) R.style.Theme_DarkTheme else R.style.Theme_LightTheme
         })
         super.onCreate(savedInstanceState)

@@ -21,6 +21,16 @@
         <item name="toolbarSettingsBackground">@drawable/toolbar_elevate_black</item>
     </style>
 
+    <style name="Theme.SettingsTheme.Arktos" parent="Theme.ArktosLightTheme">
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+    </style>
+
+    <style name="Theme.SettingsTheme.Arktos.Dark" parent="Theme.ArktosDarkTheme">
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
+        <item name="colorPrimary">?android:attr/colorBackground</item>
+        <item name="colorPrimaryDark">@color/arktos_navy_deep</item>
+    </style>
+
     <!-- Regular themes -->
     <style name="Theme.LightTheme" parent="Theme.BaseLightTheme">
         <item name="searchBackground">@drawable/card_bg_elevate</item>
@@ -38,6 +48,18 @@
         <item name="searchBackground">@drawable/card_bg_elevate</item>
         <item name="listBackground">@drawable/list_bg</item>
         <item name="progressBackgroundColor">@color/black</item>
+    </style>
+
+    <style name="Theme.ArktosLightTheme" parent="Theme.BaseArktosLightTheme">
+        <item name="searchBackground">@drawable/card_bg_elevate</item>
+        <item name="listBackground">@drawable/list_bg</item>
+        <item name="progressBackgroundColor">@color/arktos_progress_light</item>
+    </style>
+
+    <style name="Theme.ArktosDarkTheme" parent="Theme.BaseArktosDarkTheme">
+        <item name="searchBackground">@drawable/card_bg_elevate</item>
+        <item name="listBackground">@drawable/list_bg</item>
+        <item name="progressBackgroundColor">@color/arktos_progress_dark</item>
     </style>
 
     <!-- Base Themes -->
@@ -118,6 +140,70 @@
         <item name="autoCompleteUrlColor">@color/hint_text_dark_theme</item>
 
         <item name="selectedBackground">@color/selected_black</item>
+
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+
+        <!-- Overflow menu -->
+        <item name="actionOverflowButtonStyle">@style/overFlowButtonStyle</item>
+
+        <!-- Alert dialogs -->
+        <item name="alertDialogTheme">@style/AppCompatDialogStyle.Dark</item>
+
+    </style>
+
+    <!-- Arktos brand theme — aurora teal accents over a cool-tinted
+         light base, matching the start/error page palette. -->
+    <style name="Theme.BaseArktosLightTheme" parent="Theme.Material3.DynamicColors.Light">
+
+        <!-- Theme Colors -->
+        <item name="colorPrimaryDark">@color/arktos_statusbar_light</item>
+        <item name="colorAccent">@color/arktos_teal</item>
+        <item name="drawerBackground">@color/arktos_drawer_light</item>
+        <item name="dividerColor">@color/arktos_divider_light</item>
+
+        <item name="android:colorBackground">@color/arktos_bg_light</item>
+
+        <item name="iconColor">@color/icon_light_theme</item>
+        <item name="iconColorState">@color/state_color_icons_light</item>
+
+        <item name="autoCompleteTitleColor">@color/black</item>
+        <item name="autoCompleteUrlColor">@color/hint_text_light_theme</item>
+
+        <item name="selectedBackground">@color/arktos_selected_light</item>
+
+        <item name="windowNoTitle">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+
+        <!-- Overflow menu -->
+        <item name="actionOverflowButtonStyle">@style/overFlowButtonStyle</item>
+
+        <!-- Alert dialogs -->
+        <item name="alertDialogTheme">@style/AppCompatDialogStyle.Light</item>
+
+    </style>
+
+    <!-- Arktos dark theme — deep private-page navy with aurora teal
+         accents (not pure black: that remains the AMOLED theme). -->
+    <style name="Theme.BaseArktosDarkTheme" parent="Theme.Material3.DynamicColors.Dark">
+
+        <!-- Theme colors -->
+        <item name="colorPrimaryDark">@color/arktos_navy_deep</item>
+        <item name="colorAccent">@color/arktos_teal</item>
+        <item name="drawerBackground">@color/arktos_navy</item>
+        <item name="dividerColor">@color/arktos_surface_dark</item>
+
+        <item name="android:colorBackground">@color/arktos_navy_deep</item>
+
+        <item name="iconColor">@color/icon_dark_theme</item>
+        <item name="iconColorState">@color/state_color_icons_dark</item>
+
+        <item name="autoCompleteTitleColor">@color/white</item>
+        <item name="autoCompleteUrlColor">@color/hint_text_dark_theme</item>
+
+        <item name="selectedBackground">@color/arktos_selected_dark</item>
 
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>

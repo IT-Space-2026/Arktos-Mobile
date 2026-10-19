@@ -12,11 +12,21 @@ enum class AppTheme(override val value: Int) : IntEnum {
     SYSTEM(3),
     LIGHT(0),
     DARK(1),
-    BLACK(2)/*,
+    BLACK(2),
+    ARKTOS_LIGHT(4),
+    ARKTOS_DARK(5)/*,
     BLUE(3),
     YELLOW(4),
     GREEN(5)*/
 }
+
+/**
+ * Whether the theme renders dark surfaces. `BLACK` (AMOLED) and the Arktos
+ * dark variant both count; `SYSTEM` must be resolved via [resolvedTheme]
+ * against the current configuration first.
+ */
+val AppTheme.isDark: Boolean
+    get() = this == AppTheme.DARK || this == AppTheme.BLACK || this == AppTheme.ARKTOS_DARK
 
 /**
  * Resolves [AppTheme.SYSTEM] to [AppTheme.DARK] or [AppTheme.LIGHT] based on

@@ -6,8 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.Base64
 import android.webkit.URLUtil
-import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.constant.UTF8
 import com.arktosbrowser.mobile.database.history.HistoryRepository
@@ -96,7 +96,7 @@ class IncognitoPageFactory @Inject constructor(
 
                     // Follow the app theme: dark/black themes deepen the
                     // private palette via the arktos-dark class.
-                    if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) != AppTheme.LIGHT){
+                    if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application).isDark){
                         tag("html"){ addClass("arktos-dark") }
                     }
                 }

@@ -275,6 +275,8 @@
     <string name="light_theme">Light theme</string>
     <string name="system_theme">Follow system</string>
     <string name="black_theme">AMOLED theme</string>
+    <string name="arktos_light_theme">Arktos light theme</string>
+    <string name="arktos_dark_theme">Arktos dark theme</string>
     <string name="blue_theme">Blue theme</string>
     <string name="yellow_theme">Yellow theme</string>
     <string name="green_theme">Green theme</string>

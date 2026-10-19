@@ -33,6 +33,12 @@ abstract class ThemableSettingsActivity : AppCompatPreferenceActivity() {
             AppTheme.BLACK -> {
                 setTheme(R.style.Theme_SettingsTheme_Black)
             }
+            AppTheme.ARKTOS_LIGHT -> {
+                setTheme(R.style.Theme_SettingsTheme_Arktos)
+            }
+            AppTheme.ARKTOS_DARK -> {
+                setTheme(R.style.Theme_SettingsTheme_Arktos_Dark)
+            }
             AppTheme.SYSTEM -> {
                 setTheme(if (isNightMode) R.style.Theme_SettingsTheme_Dark else R.style.Theme_SettingsTheme)
             }
