@@ -55,12 +55,12 @@ import java.lang.ref.WeakReference
 import javax.inject.Inject
 
 /**
- * [SmartCookieView] acts as a tab for the browser, handling WebView creation and handling logic, as
+ * [ArktosCookieView] acts as a tab for the browser, handling WebView creation and handling logic, as
  * well as properly initialing it. All interactions with the WebView should be made through this
  * class.
  */
 
-class SmartCookieView(
+class ArktosCookieView(
         private val activity: Activity,
         tabInitializer: TabInitializer,
         val isIncognito: Boolean,
@@ -78,11 +78,11 @@ class SmartCookieView(
     val id = View.generateViewId()
 
     /**
-     * Getter for the [SmartCookieViewTitle] of the current LightningView instance.
+     * Getter for the [ArktosCookieViewTitle] of the current LightningView instance.
      *
      * @return a NonNull instance of LightningViewTitle
      */
-    val titleInfo: SmartCookieViewTitle
+    val titleInfo: ArktosCookieViewTitle
 
     /**
      * Gets the current WebView instance of the tab.
@@ -138,7 +138,7 @@ class SmartCookieView(
     @Inject @field:MainScheduler internal lateinit var mainScheduler: Scheduler
     @Inject lateinit var networkConnectivityModel: NetworkConnectivityModel
 
-    private val smartCookieWebClient: SmartCookieWebClient
+    private val arktosCookieWebClient: ArktosCookieWebClient
 
     private val networkDisposable: Disposable
 
@@ -199,27 +199,27 @@ class SmartCookieView(
      * @return the current URL or an empty string.
      */
     val url: String
-        get() = resolveTabUrl(webView?.url, smartCookieWebClient.errorPageOriginalUrl)
+        get() = resolveTabUrl(webView?.url, arktosCookieWebClient.errorPageOriginalUrl)
 
     /**
      * Whether the WebView is currently displaying a generated error/interstitial page in place of
-     * the page at [SmartCookieWebClient.errorPageOriginalUrl].
+     * the page at [ArktosCookieWebClient.errorPageOriginalUrl].
      */
     val isShowingErrorPage: Boolean
-        get() = smartCookieWebClient.errorPageOriginalUrl != null && webView?.url.isGeneratedPageUrl()
+        get() = arktosCookieWebClient.errorPageOriginalUrl != null && webView?.url.isGeneratedPageUrl()
 
     init {
         activity.injector.inject(this)
         uiController = activity as UIController
 
-        titleInfo = SmartCookieViewTitle(activity)
+        titleInfo = ArktosCookieViewTitle(activity)
 
         maxFling = ViewConfiguration.get(activity).scaledMaximumFlingVelocity.toFloat()
-        smartCookieWebClient = SmartCookieWebClient(activity, this)
+        arktosCookieWebClient = ArktosCookieWebClient(activity, this)
         gestureDetector = GestureDetector(activity, CustomGestureListener())
 
         val tab = WebView(activity).also { webView = it }.apply {
-            id = this@SmartCookieView.id
+            id = this@ArktosCookieView.id
 
             isFocusableInTouchMode = true
             isFocusable = true
@@ -236,8 +236,8 @@ class SmartCookieView(
             isScrollbarFadingEnabled = true
             isSaveEnabled = true
             setNetworkAvailable(true)
-            webChromeClient = SmartCookieChromeClient(activity, this@SmartCookieView)
-            webViewClient = smartCookieWebClient
+            webChromeClient = ArktosCookieChromeClient(activity, this@ArktosCookieView)
+            webViewClient = arktosCookieWebClient
 
             setDownloadListener(LightningDownloadListener(activity))
             setOnTouchListener(TouchListener())
@@ -254,12 +254,12 @@ class SmartCookieView(
     }
 
     fun setWhitelistIntent(a: Boolean) {
-        smartCookieWebClient.setWhitelist(a)
+        arktosCookieWebClient.setWhitelist(a)
     }
 
-    fun currentSslState(): SslState = smartCookieWebClient.sslState
+    fun currentSslState(): SslState = arktosCookieWebClient.sslState
 
-    fun sslStateObservable(): Observable<SslState> = smartCookieWebClient.sslStateObservable()
+    fun sslStateObservable(): Observable<SslState> = arktosCookieWebClient.sslStateObservable()
 
     /**
      * This method loads the homepage for the browser. Either it loads the URL stored as the
@@ -307,7 +307,7 @@ class SmartCookieView(
     fun initializePreferences() {
         val settings = webView?.settings ?: return
 
-        smartCookieWebClient.updatePreferences()
+        arktosCookieWebClient.updatePreferences()
 
         val modifiesHeaders = userPreferences.doNotTrackEnabled
             || userPreferences.saveDataEnabled
@@ -635,7 +635,7 @@ class SmartCookieView(
             return
         }
         //webView?.reload()
-        smartCookieWebClient.reloadIncludingErrorPage(webView)
+        arktosCookieWebClient.reloadIncludingErrorPage(webView)
     }
 
     /**
@@ -935,9 +935,9 @@ class SmartCookieView(
      * reference to the WebView and therefore will not
      * leak it if the WebView is garbage collected.
      */
-    private class WebViewHandler(view: SmartCookieView) : Handler() {
+    private class WebViewHandler(view: ArktosCookieView) : Handler() {
 
-        private val reference: WeakReference<SmartCookieView> = WeakReference(view)
+        private val reference: WeakReference<ArktosCookieView> = WeakReference(view)
 
         override fun handleMessage(msg: Message) {
             super.handleMessage(msg)
@@ -949,7 +949,7 @@ class SmartCookieView(
 
     companion object {
 
-        private const val TAG = "SmartCookieView"
+        private const val TAG = "ArktosCookieView"
 
         const val HEADER_REQUESTED_WITH = "X-Requested-With"
         const val HEADER_WAP_PROFILE = "X-Wap-Profile"

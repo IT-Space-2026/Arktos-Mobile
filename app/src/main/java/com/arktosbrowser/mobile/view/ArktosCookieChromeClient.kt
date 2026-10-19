@@ -31,9 +31,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Scheduler
 import javax.inject.Inject
 
-class SmartCookieChromeClient(
+class ArktosCookieChromeClient(
         private val activity: Activity,
-        private val smartCookieView: SmartCookieView
+        private val arktosCookieView: ArktosCookieView
 ) : WebChromeClient(), WebRtcPermissionsView {
 
     private val geoLocationPermissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -50,14 +50,14 @@ class SmartCookieChromeClient(
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
-        if (smartCookieView.isShown) {
+        if (arktosCookieView.isShown) {
             uiController.updateProgress(newProgress)
         }
     }
 
     override fun onReceivedIcon(view: WebView, icon: Bitmap) {
-        smartCookieView.titleInfo.setFavicon(icon)
-        uiController.tabChanged(smartCookieView)
+        arktosCookieView.titleInfo.setFavicon(icon)
+        uiController.tabChanged(arktosCookieView)
         cacheFavicon(view.url, icon)
     }
 
@@ -79,11 +79,11 @@ class SmartCookieChromeClient(
 
     override fun onReceivedTitle(view: WebView?, title: String?) {
         if (title?.isNotEmpty() == true) {
-            smartCookieView.titleInfo.setTitle(title)
+            arktosCookieView.titleInfo.setTitle(title)
         } else {
-            smartCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
+            arktosCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
         }
-        uiController.tabChanged(smartCookieView)
+        uiController.tabChanged(arktosCookieView)
         if (view != null && view.url != null) {
             uiController.updateHistory(title, view.url.orEmpty())
         }
@@ -178,7 +178,7 @@ class SmartCookieChromeClient(
         }
     }
 
-    override fun onCloseWindow(window: WebView) = uiController.onCloseWindow(smartCookieView)
+    override fun onCloseWindow(window: WebView) = uiController.onCloseWindow(arktosCookieView)
 
     @Suppress("unused", "UNUSED_PARAMETER")
     fun openFileChooser(uploadMsg: ValueCallback<Uri>) = uiController.openFileChooser(uploadMsg)
@@ -243,7 +243,7 @@ class SmartCookieChromeClient(
         uiController.onShowCustomView(view, callback, requestedOrientation)
 
     companion object {
-        private const val TAG = "SmartCookieChromeClient"
+        private const val TAG = "ArktosCookieChromeClient"
     }
 
 }

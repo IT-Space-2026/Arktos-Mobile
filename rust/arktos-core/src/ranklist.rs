@@ -517,7 +517,7 @@ pub fn site_rank_reload() -> Result<(), RankListError> {
 
 /// The host's site rank; 0 when unranked (ranks start at 1). Lazy —
 /// the seed ∪ drop merge builds on the first call. This is the
-/// consumer seam: `SmartCookieWebClient`-side callers can consult it
+/// consumer seam: `ArktosCookieWebClient`-side callers can consult it
 /// on demand, keeping JNI off the per-request hot path.
 #[uniffi::export]
 pub fn site_rank(host: String) -> u32 {

@@ -25,12 +25,12 @@ import io.reactivex.rxkotlin.subscribeBy
 import javax.inject.Inject
 
 /**
- * An initializer that is run on a [SmartCookieView] after it is created.
+ * An initializer that is run on a [ArktosCookieView] after it is created.
  */
 interface TabInitializer {
 
     /**
-     * Initialize the [WebView] instance held by the [SmartCookieView]. If a url is loaded, the
+     * Initialize the [WebView] instance held by the [ArktosCookieView]. If a url is loaded, the
      * provided [headers] should be used to load the url.
      */
     fun initialize(webView: WebView, headers: Map<String, String>)

@@ -68,9 +68,9 @@ import javax.inject.Inject
 import javax.net.ssl.HttpsURLConnection
 import kotlin.math.abs
 
-class SmartCookieWebClient(
+class ArktosCookieWebClient(
         private val activity: Activity,
-        private val smartCookieView: SmartCookieView
+        private val arktosCookieView: ArktosCookieView
 ) : WebViewClient() {
 
     private val uiController: UIController
@@ -288,7 +288,7 @@ class SmartCookieWebClient(
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {
-                        logger.log("SmartCookieWebClient", "error saving script to database")
+                        logger.log("ArktosCookieWebClient", "error saving script to database")
                     }
                 }
     }
@@ -343,11 +343,11 @@ class SmartCookieWebClient(
 
 
         if (view.title == null || view.title.isNullOrEmpty()) {
-            smartCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
+            arktosCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
         } else {
-            smartCookieView.titleInfo.setTitle(view.title)
+            arktosCookieView.titleInfo.setTitle(view.title)
         }
-        if (smartCookieView.invertPage) {
+        if (arktosCookieView.invertPage) {
             view.evaluateJavascript(invertPageJs.provideJs(activity), null)
         }
         if (userPreferences.darkWebAddonEnabled(activity) && !WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
@@ -433,7 +433,7 @@ class SmartCookieWebClient(
 
     override fun onLoadResource(view: WebView?, url: String?) {
         //TODO: explore whether this fixes patchy js load on cached reload
-        if(smartCookieView.toggleDesktop){
+        if(arktosCookieView.toggleDesktop){
             view?.evaluateJavascript(setWidenView.provideJs(activity), null)
         }
         if(userPreferences.cookieBlockEnabled){
@@ -586,13 +586,13 @@ class SmartCookieWebClient(
             sslState = SslState.Invalid(badsslErrors[badsslList.indexOf(url)])
         }
 
-        smartCookieView.titleInfo.setFavicon(null)
-        if (smartCookieView.isShown) {
+        arktosCookieView.titleInfo.setFavicon(null)
+        if (arktosCookieView.isShown) {
             uiController.updateUrl(url, true)
             uiController.showActionBar()
             uiController.showActionBar()
         }
-        uiController.tabChanged(smartCookieView)
+        uiController.tabChanged(arktosCookieView)
     }
 
     override fun onReceivedHttpAuthRequest(
@@ -670,7 +670,7 @@ class SmartCookieWebClient(
             }
         }
 
-      if (view.isShown && smartCookieView.userPreferences.textReflowEnabled) {
+      if (view.isShown && arktosCookieView.userPreferences.textReflowEnabled) {
             if (isRunning)
                 return
             val changeInPercent = abs(100 - 100 / zoomScale * newScale)
@@ -791,7 +791,7 @@ class SmartCookieWebClient(
             return true
         }
 
-        val headers = smartCookieView.requestHeaders
+        val headers = arktosCookieView.requestHeaders
 
         // Forced SafeSearch (parental controls, upstream #327): a link,
         // redirect or script navigation to a search engine that dropped
@@ -802,7 +802,7 @@ class SmartCookieWebClient(
             return true
         }
 
-        if (smartCookieView.isIncognito || userPreferences.blockIntent && !isMailOrIntent(url, view)) {
+        if (arktosCookieView.isIncognito || userPreferences.blockIntent && !isMailOrIntent(url, view)) {
 
             // If we are in incognito, immediately load, we don't want the url to leave the app
             return continueLoadingUrl(view, url, headers)
@@ -894,7 +894,7 @@ class SmartCookieWebClient(
                 try {
                     activity.startActivity(intent)
                 } catch (e: Exception) {
-                    println("SmartCookieWebClient: cannot open downloaded file")
+                    println("ArktosCookieWebClient: cannot open downloaded file")
                 }
 
             } else {
@@ -932,7 +932,7 @@ class SmartCookieWebClient(
 
     companion object {
 
-        private const val TAG = "SmartCookieWebClient"
+        private const val TAG = "ArktosCookieWebClient"
         private const val REFLOW_RATIO_TOKEN = "%%RATIO%%"
 
     }

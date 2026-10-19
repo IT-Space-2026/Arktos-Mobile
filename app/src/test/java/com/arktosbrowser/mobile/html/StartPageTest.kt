@@ -9,7 +9,7 @@ import java.io.File
  * UI02: the in-app start/incognito pages were restyled after the Arktos
  * desktop startpage (aurora wave hero + cresting logo + gradient header,
  * no in-page search bar). The factories mutate the markup with jsoup and
- * SmartCookieWebClient syncs shortcut tiles via injected
+ * ArktosCookieWebClient syncs shortcut tiles via injected
  * `window.linkNvar` globals and the localStorage `shouldUpdate` flag, so
  * the test audits the assets for the ids/placeholders that contract needs.
  */
@@ -142,8 +142,8 @@ class StartPageTest {
         )
 
         val client = loadSource(
-            "src/main/java/com/arktosbrowser/mobile/view/SmartCookieWebClient.kt",
-            "app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieWebClient.kt"
+            "src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt",
+            "app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt"
         )
         assertTrue(
             "link-var injection must target /files/private.html",

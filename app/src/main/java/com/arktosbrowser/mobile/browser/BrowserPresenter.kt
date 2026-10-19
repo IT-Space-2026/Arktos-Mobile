@@ -15,7 +15,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.view.BundleInitializer
-import com.arktosbrowser.mobile.view.SmartCookieView
+import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.TabInitializer
 import com.arktosbrowser.mobile.view.UrlInitializer
 import com.arktosbrowser.mobile.view.find.FindResults
@@ -40,9 +40,9 @@ class BrowserPresenter(
         private val logger: Logger
 ) {
 
-    private var currentTab: SmartCookieView? = null
+    private var currentTab: ArktosCookieView? = null
     private var shouldClose: Boolean = false
-    private var intented: SmartCookieView? = null
+    private var intented: ArktosCookieView? = null
     private var sslStateSubscription: Disposable? = null
 
     init {
@@ -73,11 +73,11 @@ class BrowserPresenter(
      *
      * @param tab the tab that changed, may be null.
      */
-    fun tabChangeOccurred(tab: SmartCookieView?) = tab?.let {
+    fun tabChangeOccurred(tab: ArktosCookieView?) = tab?.let {
         view.notifyTabViewChanged(tabsModel.indexOfTab(it))
     }
 
-    private fun onTabChanged(newTab: SmartCookieView?) {
+    private fun onTabChanged(newTab: ArktosCookieView?) {
         logger.log(TAG, "On tab changed")
         view.updateSslState(newTab?.currentSslState() ?: SslState.None)
 
