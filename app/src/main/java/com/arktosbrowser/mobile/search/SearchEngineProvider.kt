@@ -45,15 +45,15 @@ class  SearchEngineProvider @Inject constructor(
         when (userPreferences.searchChoice) {
             0 -> CustomSearch(userPreferences.searchUrl)
             1 -> GoogleSearch()
-            // 2 (Ask), 9 (Baidu), 10 (Yandex), 13 (Ekoru), 14 (Searx) were
-            // removed — those saved indices fall through to the default.
+            // 2 (Ask), 9 (Baidu), 10 (Yandex), 11 (Naver), 13 (Ekoru),
+            // 14 (Searx) were removed — those saved indices fall through
+            // to the default.
             3 -> BingSearch()
             4 -> YahooSearch()
             5 -> StartPageSearch()
             6 -> StartPageMobileSearch()
             7 -> DuckSearch()
             8 -> DuckLiteSearch()
-            11 -> NaverSearch()
             12 -> EcosiaSearch()
             15 -> MojeekSearch()
             16 -> QwantSearch()
@@ -73,7 +73,6 @@ class  SearchEngineProvider @Inject constructor(
             is StartPageMobileSearch -> 6
             is DuckSearch -> 7
             is DuckLiteSearch -> 8
-            is NaverSearch -> 11
             is EcosiaSearch -> 12
             is MojeekSearch -> 15
             is QwantSearch -> 16
@@ -92,7 +91,6 @@ class  SearchEngineProvider @Inject constructor(
         StartPageMobileSearch(),
         DuckSearch(),
         DuckLiteSearch(),
-        NaverSearch(),
         EcosiaSearch(),
         MojeekSearch(),
         QwantSearch()

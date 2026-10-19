@@ -144,7 +144,6 @@
     <string name="powered_by_baidu">Baidu</string>
     <string name="powered_by_naver">Naver</string>
 
-    <string name="search_engine_naver">Naver</string>
     <string name="shortcut_message_failed_to_add">Sorry, your launcher does not support shortcuts.</string>
 
     <!-- SSL -->
