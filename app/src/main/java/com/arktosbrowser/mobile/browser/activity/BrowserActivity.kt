@@ -483,6 +483,17 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         customView.findViewById<FrameLayout>(R.id.more_button).setOnClickListener(this)
         customView.findViewById<FrameLayout>(R.id.download_button).setOnClickListener(this)
 
+        // Drawer mode hides the tab strip (and its + button), so surface a
+        // persistent one-tap new-tab button in the toolbar instead.
+        toolbarBinding.newTabButton.apply {
+            visibility = if (shouldShowTabsInDrawer) VISIBLE else GONE
+            setOnClickListener { newTabButtonClicked() }
+            setOnLongClickListener {
+                newTabButtonLongClicked()
+                true
+            }
+        }
+
         // create the search EditText in the ToolBar
         searchView = customView.findViewById<SearchView>(R.id.search).apply {
             toolbarBinding.searchSslStatus.setOnClickListener {
