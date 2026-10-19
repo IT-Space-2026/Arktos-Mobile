@@ -430,6 +430,8 @@
 
     <string name="error_title">Oh crumbs! &lt;br&gt; That site can\'t be loaded.</string>
     <string name="error_reload">Reload</string>
+    <string name="error_offline_title">No internet connection</string>
+    <string name="error_offline_message">NET::ERR_INTERNET_DISCONNECTED</string>
 
     <string name="https_title">Oh crumbs! &lt;br&gt; That site doesn\'t support HTTPS and block HTTP is enabled.</string>
 
