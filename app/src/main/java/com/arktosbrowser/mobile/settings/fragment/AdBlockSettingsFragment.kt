@@ -24,6 +24,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
 import io.reactivex.rxkotlin.subscribeBy
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okio.buffer
 import okio.sink
 import okio.source
@@ -178,10 +179,10 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
             currentText = null,
             action = R.string.action_ok,
             textInputListener = {
-                val url = HttpUrl.parse(it)
-                    ?.takeIf { url -> url.isHttps || url.scheme() == "http" }
+                val url = it.toHttpUrlOrNull()
+                    ?.takeIf { url -> url.isHttps || url.scheme == "http" }
                     ?: return@showEditText run { activity?.toast(R.string.problem_download) }
-                blocklistLoader.addCustomSubscription(url.host(), url.toString())
+                blocklistLoader.addCustomSubscription(url.host, url.toString())
             }
         )
     }

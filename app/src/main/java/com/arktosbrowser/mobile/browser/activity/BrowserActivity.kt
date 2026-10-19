@@ -51,7 +51,6 @@ import androidx.core.view.marginTop
 import androidx.core.widget.doOnTextChanged
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
-import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.IncognitoActivity

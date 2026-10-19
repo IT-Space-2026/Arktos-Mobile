@@ -6,10 +6,10 @@ import com.arktosbrowser.mobile.js.TranslatePage
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
-import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -65,10 +65,8 @@ class TranslateBridge @Inject constructor(
             val endpoint = userPreferences.translationEndpoint
             if (endpoint.isBlank()) return "[]"
 
-            val body = RequestBody.create(
-                JSON_MEDIA_TYPE,
-                ArktosCore.translateRequestBody(request.texts, SOURCE_AUTO, request.target)
-            )
+            val body = ArktosCore.translateRequestBody(request.texts, SOURCE_AUTO, request.target)
+                .toRequestBody(JSON_MEDIA_TYPE)
             val httpRequest = Request.Builder()
                 .url(ArktosCore.translateUrl(endpoint))
                 .post(body)
@@ -77,7 +75,7 @@ class TranslateBridge @Inject constructor(
             client.newCall(httpRequest).execute().use { response ->
                 if (!response.isSuccessful) return "[]"
                 val parsed = ArktosCore.parseTranslateResponse(
-                    response.body()?.string().orEmpty()
+                    response.body.string().orEmpty()
                 )
                 JSONArray(parsed).toString()
             }
@@ -93,7 +91,7 @@ class TranslateBridge @Inject constructor(
         private const val TARGET_TOKEN = "%%TARGET_JSON%%"
         private const val SOURCE_AUTO = "auto"
         private const val FALLBACK_LANGUAGE = "en"
-        private val JSON_MEDIA_TYPE = MediaType.parse("application/json")
+        private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
         /**
          * Caller-side sanity check for the menu-selected language —

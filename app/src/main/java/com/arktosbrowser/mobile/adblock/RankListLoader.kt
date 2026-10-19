@@ -21,6 +21,7 @@ import java.net.InetAddress
 import javax.inject.Inject
 import javax.inject.Singleton
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.ResponseBody
@@ -259,7 +260,7 @@ class RankListLoader @Inject constructor(
             .followRedirects(false)
             .followSslRedirects(false)
             .build()
-        var url = HttpUrl.parse(sourceUrl)
+        var url = sourceUrl.toHttpUrlOrNull()
             ?: throw IOException("Invalid rank source $sourceUrl")
         for (hop in 0..MAX_REDIRECT_HOPS) {
             if (!fetchAllowed(url)) {
@@ -283,10 +284,10 @@ class RankListLoader @Inject constructor(
                     return@use
                 }
                 if (!response.isSuccessful) {
-                    throw IOException("HTTP ${response.code()} fetching $url")
+                    throw IOException("HTTP ${response.code} fetching $url")
                 }
                 target.parentFile?.mkdirs()
-                writeBody(response.body() ?: throw IOException("Empty response fetching $url"), target)
+                writeBody(response.body ?: throw IOException("Empty response fetching $url"), target)
                 return
             }
             if (!redirected) {
@@ -303,8 +304,8 @@ class RankListLoader @Inject constructor(
      */
     internal fun fetchAllowed(url: HttpUrl): Boolean = when {
         url.isHttps -> true
-        url.scheme() != "http" -> false
-        else -> isLoopbackHost(url.host())
+        url.scheme != "http" -> false
+        else -> isLoopbackHost(url.host)
     }
 
     private fun isLoopbackHost(host: String): Boolean {

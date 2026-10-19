@@ -27,6 +27,7 @@ import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 
 /**
@@ -279,7 +280,7 @@ class BlocklistLoader @Inject constructor(
             is HostsSourceType.Remote -> arktosStore.addAdblockSubscription(
                 StoreAdblockSubscription(
                     id = source.httpUrl.toString(),
-                    name = source.httpUrl.host(),
+                    name = source.httpUrl.host,
                     url = source.httpUrl.toString(),
                     category = CUSTOM_CATEGORY,
                     enabled = true,
@@ -377,7 +378,7 @@ class BlocklistLoader @Inject constructor(
             return Single.fromCallable { cacheFile.readText() }
         }
 
-        val httpUrl = HttpUrl.parse(sub.url)
+        val httpUrl = sub.url.toHttpUrlOrNull()
             ?: return Single.error(IllegalArgumentException("Invalid subscription URL ${sub.url}"))
 
         return UrlHostsDataSource(httpUrl, okHttpClient, logger, userPreferences, application)

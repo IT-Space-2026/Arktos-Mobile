@@ -22,6 +22,7 @@ import com.arktosbrowser.mobile.utils.installMultiDex
 import android.os.StrictMode
 import com.google.android.material.color.DynamicColors
 import io.reactivex.Scheduler
+import okhttp3.OkHttp
 import io.reactivex.Single
 import io.reactivex.plugins.RxJavaPlugins
 import javax.inject.Inject
@@ -46,6 +47,7 @@ class BrowserApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        OkHttp.initialize(this)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()
                     .detectAll()
