@@ -14,6 +14,8 @@ import com.arktosbrowser.mobile.uniffi.AdBlockListPreset
 import com.arktosbrowser.mobile.uniffi.ArktosStore
 import com.arktosbrowser.mobile.uniffi.BlocklistConfig
 import com.arktosbrowser.mobile.uniffi.BlocklistEngine
+import com.arktosbrowser.mobile.uniffi.RankListSource
+import com.arktosbrowser.mobile.uniffi.RankListSourceKind
 import com.arktosbrowser.mobile.uniffi.ReadableArticle
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.uniffi.SiteBlockMode
@@ -35,6 +37,15 @@ import com.arktosbrowser.mobile.uniffi.parseNetscapeBookmarks
 import com.arktosbrowser.mobile.uniffi.parseSuggestions as uniffiParseSuggestions
 import com.arktosbrowser.mobile.uniffi.parseUserscript
 import com.arktosbrowser.mobile.uniffi.sanitizeFileName as uniffiSanitizeFileName
+import com.arktosbrowser.mobile.uniffi.siteRank as uniffiSiteRank
+import com.arktosbrowser.mobile.uniffi.siteRankEntryCount as uniffiSiteRankEntryCount
+import com.arktosbrowser.mobile.uniffi.siteRankFileEntries as uniffiSiteRankFileEntries
+import com.arktosbrowser.mobile.uniffi.siteRankLastUpdate as uniffiSiteRankLastUpdate
+import com.arktosbrowser.mobile.uniffi.siteRankReload as uniffiSiteRankReload
+import com.arktosbrowser.mobile.uniffi.siteRankSetDataDir as uniffiSiteRankSetDataDir
+import com.arktosbrowser.mobile.uniffi.siteRankSources as uniffiSiteRankSources
+import com.arktosbrowser.mobile.uniffi.siteRankUpdateIfStale as uniffiSiteRankUpdateIfStale
+import com.arktosbrowser.mobile.uniffi.siteRankUpdateNow as uniffiSiteRankUpdateNow
 import com.arktosbrowser.mobile.uniffi.suggestionQueryUrl as uniffiSuggestionQueryUrl
 
 object ArktosCore {
@@ -178,6 +189,47 @@ object ArktosCore {
      */
     fun extractReadableArticle(url: String, html: String): ReadableArticle? =
         uniffiExtractReadableArticle(url, html)
+
+    // ---- RANK01 --------------------------------------------------
+
+    /**
+     * Point the site-rank engine at its drop directory — the Kotlin
+     * `RankListLoader` commits `tranco-list.dat` /
+     * `majestic-million.csv` there (RANK01).
+     */
+    fun setRankListDataDir(dir: String) = uniffiSiteRankSetDataDir(dir)
+
+    /**
+     * The host's merged Tranco+Majestic rank; 0 when unranked
+     * (RANK01). Lazy — the seed ∪ drop merge builds on first call, so
+     * this stays off the per-request hot path.
+     */
+    fun siteRank(host: String): Long = uniffiSiteRank(host).toLong()
+
+    /** The two rank-list sources with last-update stamps (RANK01). */
+    fun rankListSources(): List<RankListSource> = uniffiSiteRankSources()
+
+    /** ms-since-epoch stamp of one source's committed copy; 0 = never (RANK01). */
+    fun rankListLastUpdate(kind: RankListSourceKind): Long = uniffiSiteRankLastUpdate(kind).toLong()
+
+    /** Usable-entry count of one drop file under its grammar — the updater's validation probe (RANK01). */
+    fun rankFileEntries(fileName: String): Long = uniffiSiteRankFileEntries(fileName).toLong()
+
+    /** Rebuild the merged rank table after an update lands (RANK01). Throws on a corrupt drop file. */
+    fun reloadRankLists() = uniffiSiteRankReload()
+
+    /**
+     * Consent-gated staleness check (RANK01): the sources to fetch,
+     * or empty when consent is missing / every copy is fresh.
+     */
+    fun rankUpdateIfStale(consentGranted: Boolean, nowMs: Long): List<RankListSource> =
+        uniffiSiteRankUpdateIfStale(consentGranted, nowMs.toULong())
+
+    /** Explicit refresh list — consent-free (RANK01). */
+    fun rankUpdateNow(): List<RankListSource> = uniffiSiteRankUpdateNow()
+
+    /** Merged rank-table entry count (RANK01). */
+    fun rankEntryCount(): Long = uniffiSiteRankEntryCount().toLong()
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {
