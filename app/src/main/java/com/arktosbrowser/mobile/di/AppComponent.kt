@@ -20,6 +20,7 @@ import com.arktosbrowser.mobile.view.SmartCookieView
 import com.arktosbrowser.mobile.view.SmartCookieWebClient
 import android.app.Application
 import com.arktosbrowser.mobile.download.DownloadActivity
+import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
 import com.arktosbrowser.mobile.history.HistoryActivity
 import com.arktosbrowser.mobile.popup.PopUpClass
 import dagger.BindsInstance
@@ -69,6 +70,8 @@ interface AppComponent {
     fun inject(activity: ThemableSettingsActivity)
 
     fun inject(listener: LightningDownloadListener)
+
+    fun inject(receiver: DownloadCompleteReceiver)
 
     fun inject(fragment: PrivacySettingsFragment)
 

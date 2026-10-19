@@ -332,10 +332,10 @@ class LightningDialogBuilder @Inject constructor(
             )
 
             if(mimeType != null){
-                downloadHandler.onDownloadStart(activity, userPreferences, imageUrl, userAgent, "attachment", mimeType, "")
+                downloadHandler.onDownloadStart(activity, userPreferences, imageUrl, userAgent, "attachment", mimeType, "", url)
             }
             else{
-                downloadHandler.onDownloadStart(activity, userPreferences, imageUrl, userAgent, "attachment", "image/png", "")
+                downloadHandler.onDownloadStart(activity, userPreferences, imageUrl, userAgent, "attachment", "image/png", "", url)
             }
 
         })

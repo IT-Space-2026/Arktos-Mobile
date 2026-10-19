@@ -55,6 +55,13 @@
         <activity
             android:theme="@style/Theme.SettingsTheme"
             android:name=".download.DownloadActivity" />
+        <receiver
+            android:name=".download.DownloadCompleteReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
         <activity
             android:theme="@style/Theme.SettingsTheme"
             android:name=".history.HistoryActivity" />

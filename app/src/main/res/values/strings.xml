@@ -97,6 +97,7 @@
     <string name="action_back">Back</string>
     <string name="action_find">Find in page</string>
     <string name="download_pending">Starting download\u2026</string>
+    <string name="download_server_returned_page">The server sent a web page instead of the file.</string>
     <string name="cannot_download">Can only download HTTP or HTTPS URLs.</string>
     <string name="problem_download">Invalid URL encountered, cannot download</string>
     <string name="problem_location_download">Cannot download to the specified location</string>

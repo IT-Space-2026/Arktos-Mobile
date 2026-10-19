@@ -35,7 +35,7 @@ WebView adapter:
 - `app/src/main/java/com/arktosbrowser/mobile/BrowserApp.kt`, `app/src/main/java/com/arktosbrowser/mobile/MainActivity.kt`, `app/src/main/java/com/arktosbrowser/mobile/IncognitoActivity.kt` — app/entry wiring.
 - `app/src/main/java/com/arktosbrowser/mobile/controller/UIController.kt` — WebView-facing UI controller interface.
 - `app/src/main/java/com/arktosbrowser/mobile/dialog/LightningDialogBuilder.kt` — JS dialog builders.
-- `app/src/main/java/com/arktosbrowser/mobile/download/DownloadHandler.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/FetchUrlMimeType.java`, `app/src/main/java/com/arktosbrowser/mobile/download/LightningDownloadListener.kt` — DownloadListener seam.
+- `app/src/main/java/com/arktosbrowser/mobile/download/DownloadHandler.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/DownloadCompleteReceiver.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/LightningDownloadListener.kt` — DownloadListener seam + completion verification (CookieManager for retry headers). The rest of `download/` (DownloadHttpProbe, DownloadNaming, DownloadIntegrity, DownloadMetaStore, ContentDispositionFileNameParser, WebAddress, DownloadUtil, DownloadActivity) is engine-neutral — no `android.webkit`.
 - `app/src/main/java/com/arktosbrowser/mobile/extensions/PermissionRequestExtensions.kt` — WebRTC/geolocation permission mapping.
 - `app/src/main/java/com/arktosbrowser/mobile/html/homepage/HomePageFactory.kt`, `app/src/main/java/com/arktosbrowser/mobile/html/incognito/IncognitoPageFactory.kt` — `WebView` content factories.
 - `app/src/main/java/com/arktosbrowser/mobile/popup/PopUpClass.kt` — popup/menu WebView handling.
