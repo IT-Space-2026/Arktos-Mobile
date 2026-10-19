@@ -27,7 +27,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.RankListLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
-import com.arktosbrowser.mobile.browser.JavaScriptChoice
+import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry
@@ -108,6 +108,7 @@ class SmartCookieWebClient(
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
     @Inject internal lateinit var blocklistLoader: BlocklistLoader
     @Inject internal lateinit var rankListLoader: RankListLoader
+    @Inject internal lateinit var siteSettings: SiteSettings
 
     @Volatile private var isRunning = false
     private var zoomScale = 0.0f
@@ -444,7 +445,11 @@ class SmartCookieWebClient(
         if (!url.isGeneratedPageUrl()) {
             currentUrl = url
         }
-        view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
+        view.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(url)
+        // Cookie acceptance is app-global, not per-WebView — resolve the
+        // effective value for the loading origin at each page start so a
+        // per-site block sticks for the current origin only (#305).
+        CookieManager.getInstance().setAcceptCookie(siteSettings.cookiesEnabled(url))
 
         if(userPreferences.noAmp){
             view.evaluateJavascript(noAMP.provideJs(activity), null)
@@ -472,7 +477,7 @@ class SmartCookieWebClient(
                 errorPageOriginalUrl = url
                 view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
                 view.invalidate()
-                view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
+                view.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(url)
             }
         }
 
@@ -519,43 +524,6 @@ class SmartCookieWebClient(
                     }
                 }
         }
-        if (userPreferences.javaScriptChoice === JavaScriptChoice.BLACKLIST) {
-            if (userPreferences.javaScriptBlocked !== "" && userPreferences.javaScriptBlocked !== " ") {
-                val arrayOfURLs = userPreferences.javaScriptBlocked
-                var strgs: Array<String> = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                if (arrayOfURLs.contains(", ")) {
-                    strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                }
-                if (!stringContainsItemFromList(url, strgs)) {
-                    if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                        return
-                    } else {
-                        view.settings.javaScriptEnabled = false
-                    }
-                }
-                else{ return }
-            }
-        }
-        else  if (userPreferences.javaScriptChoice === JavaScriptChoice.WHITELIST) run {
-            if (userPreferences.javaScriptBlocked !== "" && userPreferences.javaScriptBlocked !== " ") {
-                val arrayOfURLs = userPreferences.javaScriptBlocked
-                var strgs: Array<String> = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                if (arrayOfURLs.contains(", ")) {
-                    strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                }
-                if (stringContainsItemFromList(url, strgs)) {
-                    if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                        return
-                    } else {
-                        view.settings.javaScriptEnabled = false
-                    }
-                }
-                else{
-                    return
-                }
-            }
-        }
-
         if(url.contains("https://homepage")){
             uiController.newTabButtonClicked()
             uiController.tabCloseClicked(0)
@@ -627,7 +595,7 @@ class SmartCookieWebClient(
             webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, error, reload, true, reloadCode), "text/html", "UTF-8", null)
             uiController.updateUrl(failingUrl, false)
             currentUrl = failingUrl
-            webview.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
+            webview.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(failingUrl)
         }
 
     }

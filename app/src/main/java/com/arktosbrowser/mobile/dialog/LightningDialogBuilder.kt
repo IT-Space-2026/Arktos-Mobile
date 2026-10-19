@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.MimeTypeMap
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -15,6 +16,8 @@ import androidx.core.content.ContextCompat.startActivity
 import androidx.core.net.toUri
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.SiteOverrides
+import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.constant.HTTP
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.Bookmark
@@ -51,6 +54,7 @@ class LightningDialogBuilder @Inject constructor(
     private val downloadsModel: DownloadsRepository,
     private val historyModel: HistoryRepository,
     private val userPreferences: UserPreferences,
+    private val siteSettings: SiteSettings,
     private val downloadHandler: DownloadHandler,
     private val clipboardManager: ClipboardManager,
     @DatabaseScheduler private val databaseScheduler: Scheduler,
@@ -362,6 +366,39 @@ class LightningDialogBuilder @Inject constructor(
         },
         DialogItem(title = R.string.dialog_copy_link) {
             clipboardManager.copyToClipboard(url)
+        },
+        // Per-site JS/cookie quick-toggles (#305) keyed on the long-pressed
+        // link's host; applied to the open page at once when it is on the
+        // same host, otherwise they take effect on the next load there.
+        DialogItem(
+            title = if (siteSettings.javaScriptEnabled(url)) {
+                R.string.block_javascript
+            } else {
+                R.string.allow_javascript
+            },
+            isConditionMet = SiteOverrides.siteHost(url) != null
+        ) {
+            val enabled = siteSettings.toggleJavaScript(url)
+            val tab = uiController.getTabModel().currentTab
+            if (tab != null && SiteOverrides.siteHost(tab.url) == SiteOverrides.siteHost(url)) {
+                tab.webView?.settings?.javaScriptEnabled = enabled
+                tab.reload()
+            }
+        },
+        DialogItem(
+            title = if (siteSettings.cookiesEnabled(url)) {
+                R.string.block_cookies_site
+            } else {
+                R.string.allow_cookies_site
+            },
+            isConditionMet = SiteOverrides.siteHost(url) != null
+        ) {
+            val enabled = siteSettings.toggleCookies(url)
+            CookieManager.getInstance().setAcceptCookie(enabled)
+            val tab = uiController.getTabModel().currentTab
+            if (tab != null && SiteOverrides.siteHost(tab.url) == SiteOverrides.siteHost(url)) {
+                tab.reload()
+            }
         })
 
 }
