@@ -27,7 +27,6 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.RankListLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
-import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.controller.UIController
@@ -62,8 +61,6 @@ import io.reactivex.subjects.PublishSubject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.*
-import java.net.InetSocketAddress
-import java.net.Proxy
 import java.net.URISyntaxException
 import java.net.URL
 import java.util.*
@@ -427,13 +424,7 @@ class ArktosCookieWebClient(
                                 // Route requirement fetches through the
                                 // configured proxy — a raw connection would
                                 // bypass Tor/I2P/manual proxying.
-                                val proxy = when (userPreferences.proxyChoice) {
-                                    ProxyChoice.ORBOT -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 8118))
-                                    ProxyChoice.I2P -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 4444))
-                                    ProxyChoice.MANUAL -> Proxy(Proxy.Type.HTTP, InetSocketAddress(
-                                        userPreferences.proxyHost, userPreferences.proxyPort))
-                                    else -> null
-                                }
+                                val proxy = ProxyUtils.connectionProxy(userPreferences)
                                 for (req in requirementList) {
                                     val requirementUrl = URL(req)
                                     val urlConnection: HttpsURLConnection = (

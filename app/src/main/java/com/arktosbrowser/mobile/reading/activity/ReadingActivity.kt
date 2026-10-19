@@ -37,7 +37,6 @@ import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
 import com.arktosbrowser.mobile.di.injector
@@ -46,6 +45,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
+import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Scheduler
 import io.reactivex.disposables.Disposable
@@ -54,7 +54,6 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.*
-import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
 import java.text.BreakIterator
@@ -182,13 +181,8 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             try {
                 // Route the fetch through the configured proxy — the raw
                 // URL.openStream() would bypass Tor/I2P/manual proxying.
-                val proxy = when (mUserPreferences?.proxyChoice) {
-                    ProxyChoice.ORBOT -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 8118))
-                    ProxyChoice.I2P -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 4444))
-                    ProxyChoice.MANUAL -> Proxy(Proxy.Type.HTTP, InetSocketAddress(
-                        mUserPreferences!!.proxyHost, mUserPreferences!!.proxyPort))
-                    else -> Proxy.NO_PROXY
-                }
+                val proxy = mUserPreferences?.let { ProxyUtils.connectionProxy(it) }
+                    ?: Proxy.NO_PROXY
                 val google = URL(mUrl)
                 val line = BufferedReader(InputStreamReader(
                     if (proxy == Proxy.NO_PROXY) google.openStream()

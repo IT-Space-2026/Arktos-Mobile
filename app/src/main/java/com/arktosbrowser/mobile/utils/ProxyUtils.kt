@@ -9,6 +9,8 @@ import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
 import com.arktosbrowser.mobile.preference.UserPreferences
 import info.guardianproject.netcipher.webkit.WebkitProxy
+import java.net.InetSocketAddress
+import java.net.Proxy
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -109,6 +111,20 @@ class ProxyUtils @Inject constructor(
         // Helper
         private var sI2PHelperBound: Boolean = false
         private var sI2PProxyInitialized: Boolean = false
+
+        /**
+         * The [Proxy] matching the configured choice, or null for direct connections.
+         * Used by non-WebView fetches (reader mode, favicon resolution, download
+         * probes, userscript resources) so they do not silently bypass Tor/I2P/manual.
+         */
+        @JvmStatic
+        fun connectionProxy(userPreferences: UserPreferences): Proxy? = when (userPreferences.proxyChoice) {
+            ProxyChoice.ORBOT -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 8118))
+            ProxyChoice.I2P -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 4444))
+            ProxyChoice.MANUAL -> Proxy(Proxy.Type.HTTP,
+                InetSocketAddress(userPreferences.proxyHost, userPreferences.proxyPort))
+            else -> null
+        }
 
         @JvmStatic
         fun sanitizeProxyChoice(choice: ProxyChoice, activity: Activity): ProxyChoice {
