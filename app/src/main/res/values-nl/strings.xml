@@ -294,7 +294,7 @@
     <string name="action_message_canceled">Actie geannuleerd.</string>
     <!-- permissions request -->
     <string name="title_permission_request">Toestemmingsverzoek</string>
-    <string name="message_permission_request">%1$s  nwilt graag: %2$s</string>
+    <string name="message_permission_request">%1$s  wilt graag: %2$s</string>
     <!-- Ad block -->
     <string name="block_ad_source">Hosts bestandsbron</string>
     <string name="block_ad_remote_refresh_frequency_description">Voor externe hosts-bestand</string>

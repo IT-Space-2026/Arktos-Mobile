@@ -527,6 +527,6 @@
     <string name="example_item">مثال للعنصر</string>
     <string name="stack_items_reverse">تكديس العناصر من أسفل درج العناصر</string>
     <string name="forgot_password">Forgot password</string>
-    <string name="recover_app_lock">Clear the app's data in the system settings, or reinstall the app, to reset your app lock password.</string>
+    <string name="recover_app_lock">Clear the app\'s data in the system settings, or reinstall the app, to reset your app lock password.</string>
     <!-- finish pages -->
 </resources>

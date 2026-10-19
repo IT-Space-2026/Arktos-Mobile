@@ -525,6 +525,6 @@
     <string name="example_item">Example item</string>
     <string name="stack_items_reverse">Stack items from bottom of drawer</string>
     <string name="forgot_password">Forgot password</string>
-    <string name="recover_app_lock">Clear the app's data in the system settings, or reinstall the app, to reset your app lock password.</string>
+    <string name="recover_app_lock">Clear the app\'s data in the system settings, or reinstall the app, to reset your app lock password.</string>
     <!-- finish pages -->
 </resources>

@@ -297,7 +297,7 @@
     <string name="action_message_canceled">Veiksmas atšauktas.</string>
     <!-- permissions request -->
     <string name="title_permission_request">Leidimo prašymas</string>
-    <string name="message_permission_request">%1$s \n \n nnorėtų naudoti: \n \n %2 s</string>
+    <string name="message_permission_request">%1$s\n\nnorėtų naudoti:\n\n%2$s</string>
     <!-- Ad block -->
     <string name="block_ad_source">Prieglobos failo šaltinis</string>
     <string name="block_ad_remote_refresh_frequency_description">Nuotolinių kompiuterių failas</string>

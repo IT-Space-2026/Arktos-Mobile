@@ -294,7 +294,7 @@
     <string name="action_message_canceled">Η ενέργεια ακυρώθηκε.</string>
     <!-- permissions request -->
     <string name="title_permission_request">Αίτημα άδειας</string>
-    <string name="message_permission_request">%1$s nΘέλετε να χρησιμοποιήσετε: %2$s</string>
+    <string name="message_permission_request">%1$s Θέλετε να χρησιμοποιήσετε: %2$s</string>
     <!-- Ad block -->
     <string name="block_ad_source">Πηγή αρχείου των hosts</string>
     <string name="block_ad_remote_refresh_frequency_description">Για το αρχείο απομακρυσμένων hosts</string>

@@ -295,7 +295,7 @@
     <string name="action_message_canceled">Акција је отказана.</string>
     <!-- permissions request -->
     <string name="title_permission_request">Захтев за дозволу</string>
-    <string name="message_permission_request">%1$s \n \n би желео да користи: \n \n $2$s</string>
+    <string name="message_permission_request">%1$s\n\nби желео да користи:\n\n%2$s</string>
     <!-- Ad block -->
     <string name="block_ad_source">Извор датотеке домаћина</string>
     <string name="block_ad_remote_refresh_frequency_description">За датотеку удаљених хостова</string>
