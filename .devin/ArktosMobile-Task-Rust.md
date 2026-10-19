@@ -36,9 +36,10 @@ Toolchain: `cargo`/`rustup`, `cargo-ndk`, JDK (`needs:tool:java`).
 | STORE01 | Rust storage core: bookmarks/history/downloads (rusqlite) — details below | done | 0 | ArktosStore (rusqlite =0.40.1 bundled, one arktos.db) replaces 5 SQLiteOpenHelper DBs behind unchanged repo interfaces; bookmark.created_at preps #156, slash-path folders prep #308; Netscape importer → html5gum =0.8.4 tokenizer; deleted *Database.kt + DatabaseDelegate + CursorExtensions; cargo test 29/29 + assembleScMainDebug + testScMainDebugUnitTest + engine-audit green; libarktos.so ~2.2MB/ABI release (bundled sqlite) |
 | PORT01 | Remaining logic ports: suggestions/userscripts/download core/importers — details below | done | 0 | Rust suggestions (provider URL build + Google-XML/DDG/Baidu-GBK/Naver JSON parse via html5gum+serde_json+encoding_rs), userscript metadata→Java-regex includes, download core (RFC6266/5987 filename*, URLUtil.guessFileName parity, sanitize, mime_guess), legacy+default bookmark JSON-lines, readability4j→dom_smoothie =0.18.2; one RustSuggestionsModel + deleted 5 model/parser/util Kotlin files; unit tests now run against host libarktos.so (jna jar + jna.library.path); fixed pre-existing coreVersion() recursion in ArktosCore; cargo test 67/67 + assembleScMainDebug + testScMainDebugUnitTest + engine-audit green; libarktos.so ~5.3–9.7MB/ABI stripped |
 | SERVO01 | Servo backend — do NOT implement (spike-gated) — details below | blocked | 0 | blocked:spike-gated — engine/BrowserEngine.kt boundary + .devin/ENGINE.md exist; desktop ENG03 verdicts apply; needs separate Android-embedding spike first |
-| LIST01 | Multi-list adblock subscriptions mirroring desktop presets — details below | pending | 0 | needs:task:BLOCK01 — also closes upstream #312 (multiple hosts files) |
+| LIST01 | Multi-list adblock subscriptions mirroring desktop presets — details below | in_progress | 0 | needs:task:BLOCK01 — also closes upstream #312 (multiple hosts files) |
 | RANK01 | Tranco + Majestic site-rank lists in Rust — details below | pending | 0 | mirrors desktop TrancoList (network/trancolist.*) — dual-source fetch, merged rank table, consent-gated refresh |
 | PREFS01 | Privacy list-management settings like desktop AdBlockDialog — details below | pending | 0 | needs:task:LIST01 needs:task:RANK01 — subscription-style settings table for adblock + rank lists |
+| PORT02 | Second-sweep: port remaining portable Kotlin/Java logic to Rust — details below | pending | 0 | needs:task:PORT01 — UrlUtils, error-page builders, search-model residue, app-lock hashing; ends with a nothing-left audit |
 
 ## Task details
 
@@ -224,3 +225,32 @@ and last-update stamp, plus a manual refresh action.
 - Verify: `./gradlew assembleScMainDebug` + unit tests for the
   settings model; toggles persist; refresh updates stamps;
   engine-audit PASS.
+
+### PORT02
+Second-sweep port — remaining portable logic out of Kotlin/Java
+into Rust. Small pieces only; anything platform-bound stays.
+
+Candidates (audit each, port what's actually portable):
+- `utils/UrlUtils.kt` — URL scheme/host/query manipulation →
+  `url` crate behind UniFFI.
+- `utils/Utils.kt` `buildErrorPage`/`buildBlockPage` — pure HTML
+  string generation → Rust template fn (inputs: title, error,
+  reload label, theme flag, button config). Coordinate: UI01
+  restyles these on the main lane — whichever lands second
+  reconciles (move the styling WITH the generator if UI01 landed
+  first).
+- `search/` leftovers — any engine-model/query-template logic not
+  already in suggestions.rs.
+- App-lock password hashing — if the current code stores an
+  unsalted/weak hash, move to argon2 in Rust with a versioned
+  migration; otherwise skip and note it.
+- `adblock/` Kotlin orchestration residue — engine already owns
+  verdicts; only data-sourcing glue should remain — delete
+  anything duplicated by blocklist.rs.
+- Final audit step: sweep `app/src/main` for remaining pure-logic
+  Kotlin (parsers, matchers, encoders) and list what was
+  deliberately left Kotlin-side (platform-bound) in the task
+  Notes — the target is "no portable logic outside rust/".
+- Verify: cargo tests for each ported unit, HostParserTest-class
+  parity where relevant, `./gradlew assembleScMainDebug` +
+  `testScMainDebugUnitTest` green.
