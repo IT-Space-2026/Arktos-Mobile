@@ -14,6 +14,7 @@ import com.arktosbrowser.mobile.constant.UTF8
 import com.arktosbrowser.mobile.database.history.HistoryRepository
 import com.arktosbrowser.mobile.html.HtmlPageFactory
 import com.arktosbrowser.mobile.html.ListPageReader
+import com.arktosbrowser.mobile.html.ShortcutIconResolver
 import com.arktosbrowser.mobile.html.jsoup.*
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.SearchEngineProvider
@@ -38,7 +39,8 @@ class HomePageFactory @Inject constructor(
         private var userPreferences: UserPreferences,
         private var resources: Resources,
         private val historyRepository: HistoryRepository,
-        private val listPageReader: ListPageReader
+        private val listPageReader: ListPageReader,
+        private val shortcutIcons: ShortcutIconResolver
 ) : HtmlPageFactory {
 
     private val title = application.getString(R.string.home)
@@ -98,10 +100,9 @@ class HomePageFactory @Inject constructor(
                             }
 
                             val url = URI(element.replaceFirst("www.", ""))
-                            val icon = createIconByName(url.host.first().uppercaseChar())
-                            val encoded = bitmapToBase64(icon)
-                            id("link" + (index + 1)){ attr("src", "https://${URI(element).host}/favicon.ico")}
-                            id("link" + (index + 1)){ attr("onerror", "this.src = 'data:image/png;base64,$encoded';")}
+                            val encoded = bitmapToBase64(createIconByName(url.host.first().uppercaseChar()))
+                            val src = shortcutIcons.resolve(element) ?: "data:image/png;base64,$encoded"
+                            id("link" + (index + 1)){ attr("src", src)}
 
                         }
                     }
