@@ -43,6 +43,7 @@ import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.download.DownloadActivity
 import com.arktosbrowser.mobile.extensions.color
 import com.arktosbrowser.mobile.extensions.copyToClipboard
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.extensions.drawable
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.history.HistoryActivity
@@ -251,7 +252,7 @@ class PopUpClass {
                 "find_in_page" -> activity.findInPage() // 6 - Find in Page
                 "copy_link" -> {
                     if (currentUrl != null && !currentUrl.isSpecialUrl()) { // 7 - Copy link
-                        activity.clipboardManager.copyToClipboard(currentUrl)
+                        activity.clipboardManager.copyToClipboard(ArktosCore.stripUrl(currentUrl))
                         activity.snackbar(R.string.message_link_copied)
                     }
                 }

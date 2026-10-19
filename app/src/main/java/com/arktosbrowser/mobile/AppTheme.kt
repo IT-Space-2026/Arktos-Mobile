@@ -29,12 +29,13 @@ val AppTheme.isDark: Boolean
     get() = this == AppTheme.DARK || this == AppTheme.BLACK || this == AppTheme.ARKTOS_DARK
 
 /**
- * Resolves [AppTheme.SYSTEM] to [AppTheme.DARK] or [AppTheme.LIGHT] based on
- * the device's current night-mode state. Every other theme returns itself.
+ * Resolves [AppTheme.SYSTEM] to the Arktos brand themes — [AppTheme.ARKTOS_DARK]
+ * or [AppTheme.ARKTOS_LIGHT] — based on the device's current night-mode state.
+ * Every other theme returns itself.
  */
 fun AppTheme.resolve(systemNightMode: Boolean): AppTheme =
     if (this == AppTheme.SYSTEM) {
-        if (systemNightMode) AppTheme.DARK else AppTheme.LIGHT
+        if (systemNightMode) AppTheme.ARKTOS_DARK else AppTheme.ARKTOS_LIGHT
     } else {
         this
     }

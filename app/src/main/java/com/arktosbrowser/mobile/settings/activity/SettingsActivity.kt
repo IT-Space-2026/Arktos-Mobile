@@ -44,7 +44,7 @@ class SettingsActivity : AppCompatActivity() {
                 setTheme(R.style.Theme_SettingsTheme_Arktos_Dark)
             }
             AppTheme.SYSTEM -> {
-                setTheme(if (isNightMode) R.style.Theme_SettingsTheme_Dark else R.style.Theme_SettingsTheme)
+                setTheme(if (isNightMode) R.style.Theme_SettingsTheme_Arktos_Dark else R.style.Theme_SettingsTheme_Arktos)
             }
         }
 

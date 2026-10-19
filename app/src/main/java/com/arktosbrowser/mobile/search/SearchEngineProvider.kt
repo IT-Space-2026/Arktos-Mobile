@@ -45,19 +45,18 @@ class  SearchEngineProvider @Inject constructor(
         when (userPreferences.searchChoice) {
             0 -> CustomSearch(userPreferences.searchUrl)
             1 -> GoogleSearch()
-            2 -> AskSearch()
+            // 2 (Ask), 9 (Baidu), 10 (Yandex), 13 (Ekoru), 14 (Searx) were
+            // removed — those saved indices fall through to the default.
             3 -> BingSearch()
             4 -> YahooSearch()
             5 -> StartPageSearch()
             6 -> StartPageMobileSearch()
             7 -> DuckSearch()
             8 -> DuckLiteSearch()
-            9 -> BaiduSearch()
-            10 -> YandexSearch()
             11 -> NaverSearch()
             12 -> EcosiaSearch()
-            13 -> EkoruSearch()
-            14 -> SearxSearch()
+            15 -> MojeekSearch()
+            16 -> QwantSearch()
             else -> GoogleSearch()
         }
 
@@ -68,19 +67,16 @@ class  SearchEngineProvider @Inject constructor(
         when (searchEngine) {
             is CustomSearch -> 0
             is GoogleSearch -> 1
-            is AskSearch -> 2
             is BingSearch -> 3
             is YahooSearch -> 4
             is StartPageSearch -> 5
             is StartPageMobileSearch -> 6
             is DuckSearch -> 7
             is DuckLiteSearch -> 8
-            is BaiduSearch -> 9
-            is YandexSearch -> 10
             is NaverSearch -> 11
             is EcosiaSearch -> 12
-            is EkoruSearch -> 13
-            is SearxSearch -> 14
+            is MojeekSearch -> 15
+            is QwantSearch -> 16
             else -> throw UnsupportedOperationException("Unknown search engine provided: " + searchEngine.javaClass)
         }
 
@@ -90,19 +86,16 @@ class  SearchEngineProvider @Inject constructor(
     fun provideAllSearchEngines(): List<BaseSearchEngine> = listOf(
         CustomSearch(userPreferences.searchUrl),
         GoogleSearch(),
-        AskSearch(),
         BingSearch(),
         YahooSearch(),
         StartPageSearch(),
         StartPageMobileSearch(),
         DuckSearch(),
         DuckLiteSearch(),
-        BaiduSearch(),
-        YandexSearch(),
         NaverSearch(),
         EcosiaSearch(),
-        EkoruSearch(),
-        SearxSearch()
+        MojeekSearch(),
+        QwantSearch()
     )
 
 }
