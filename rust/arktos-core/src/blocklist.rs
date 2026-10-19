@@ -390,12 +390,22 @@ pub fn parse_list_domains(content: &str) -> Vec<String> {
             continue;
         }
         if let Some(rest) = trimmed.strip_prefix("||") {
-            // Host anchor: the domain runs to the next `^`, `/` or `|`.
-            let host = rest
-                .split(|c| c == '^' || c == '/' || c == '|')
-                .next()
-                .unwrap_or("");
-            if is_plausible_host(host) {
+            // Host anchor: the domain runs to the next `^`, `/`, `|`
+            // or `*`. Only domain-scoped rules collapse to a bare
+            // host — `||host` and `||host^` (with or without
+            // `$options`). `||host/…` and `||host*…` are path-scoped
+            // and can't be expressed by a domain engine: reducing
+            // them to the host would block the entire site (EasyList
+            // carries `||google.com/pagead/` and friends — that must
+            // not block Google itself). `||host|` is end-anchored
+            // (exact root only), also skipped.
+            let host_end = rest
+                .find(|c| c == '^' || c == '/' || c == '|' || c == '*')
+                .unwrap_or(rest.len());
+            let domain_scoped = host_end == rest.len()
+                || rest.as_bytes()[host_end] == b'^';
+            let host = &rest[..host_end];
+            if domain_scoped && is_plausible_host(host) {
                 domains.push(host.to_lowercase());
             }
             continue;
@@ -778,6 +788,34 @@ example.com#@#.unblock
                 "plain-domain.example",
                 "tracker.example.org"
             ]
+        );
+    }
+
+    #[test]
+    fn list_parser_skips_path_scoped_host_rules() {
+        // v1.0 fix: EasyList's `||google.com/pagead/` etc. used to
+        // collapse to a bare `google.com` host block — killing every
+        // Google page including URL-bar search. Path-scoped,
+        // wildcard-suffixed and end-anchored rules can't be expressed
+        // as domain blocks and must be skipped; only `||host` and
+        // `||host^` count.
+        let content = "\
+||google.com/pagead/conversion_async.js
+||google.com/analytics/$third-party
+||youtube.com/generate_204
+||google.co*
+||tracker.example.com|
+||bad.example.com^
+||bad.example.com^$third-party
+||plain.example.com
+";
+        let mut domains = parse_list_domains(content);
+        domains.sort_unstable();
+        domains.dedup();
+        assert_eq!(
+            domains,
+            vec!["bad.example.com", "plain.example.com"],
+            "path/end-anchored rules must not reduce to host blocks"
         );
     }
 

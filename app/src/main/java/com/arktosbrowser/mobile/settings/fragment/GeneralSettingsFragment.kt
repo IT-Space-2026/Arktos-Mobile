@@ -4,7 +4,6 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Environment
 import android.text.Editable
-import android.text.InputFilter
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.widget.EditText
@@ -12,8 +11,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.browser.JavaScriptChoice
-import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.browser.SuggestionNumChoice
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
@@ -24,7 +21,6 @@ import com.arktosbrowser.mobile.search.Suggestions
 import com.arktosbrowser.mobile.search.engine.BaseSearchEngine
 import com.arktosbrowser.mobile.search.engine.CustomSearch
 import com.arktosbrowser.mobile.utils.FileUtils
-import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import javax.inject.Inject
 
@@ -37,8 +33,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
     @Inject lateinit var searchEngineProvider: SearchEngineProvider
     @Inject lateinit var userPreferences: UserPreferences
 
-    private lateinit var proxyChoices: Array<String>
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preference_general)
     }
@@ -47,21 +41,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         super.onCreate(savedInstanceState)
 
         injector.inject(this)
-
-        proxyChoices = resources.getStringArray(R.array.proxy_choices_array)
-
-
-        clickableDynamicPreference(
-                preference = SETTINGS_PROXY,
-                summary = userPreferences.proxyChoice.toSummary(),
-                onClick = ::showProxyPicker
-        )
-
-        clickableDynamicPreference(
-                preference = SETTINGS_USER_AGENT,
-                summary = choiceToUserAgent(userPreferences.userAgentChoice),
-                onClick = ::showUserAgentChooserDialog
-        )
 
         clickableDynamicPreference(
                 preference = SETTINGS_DOWNLOAD,
@@ -88,12 +67,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 onClick = ::showSearchSuggestionsDialog
         )
 
-        clickableDynamicPreference(
-                preference = SETTINGS_BLOCK_JAVASCRIPT,
-                summary = userPreferences.javaScriptChoice.toSummary(),
-                onClick = ::showJavaScriptPicker
-        )
-
         switchPreference(
                 preference = SETTINGS_ALL_TABS,
                 isChecked = userPreferences.allTabs,
@@ -104,12 +77,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 preference = SETTINGS_IMAGES,
                 isChecked = userPreferences.blockImagesEnabled,
                 onCheckChange = { userPreferences.blockImagesEnabled = it }
-        )
-
-        switchPreference(
-                preference = SETTINGS_FORCE_ZOOM,
-                isChecked = userPreferences.forceZoom,
-                onCheckChange = { userPreferences.forceZoom = it }
         )
 
         switchPreference(
@@ -131,21 +98,21 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
-                preference = SETTINGS_JAVASCRIPT,
-                isChecked = userPreferences.javaScriptEnabled,
-                onCheckChange = { userPreferences.javaScriptEnabled = it }
-        )
-
-        switchPreference(
-                preference = SETTINGS_COLOR_MODE,
-                isChecked = userPreferences.colorModeEnabled,
-                onCheckChange = { userPreferences.colorModeEnabled = it }
-        )
-
-        switchPreference(
                 preference = SETTINGS_LAST_TAB,
                 isChecked = userPreferences.closeOnLastTab,
                 onCheckChange = { userPreferences.closeOnLastTab = it }
+        )
+
+        switchPreference(
+                preference = SETTINGS_RESTORE_TABS,
+                isChecked = userPreferences.restoreLostTabsEnabled,
+                onCheckChange = { userPreferences.restoreLostTabsEnabled = it }
+        )
+
+        switchPreference(
+                preference = SETTINGS_FOREGROUND,
+                isChecked = userPreferences.tabsToForegroundEnabled,
+                onCheckChange = { userPreferences.tabsToForegroundEnabled = it }
         )
 
     }
@@ -177,118 +144,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
 
         userPreferences.suggestionChoice = choice
         summaryUpdater.updateSummary(stringArray[choice.value])
-    }
-
-    private fun ProxyChoice.toSummary(): String {
-        val stringArray = resources.getStringArray(R.array.proxy_choices_array)
-        return when (this) {
-            ProxyChoice.NONE -> stringArray[0]
-            ProxyChoice.ORBOT -> stringArray[1]
-            ProxyChoice.I2P -> stringArray[2]
-            ProxyChoice.MANUAL -> "${userPreferences.proxyHost}:${userPreferences.proxyPort}"
-        }
-    }
-
-    private fun showProxyPicker(summaryUpdater: SummaryUpdater) {
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.http_proxy)
-            val stringArray = resources.getStringArray(R.array.proxy_choices_array)
-            val values = ProxyChoice.values().map {
-                Pair(it, when (it) {
-                    ProxyChoice.NONE -> stringArray[0]
-                    ProxyChoice.ORBOT -> stringArray[1]
-                    ProxyChoice.I2P -> stringArray[2]
-                    ProxyChoice.MANUAL -> stringArray[3]
-                })
-            }
-            withSingleChoiceItems(values, userPreferences.proxyChoice) {
-                updateProxyChoice(it, activity as Activity, summaryUpdater)
-            }
-            setPositiveButton(R.string.action_ok, null)
-        }
-    }
-
-    private fun updateProxyChoice(choice: ProxyChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
-        val sanitizedChoice = ProxyUtils.sanitizeProxyChoice(choice, activity)
-        if (sanitizedChoice == ProxyChoice.MANUAL) {
-            showManualProxyPicker(activity, summaryUpdater)
-        }
-
-        userPreferences.proxyChoice = sanitizedChoice
-        summaryUpdater.updateSummary(sanitizedChoice.toSummary())
-    }
-
-    private fun showManualProxyPicker(activity: Activity, summaryUpdater: SummaryUpdater) {
-        val v = activity.layoutInflater.inflate(R.layout.dialog_manual_proxy, null)
-        val eProxyHost = v.findViewById<TextView>(R.id.proxyHost)
-        val eProxyPort = v.findViewById<TextView>(R.id.proxyPort)
-
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
-        val maxCharacters = Integer.MAX_VALUE.toString().length
-        eProxyPort.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(maxCharacters - 1))
-
-        eProxyHost.text = userPreferences.proxyHost
-        eProxyPort.text = userPreferences.proxyPort.toString()
-
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.manual_proxy)
-            setView(v)
-            setPositiveButton(R.string.action_ok) { _, _ ->
-                val proxyHost = eProxyHost.text.toString()
-                val proxyPort = try {
-                    // Try/Catch in case the user types an empty string or a number
-                    // larger than max integer
-                    Integer.parseInt(eProxyPort.text.toString())
-                } catch (ignored: NumberFormatException) {
-                    userPreferences.proxyPort
-                }
-
-                userPreferences.proxyHost = proxyHost
-                userPreferences.proxyPort = proxyPort
-                summaryUpdater.updateSummary("$proxyHost:$proxyPort")
-            }
-        }
-    }
-
-    private fun choiceToUserAgent(index: Int) = when (index) {
-        1 -> resources.getString(R.string.agent_default)
-        2 -> resources.getString(R.string.agent_desktop)
-        3 -> resources.getString(R.string.agent_mobile)
-        4 -> resources.getString(R.string.agent_custom)
-        else -> resources.getString(R.string.agent_default)
-    }
-
-    private fun showUserAgentChooserDialog(summaryUpdater: SummaryUpdater) {
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(resources.getString(R.string.title_user_agent))
-            setSingleChoiceItems(R.array.user_agent, userPreferences.userAgentChoice - 1) { _, which ->
-                userPreferences.userAgentChoice = which + 1
-                summaryUpdater.updateSummary(choiceToUserAgent(userPreferences.userAgentChoice))
-                when (which) {
-                    in 0..2 -> Unit
-                    3 -> {
-                        summaryUpdater.updateSummary(resources.getString(R.string.agent_custom))
-                        showCustomUserAgentPicker(summaryUpdater)
-                    }
-                }
-            }
-            setPositiveButton(resources.getString(R.string.action_ok), null)
-        }
-    }
-
-    private fun showCustomUserAgentPicker(summaryUpdater: SummaryUpdater) {
-        activity?.let {
-            BrowserDialog.showEditText(it,
-                    R.string.title_user_agent,
-                    R.string.title_user_agent,
-                    userPreferences.userAgentString,
-                    R.string.action_ok) { s ->
-                userPreferences.userAgentString = s
-                summaryUpdater.updateSummary(it.getString(R.string.agent_custom))
-            }
-        }
     }
 
     private fun showDownloadLocationDialog(summaryUpdater: SummaryUpdater) {
@@ -415,69 +270,6 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         }
     }
 
-    private fun JavaScriptChoice.toSummary(): String {
-        val stringArray = resources.getStringArray(R.array.block_javascript)
-        return when (this) {
-            JavaScriptChoice.NONE -> stringArray[0]
-            JavaScriptChoice.WHITELIST -> userPreferences.siteBlockNames
-            JavaScriptChoice.BLACKLIST -> userPreferences.siteBlockNames
-        }
-    }
-
-    private fun showJavaScriptPicker(summaryUpdater: SummaryUpdater) {
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.block_javascript)
-            val stringArray = resources.getStringArray(R.array.block_javascript)
-            val values = JavaScriptChoice.values().map {
-                Pair(it, when (it) {
-                    JavaScriptChoice.NONE -> stringArray[0]
-                    JavaScriptChoice.WHITELIST -> stringArray[1]
-                    JavaScriptChoice.BLACKLIST -> stringArray[2]
-                })
-            }
-            withSingleChoiceItems(values, userPreferences.javaScriptChoice) {
-                updateJavaScriptChoice(it, activity as Activity, summaryUpdater)
-            }
-            setPositiveButton(R.string.action_ok, null)
-        }
-    }
-
-    private fun updateJavaScriptChoice(choice: JavaScriptChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
-        if (choice == JavaScriptChoice.WHITELIST || choice == JavaScriptChoice.BLACKLIST) {
-            showManualJavaScriptPicker(activity, summaryUpdater, choice)
-        }
-
-        userPreferences.javaScriptChoice = choice
-        summaryUpdater.updateSummary(choice.toSummary())
-    }
-
-    private fun showManualJavaScriptPicker(activity: Activity, summaryUpdater: SummaryUpdater, choice: JavaScriptChoice) {
-        val v = activity.layoutInflater.inflate(R.layout.site_block, null)
-        val blockedSites = v.findViewById<TextView>(R.id.siteBlock)
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
-        val maxCharacters = Integer.MAX_VALUE.toString().length
-
-        blockedSites.text = userPreferences.javaScriptBlocked
-
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.block_javascript)
-            setView(v)
-            setPositiveButton(R.string.action_ok) { _, _ ->
-                val proxyHost = blockedSites.text.toString()
-                userPreferences.javaScriptBlocked = proxyHost
-                if(choice.toString() == "BLACKLIST"){
-                    summaryUpdater.updateSummary(getText(R.string.listed_javascript).toString())
-                }
-                else{
-                    summaryUpdater.updateSummary(getText(R.string.unlisted_javascript).toString())
-                }
-
-            }
-        }
-    }
-
     private fun searchSuggestionChoiceToTitle(choice: Suggestions): String =
         when (choice) {
             Suggestions.GOOGLE -> getString(R.string.powered_by_google)
@@ -517,14 +309,8 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
     }
 
     companion object {
-        private const val SETTINGS_PROXY = "proxy"
-        private const val SETTINGS_FORCE_ZOOM = "force_zoom"
         private const val SETTINGS_IMAGES = "cb_images"
         private const val SETTINGS_SAVEDATA = "savedata"
-        private const val SETTINGS_JAVASCRIPT = "cb_javascript"
-        private const val SETTINGS_BLOCK_JAVASCRIPT = "block_javascript"
-        private const val SETTINGS_COLOR_MODE = "cb_colormode"
-        private const val SETTINGS_USER_AGENT = "agent"
         private const val SETTINGS_DOWNLOAD = "download"
         private const val SETTINGS_SEARCH_ENGINE = "search"
         private const val SETTINGS_SUGGESTIONS = "suggestions_choice"
@@ -533,5 +319,7 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_ALL_TABS = "load_tabs"
         private const val SETTINGS_TRANSLATE = "translate"
         private const val SETTINGS_AMP = "amp"
+        private const val SETTINGS_RESTORE_TABS = "restore_tabs"
+        private const val SETTINGS_FOREGROUND = "new_tabs_foreground"
     }
 }

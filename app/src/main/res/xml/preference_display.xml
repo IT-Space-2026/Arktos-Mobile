@@ -18,6 +18,26 @@
             android:singleLineTitle="false"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/settings_display">
+        <Preference
+            android:key="url_contents"
+            android:singleLineTitle="false"
+            android:title="@string/url_contents" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="trim_url_bar"
+            android:singleLineTitle="false"
+            android:summary="@string/trim_url_bar_summary"
+            android:title="@string/trim_url_bar" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="cb_colormode"
+            android:singleLineTitle="false"
+            android:title="@string/color_mode"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="force_zoom"
+            android:singleLineTitle="false"
+            android:title="@string/force_zoom"/>
         <SwitchPreference
             android:defaultValue="false"
             android:singleLineTitle="false"
@@ -55,12 +75,6 @@
             android:singleLineTitle="false"
             android:key="text_reflow"
             android:title="@string/reflow"/>
-        <SwitchPreference
-            android:defaultValue="true"
-            android:singleLineTitle="false"
-            android:key="new_tabs_foreground"
-            android:title="@string/new_tab_foreground"
-            android:summary="@string/new_tab_foreground_summary"/>
         <Preference
             android:key="text_size"
             android:singleLineTitle="false"

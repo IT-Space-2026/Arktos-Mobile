@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.ChooseNavbarCol
 import com.arktosbrowser.mobile.browser.DrawerLineChoice
+import com.arktosbrowser.mobile.browser.SearchBoxDisplayChoice
 import com.arktosbrowser.mobile.browser.TextZoom
 import com.arktosbrowser.mobile.browser.DrawerSizeChoice
 import com.arktosbrowser.mobile.di.injector
@@ -44,6 +45,30 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         clickablePreference(
             preference = SETTINGS_TEXTSIZE,
             onClick = ::showTextSizePicker
+        )
+
+        clickableDynamicPreference(
+            preference = SETTINGS_URL_CONTENT,
+            summary = userPreferences.urlBoxContentChoice.toDisplayString(),
+            onClick = this::showUrlBoxDialogPicker
+        )
+
+        switchPreference(
+            preference = SETTINGS_TRIM_URL_BAR,
+            isChecked = userPreferences.trimUrlBarEnabled,
+            onCheckChange = { userPreferences.trimUrlBarEnabled = it }
+        )
+
+        switchPreference(
+            preference = SETTINGS_COLOR_MODE,
+            isChecked = userPreferences.colorModeEnabled,
+            onCheckChange = { userPreferences.colorModeEnabled = it }
+        )
+
+        switchPreference(
+            preference = SETTINGS_FORCE_ZOOM,
+            isChecked = userPreferences.forceZoom,
+            onCheckChange = { userPreferences.forceZoom = it }
         )
 
         switchPreference(
@@ -102,11 +127,6 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
-                preference = SETTINGS_FOREGROUND,
-                isChecked = userPreferences.tabsToForegroundEnabled,
-                onCheckChange = { userPreferences.tabsToForegroundEnabled = it }
-        )
-        switchPreference(
                 preference = SETTINGS_BOTTOM_BAR,
                 isChecked = userPreferences.bottomBar,
                 isEnabled = !userPreferences.navbar || userPreferences.bottomBar,
@@ -121,6 +141,29 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
                 preference = SETTINGS_SIZE,
                 onClick = ::showDrawerSize
         )
+    }
+
+    private fun showUrlBoxDialogPicker(summaryUpdater: SummaryUpdater) {
+        activity?.let { MaterialAlertDialogBuilder(it) }?.apply {
+            setTitle(resources.getString(R.string.url_contents))
+
+            val items = SearchBoxDisplayChoice.values().map { Pair(it, it.toDisplayString()) }
+
+            withSingleChoiceItems(items, userPreferences.urlBoxContentChoice) {
+                userPreferences.urlBoxContentChoice = it
+                summaryUpdater.updateSummary(it.toDisplayString())
+            }
+            setPositiveButton(resources.getString(R.string.action_ok), null)
+        }?.resizeAndShow()
+    }
+
+    private fun SearchBoxDisplayChoice.toDisplayString(): String {
+        val stringArray = resources.getStringArray(R.array.url_content_array)
+        return when (this) {
+            SearchBoxDisplayChoice.URL -> stringArray[0]
+            SearchBoxDisplayChoice.DOMAIN -> stringArray[1]
+            SearchBoxDisplayChoice.TITLE -> stringArray[2]
+        }
     }
 
     private fun showDrawerSize() {
@@ -254,11 +297,14 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_TEXTSIZE = "text_size"
         private const val SETTINGS_DRAWERTABS = "cb_drawertabs"
         private const val SETTINGS_SWAPTABS = "cb_swapdrawers"
-        private const val SETTINGS_FOREGROUND = "new_tabs_foreground"
         private const val SETTINGS_EXTRA = "show_extra"
         private const val SETTINGS_BOTTOM_BAR = "bottom_bar"
         private const val SETTINGS_LINES = "drawer_lines"
         private const val SETTINGS_SIZE = "drawer_size"
         private const val SETTINGS_NAVBAR = "second_bar"
+        private const val SETTINGS_URL_CONTENT = "url_contents"
+        private const val SETTINGS_TRIM_URL_BAR = "trim_url_bar"
+        private const val SETTINGS_COLOR_MODE = "cb_colormode"
+        private const val SETTINGS_FORCE_ZOOM = "force_zoom"
     }
 }

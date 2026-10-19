@@ -21,7 +21,45 @@
 
 const PAGE_STYLE: &str = "html{-webkit-text-size-adjust: 100%;}body{margin: 0; padding: 3em 1em; background: linear-gradient(to bottom, #ccd 0%, #f6f6fa 45%, #f6f6fa 100%); font-family: \"DejaVu Sans\", sans-serif; color: #222;}#box{background: #fff; border: 1px solid #bbc; border-radius: 0.8em; max-width: 640px; margin: auto; overflow: hidden; box-shadow: 0 2px 14px rgba(34, 34, 85, 0.15);}#header{background: linear-gradient(to bottom, #228 0%, #66a 90%, #668 100%); color: #fff; padding: 20px 28px; overflow: hidden;}#header img{float: right; height: 56px;}#header h1{font-size: 1.3em; font-weight: bold; margin: 0.4em 0;}#content{padding: 22px 28px 26px;}h2{font-size: 1em; font-weight: normal; color: #445; border-bottom: 1px solid #dde; padding-bottom: 0.8em; margin: 0 0 1em;}ul{font-size: 0.85em; color: #556;}ul li{margin: 0.35em 0;}#buttons{margin-top: 1.6em;}#buttons button{display: inline-block; border: 1px solid #66a; border-radius: 0.5em; padding: 0.5em 1.2em; margin: 0 0.8em 0.6em 0; cursor: pointer; -webkit-user-select: none; color: #224; background: linear-gradient(to bottom, #eff, #cdf); font-size: 0.9em;}#buttons button.primary{background: linear-gradient(to bottom, #66a, #558); color: #fff; font-weight: bold;}#buttons button.danger{color: #8a0d0d; border-color: #c99; background: #fff;}html.arktos-dark body{background: linear-gradient(to bottom, #2a2a30 0%, #1e1e23 45%, #1e1e23 100%); color: #e4e4e8;}html.arktos-dark #box{background: #2b2b30; border-color: #474750; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);}html.arktos-dark h2{color: #c9c9d2; border-bottom-color: #3f3f48;}html.arktos-dark ul{color: #babac4;}html.arktos-dark #buttons button{border-color: #558; color: #d7dcf0; background: linear-gradient(to bottom, #343a45, #2a2f38);}html.arktos-dark #buttons button.danger{color: #e89a9a; border-color: #6f4444; background: #2b2b30;}@media (max-width: 640px){#buttons button{width: 100%;}}";
 
-const ARKTOS_LOGO: &str = "file:///android_asset/arktos.webp";
+/// The bundled logo, embedded as a data URI. These pages are served
+/// under the failing page's https origin — or `ERROR_PAGE_ORIGIN`,
+/// an `https://` URL — where WebView refuses `file:///android_asset`
+/// subresources, so a file-scheme logo URL can never render.
+const ARKTOS_LOGO_WEBP: &[u8] = include_bytes!("../../../app/src/main/assets/arktos.webp");
+
+fn arktos_logo() -> &'static str {
+    static LOGO: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    LOGO.get_or_init(|| {
+        format!(
+            "data:image/webp;base64,{}",
+            base64_encode(ARKTOS_LOGO_WEBP)
+        )
+    })
+}
+
+fn base64_encode(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = *chunk.get(1).unwrap_or(&0);
+        let b2 = *chunk.get(2).unwrap_or(&0);
+        out.push(ALPHABET[(b0 >> 2) as usize] as char);
+        out.push(ALPHABET[((b0 << 4 | b1 >> 4) & 0x3f) as usize] as char);
+        out.push(if chunk.len() > 1 {
+            ALPHABET[((b1 << 2 | b2 >> 6) & 0x3f) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPHABET[(b2 & 0x3f) as usize] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
 
 /// The `class="arktos-dark"` attribute for the `<html>` tag — the
 /// caller's [color] fragment is only ever non-empty on a non-LIGHT
@@ -62,11 +100,12 @@ pub fn build_error_page(
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
          <title>{title}</title><style>{PAGE_STYLE}</style></head><body>\
          <div id=\"box\"><div id=\"header\">\
-         <img src=\"{ARKTOS_LOGO}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
+         <img src=\"{}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
          <div id=\"content\"><h2>{error}</h2><ul><li>{hint}</li></ul>\
          <div id=\"buttons\">{reload_button}</div></div></div>\
          </body></html>{color}",
-        html_class(&color)
+        html_class(&color),
+        arktos_logo()
     )
 }
 
@@ -101,11 +140,12 @@ pub fn build_block_page(
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
          <title>{title}</title><style>{PAGE_STYLE}</style></head><body>\
          <div id=\"box\"><div id=\"header\">\
-         <img src=\"{ARKTOS_LOGO}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
+         <img src=\"{}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
          <div id=\"content\"><h2>{error}</h2><ul><li>{blocked_url}</li><li>{hint}</li></ul>\
          <div id=\"buttons\">{go_back_button}{proceed_button}</div></div></div>\
          </body></html>{color}",
-        html_class(&color)
+        html_class(&color),
+        arktos_logo()
     )
 }
 
@@ -130,7 +170,7 @@ mod tests {
         assert!(html.contains("window.history.back();"));
         assert!(html.contains(">Reload</button>"));
         assert!(html.ends_with("<style>x</style>"));
-        assert!(html.contains("arktos.webp"));
+        assert!(html.contains("data:image/webp;base64,"));
     }
 
     #[test]
@@ -199,8 +239,8 @@ mod tests {
         assert!(html.contains(">Go back</button>"));
         // The upstream dead `$!!!` in the script tag is preserved.
         assert!(html.contains("$!!!"));
-        // The Arktos logo rides in the header band.
-        assert!(html.contains("arktos.webp"));
+        // The Arktos logo rides in the header band (base64 data URI).
+        assert!(html.contains("data:image/webp;base64,"));
     }
 
     #[test]

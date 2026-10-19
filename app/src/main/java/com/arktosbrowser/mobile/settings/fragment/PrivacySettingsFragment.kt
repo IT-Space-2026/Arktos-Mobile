@@ -6,13 +6,16 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.text.InputFilter
 import android.webkit.WebView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.arktosbrowser.mobile.DeviceCapabilities
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.JavaScriptChoice
 import com.arktosbrowser.mobile.browser.PasswordChoice
+import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.database.history.HistoryRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
@@ -23,6 +26,7 @@ import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
+import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.arktosbrowser.mobile.utils.WebUtils
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import io.reactivex.Completable
@@ -38,6 +42,8 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
 
     var toastMessage: Toast? = null
 
+    private lateinit var proxyChoices: Array<String>
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preference_privacy)
     }
@@ -45,6 +51,71 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         injector.inject(this)
+
+        proxyChoices = resources.getStringArray(R.array.proxy_choices_array)
+
+        clickableDynamicPreference(
+                preference = SETTINGS_PROXY,
+                summary = userPreferences.proxyChoice.toSummary(),
+                onClick = ::showProxyPicker
+        )
+
+        clickableDynamicPreference(
+                preference = SETTINGS_USER_AGENT,
+                summary = choiceToUserAgent(userPreferences.userAgentChoice),
+                onClick = ::showUserAgentChooserDialog
+        )
+
+        clickableDynamicPreference(
+                preference = SETTINGS_BLOCK_JAVASCRIPT,
+                summary = userPreferences.javaScriptChoice.toSummary(),
+                onClick = ::showJavaScriptPicker
+        )
+
+        switchPreference(
+                preference = SETTINGS_JAVASCRIPT,
+                isChecked = userPreferences.javaScriptEnabled,
+                onCheckChange = { userPreferences.javaScriptEnabled = it }
+        )
+
+        switchPreference(
+                preference = SETTINGS_BLOCK_MALWARE,
+                isChecked = userPreferences.blockMalwareEnabled,
+                onCheckChange = { userPreferences.blockMalwareEnabled = it }
+        )
+
+        switchPreference(
+                preference = SETTINGS_SHOW_SSL,
+                isChecked = userPreferences.ssl,
+                onCheckChange = { userPreferences.ssl = it }
+        )
+
+        val incognitoCheckboxPreference = switchPreference(
+                preference = SETTINGS_COOKIES_INCOGNITO,
+                isEnabled = !DeviceCapabilities.FULL_INCOGNITO.isSupported,
+                isChecked = if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
+                    userPreferences.cookiesEnabled
+                } else {
+                    userPreferences.incognitoCookiesEnabled
+                },
+                summary = if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
+                    getString(R.string.incognito_cookies_new)
+                } else {
+                    null
+                },
+                onCheckChange = { userPreferences.incognitoCookiesEnabled = it }
+        )
+
+        switchPreference(
+                preference = SETTINGS_ENABLE_COOKIES,
+                isChecked = userPreferences.cookiesEnabled,
+                onCheckChange = {
+                    userPreferences.cookiesEnabled = it
+                    if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
+                        incognitoCheckboxPreference?.isChecked = it
+                    }
+                }
+        )
 
         val stringArrayPassword = resources.getStringArray(R.array.password_set_array)
         clickableDynamicPreference(
@@ -232,6 +303,177 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         }
     }
 
+    private fun ProxyChoice.toSummary(): String {
+        val stringArray = resources.getStringArray(R.array.proxy_choices_array)
+        return when (this) {
+            ProxyChoice.NONE -> stringArray[0]
+            ProxyChoice.ORBOT -> stringArray[1]
+            ProxyChoice.I2P -> stringArray[2]
+            ProxyChoice.MANUAL -> "${userPreferences.proxyHost}:${userPreferences.proxyPort}"
+        }
+    }
+
+    private fun showProxyPicker(summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.http_proxy)
+            val stringArray = resources.getStringArray(R.array.proxy_choices_array)
+            val values = ProxyChoice.values().map {
+                Pair(it, when (it) {
+                    ProxyChoice.NONE -> stringArray[0]
+                    ProxyChoice.ORBOT -> stringArray[1]
+                    ProxyChoice.I2P -> stringArray[2]
+                    ProxyChoice.MANUAL -> stringArray[3]
+                })
+            }
+            withSingleChoiceItems(values, userPreferences.proxyChoice) {
+                updateProxyChoice(it, activity as Activity, summaryUpdater)
+            }
+            setPositiveButton(R.string.action_ok, null)
+        }
+    }
+
+    private fun updateProxyChoice(choice: ProxyChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
+        val sanitizedChoice = ProxyUtils.sanitizeProxyChoice(choice, activity)
+        if (sanitizedChoice == ProxyChoice.MANUAL) {
+            showManualProxyPicker(activity, summaryUpdater)
+        }
+
+        userPreferences.proxyChoice = sanitizedChoice
+        summaryUpdater.updateSummary(sanitizedChoice.toSummary())
+    }
+
+    private fun showManualProxyPicker(activity: Activity, summaryUpdater: SummaryUpdater) {
+        val v = activity.layoutInflater.inflate(R.layout.dialog_manual_proxy, null)
+        val eProxyHost = v.findViewById<TextView>(R.id.proxyHost)
+        val eProxyPort = v.findViewById<TextView>(R.id.proxyPort)
+
+        // Limit the number of characters since the port needs to be of type int
+        // Use input filters to limit the EditText length and determine the max
+        // length by using length of integer MAX_VALUE
+        val maxCharacters = Integer.MAX_VALUE.toString().length
+        eProxyPort.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(maxCharacters - 1))
+
+        eProxyHost.text = userPreferences.proxyHost
+        eProxyPort.text = userPreferences.proxyPort.toString()
+
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.manual_proxy)
+            setView(v)
+            setPositiveButton(R.string.action_ok) { _, _ ->
+                val proxyHost = eProxyHost.text.toString()
+                val proxyPort = try {
+                    // Try/Catch in case the user types an empty string or a number
+                    // larger than max integer
+                    Integer.parseInt(eProxyPort.text.toString())
+                } catch (ignored: NumberFormatException) {
+                    userPreferences.proxyPort
+                }
+
+                userPreferences.proxyHost = proxyHost
+                userPreferences.proxyPort = proxyPort
+                summaryUpdater.updateSummary("$proxyHost:$proxyPort")
+            }
+        }
+    }
+
+    private fun choiceToUserAgent(index: Int) = when (index) {
+        1 -> resources.getString(R.string.agent_default)
+        2 -> resources.getString(R.string.agent_desktop)
+        3 -> resources.getString(R.string.agent_mobile)
+        4 -> resources.getString(R.string.agent_custom)
+        else -> resources.getString(R.string.agent_default)
+    }
+
+    private fun showUserAgentChooserDialog(summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(resources.getString(R.string.title_user_agent))
+            setSingleChoiceItems(R.array.user_agent, userPreferences.userAgentChoice - 1) { _, which ->
+                userPreferences.userAgentChoice = which + 1
+                summaryUpdater.updateSummary(choiceToUserAgent(userPreferences.userAgentChoice))
+                when (which) {
+                    in 0..2 -> Unit
+                    3 -> {
+                        summaryUpdater.updateSummary(resources.getString(R.string.agent_custom))
+                        showCustomUserAgentPicker(summaryUpdater)
+                    }
+                }
+            }
+            setPositiveButton(resources.getString(R.string.action_ok), null)
+        }
+    }
+
+    private fun showCustomUserAgentPicker(summaryUpdater: SummaryUpdater) {
+        activity?.let {
+            BrowserDialog.showEditText(it,
+                    R.string.title_user_agent,
+                    R.string.title_user_agent,
+                    userPreferences.userAgentString,
+                    R.string.action_ok) { s ->
+                userPreferences.userAgentString = s
+                summaryUpdater.updateSummary(it.getString(R.string.agent_custom))
+            }
+        }
+    }
+
+    private fun JavaScriptChoice.toSummary(): String {
+        val stringArray = resources.getStringArray(R.array.block_javascript)
+        return when (this) {
+            JavaScriptChoice.NONE -> stringArray[0]
+            JavaScriptChoice.WHITELIST -> userPreferences.siteBlockNames
+            JavaScriptChoice.BLACKLIST -> userPreferences.siteBlockNames
+        }
+    }
+
+    private fun showJavaScriptPicker(summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.block_javascript)
+            val stringArray = resources.getStringArray(R.array.block_javascript)
+            val values = JavaScriptChoice.values().map {
+                Pair(it, when (it) {
+                    JavaScriptChoice.NONE -> stringArray[0]
+                    JavaScriptChoice.WHITELIST -> stringArray[1]
+                    JavaScriptChoice.BLACKLIST -> stringArray[2]
+                })
+            }
+            withSingleChoiceItems(values, userPreferences.javaScriptChoice) {
+                updateJavaScriptChoice(it, activity as Activity, summaryUpdater)
+            }
+            setPositiveButton(R.string.action_ok, null)
+        }
+    }
+
+    private fun updateJavaScriptChoice(choice: JavaScriptChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
+        if (choice == JavaScriptChoice.WHITELIST || choice == JavaScriptChoice.BLACKLIST) {
+            showManualJavaScriptPicker(activity, summaryUpdater, choice)
+        }
+
+        userPreferences.javaScriptChoice = choice
+        summaryUpdater.updateSummary(choice.toSummary())
+    }
+
+    private fun showManualJavaScriptPicker(activity: Activity, summaryUpdater: SummaryUpdater, choice: JavaScriptChoice) {
+        val v = activity.layoutInflater.inflate(R.layout.site_block, null)
+        val blockedSites = v.findViewById<TextView>(R.id.siteBlock)
+
+        blockedSites.text = userPreferences.javaScriptBlocked
+
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.block_javascript)
+            setView(v)
+            setPositiveButton(R.string.action_ok) { _, _ ->
+                val proxyHost = blockedSites.text.toString()
+                userPreferences.javaScriptBlocked = proxyHost
+                if(choice.toString() == "BLACKLIST"){
+                    summaryUpdater.updateSummary(getText(R.string.listed_javascript).toString())
+                }
+                else{
+                    summaryUpdater.updateSummary(getText(R.string.unlisted_javascript).toString())
+                }
+
+            }
+        }
+    }
+
     private fun clearHistoryDialog() {
         BrowserDialog.showPositiveNegativeDialog(
             activity = activity as Activity,
@@ -372,6 +614,14 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"
         private const val SETTINGS_CLEAR_ALL = "clear_all"
+        private const val SETTINGS_PROXY = "proxy"
+        private const val SETTINGS_USER_AGENT = "agent"
+        private const val SETTINGS_JAVASCRIPT = "cb_javascript"
+        private const val SETTINGS_BLOCK_JAVASCRIPT = "block_javascript"
+        private const val SETTINGS_ENABLE_COOKIES = "allow_cookies"
+        private const val SETTINGS_COOKIES_INCOGNITO = "incognito_cookies"
+        private const val SETTINGS_SHOW_SSL = "show_ssl"
+        private const val SETTINGS_BLOCK_MALWARE = "block_malicious_sites"
     }
 
 }

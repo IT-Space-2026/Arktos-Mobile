@@ -67,12 +67,6 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
-            preference = "block_malicious_sites",
-            isChecked = userPreferences.blockMalwareEnabled,
-            onCheckChange = { userPreferences.blockMalwareEnabled = it }
-        )
-
-        switchPreference(
             preference = "cb_block_ads",
             isChecked = userPreferences.adBlockEnabled,
             onCheckChange = { userPreferences.adBlockEnabled = it }
