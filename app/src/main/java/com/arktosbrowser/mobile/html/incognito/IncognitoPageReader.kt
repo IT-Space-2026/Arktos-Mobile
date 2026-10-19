@@ -11,7 +11,7 @@ import javax.inject.Inject
 class IncognitoPageReader @Inject constructor() {
 
     fun provideHtml(context: Context): String {
-        val inputStream = context.assets.open("incognito.html")
+        val inputStream = context.assets.open("private.html")
         val bufferedReader = BufferedReader(InputStreamReader(inputStream))
         return bufferedReader.use { it.readText() }
     }

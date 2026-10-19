@@ -45,16 +45,13 @@ class HomePageFactory @Inject constructor(
 
     override fun buildPage(): Single<String> = Single
         .just(searchEngineProvider.provideSearchEngine())
-        .map { (iconUrl, queryUrl, _) ->
+        .map { (_, queryUrl, _) ->
             parse(homePageReader.provideHtml(application)) andBuild {
                 title { title }
                 charset { UTF8 }
                 body {
                     // Add background image
                     if(userPreferences.imageUrlString != ""){ tag("body") { attr("style", "background: url('" + userPreferences.imageUrlString + "') no-repeat scroll;") } }
-
-                    // Set search engine icon
-                    id("search_input") { attr("style", "background: url('" + iconUrl + "') no-repeat scroll 7px 7px;background-size: 22px 22px;") }
 
                     // Fill params in scripts
                     tag("script") {
@@ -107,42 +104,23 @@ class HomePageFactory @Inject constructor(
                             id("link" + (index + 1)){ attr("onerror", "this.src = 'data:image/png;base64,$encoded';")}
 
                         }
-
-                        id("search_input"){ attr("placeholder", resources.getString(R.string.search_homepage))}
                     }
                     else{
                         id("shortcuts"){ attr("style", "display: none;")}
                     }
 
                 }
+
+                // Follow the app theme: dark/black themes flip the page to
+                // the aurora dark palette via the arktos-dark class.
+                if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) != AppTheme.LIGHT){
+                    tag("html"){ addClass("arktos-dark") }
+                }
             }
         }
         .map { content -> Pair(createHomePage(), content) }
         .doOnSuccess { (page, content) ->
-            FileWriter(page, false).use {
-                if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.LIGHT){
-                    it.write(content)
-                }
-                else if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.BLACK){
-                    it.write(content + "<style>body {\n" +
-                            "    background-color: #000000;\n" +
-                            "} .text, .edit{" +
-                            "color: #ffffff;" +
-                            "fill: #ffffff;" +
-                            "}</style>")
-                }
-                else if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.DARK){
-                    it.write(content + "<style>body {\n" +
-                            "    background-color: #2a2a2a;\n" +
-                            "} .text, .edit{" +
-                            "color: #ffffff;" +
-                            "fill: #ffffff;" +
-                            "}</style>")
-                }
-                else{
-                    it.write(content)
-                }
-            }
+            FileWriter(page, false).use { it.write(content) }
         }
         .map { (page, _) -> "$FILE$page" }
 
