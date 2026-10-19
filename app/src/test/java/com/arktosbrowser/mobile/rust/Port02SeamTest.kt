@@ -54,7 +54,7 @@ class Port02SeamTest {
     @Test
     fun `error page builds html`() {
         val html = ArktosCore.buildErrorPage(
-            "<style>x</style>", "Title", "NET::ERR_X", "Reload", true
+            "<style>x</style>", "Title", "NET::ERR_X", "hint", "Reload", true
         )
         assertTrue(html.contains("<h1>Title</h1>"))
         assertTrue(html.contains("NET::ERR_X"))
@@ -63,13 +63,46 @@ class Port02SeamTest {
     }
 
     @Test
+    fun `error page has desktop card structure and dark variant`() {
+        // UI01 — the Arktos desktop interstitial look: rounded card,
+        // gradient header band with the logo floated right, error
+        // under a thin divider and a small suggestion line.
+        val light = ArktosCore.buildErrorPage(
+            "", "Title", "NET::ERR_X", "hint", "Reload", true
+        )
+        for (marker in listOf(
+            "<div id=\"box\">",
+            "<div id=\"header\">",
+            "<div id=\"content\">",
+            "<div id=\"buttons\">",
+            "file:///android_asset/arktos.webp",
+            "<li>hint</li>",
+            "border-radius: 0.8em",
+            "#228 0%, #66a 90%"
+        )) {
+            assertTrue("missing $marker", light.contains(marker))
+        }
+        assertTrue(light.startsWith("<html>"))
+
+        // A non-empty color fragment is the callers' dark-theme
+        // signal — it must tag <html> like the desktop's
+        // decorateInternalPage.
+        val dark = ArktosCore.buildErrorPage(
+            "<style>x</style>", "Title", "NET::ERR_X", "hint", "Reload", true
+        )
+        assertTrue(dark.startsWith("<html class=\"arktos-dark\">"))
+        assertTrue(dark.contains("html.arktos-dark body"))
+    }
+
+    @Test
     fun `block page builds buttons`() {
         val html = ArktosCore.buildBlockPage(
-            "", "Blocked", "reason", "https://ads.example/", "Proceed", "Back", true
+            "", "Blocked", "reason", "https://ads.example/", "hint", "Proceed", "Back", true
         )
         assertTrue(html.contains("location.href = 'https://ads.example/';"))
         assertTrue(html.contains(">Proceed</button>"))
         assertTrue(html.contains(">Back</button>"))
+        assertTrue(html.contains("<li>https://ads.example/</li>"))
     }
 
     @Test

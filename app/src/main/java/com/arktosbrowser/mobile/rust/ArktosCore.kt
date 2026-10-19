@@ -293,16 +293,18 @@ object ArktosCore {
     /**
      * `Utils.buildErrorPage` (PORT02) — the error interstitial HTML;
      * all strings arrive localized, [color] is the theme override
-     * fragment appended verbatim.
+     * fragment appended verbatim. [hint] is the small suggestion
+     * line under the error (UI01 desktop-style page).
      */
     fun buildErrorPage(
         color: String,
         title: String,
         error: String,
+        hint: String,
         reload: String,
         showButton: Boolean,
         reloadCode: String = "window.history.back();"
-    ): String = uniffiBuildErrorPage(color, title, error, reload, showButton, reloadCode)
+    ): String = uniffiBuildErrorPage(color, title, error, hint, reload, showButton, reloadCode)
 
     /** `Utils.buildBlockPage` (PORT02) — the block interstitial HTML. */
     fun buildBlockPage(
@@ -310,11 +312,12 @@ object ArktosCore {
         title: String,
         error: String,
         blockedUrl: String,
+        hint: String,
         proceedLabel: String,
         goBackLabel: String,
         showProceed: Boolean
     ): String =
-        uniffiBuildBlockPage(color, title, error, blockedUrl, proceedLabel, goBackLabel, showProceed)
+        uniffiBuildBlockPage(color, title, error, blockedUrl, hint, proceedLabel, goBackLabel, showProceed)
 
     /** `Utils.isColorTooDark` — tab-strip luminance heuristic (PORT02). */
     fun isColorTooDark(color: Int): Boolean = uniffiIsColorTooDark(color)

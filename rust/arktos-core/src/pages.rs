@@ -1,47 +1,72 @@
 //! PORT02 — `Utils.buildErrorPage` / `Utils.buildBlockPage` ported
-//! verbatim: pure HTML string generation for the interstitial error
-//! and block pages. All localized strings and the theme override
-//! arrive as parameters so the Kotlin callers no longer need an
-//! `Activity` in the generator.
+//! as pure HTML string generation for the interstitial error and
+//! block pages. All localized strings and the theme override arrive
+//! as parameters so the Kotlin callers no longer need an `Activity`
+//! in the generator.
+//!
+//! UI01 — the pages are styled after the Arktos desktop error pages
+//! (`src/htmls/notfound.html`, `src/htmls/certerror.html`): a white
+//! rounded card on a light gradient, a blue gradient header band
+//! carrying the Arktos logo floated right, the error list under a
+//! thin divider, small suggestion text and pill buttons. The dark
+//! palette follows the desktop `html.arktos-dark` convention —
+//! callers pass a non-empty [color] override fragment exactly when
+//! the resolved theme is not LIGHT, so that doubles as the dark-mode
+//! signal (same trick as the desktop's `decorateInternalPage`).
 //!
 //! Quirks preserved from the Kotlin originals: the `</h1><p></p>`
 //! sequence after the title, the literal `$!!!` inside the block
 //! page's reload script (dead code upstream), and `color` being
 //! appended after `</html>` as a raw `<style>` override fragment.
 
-const PAGE_STYLE: &str = "html{-webkit-text-size-adjust: 100%;font-size: 125%;}body{background-color:#ffffff; color: #646464; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"; font-size: 75%;}div{display:block;}h1{margin-top: 0; color: #333; font-size: 1.6em; font-weight: normal; line-height: 1.25em; margin-bottom: 16px;}button{border: solid 1px; border-radius: 4px; border-color: #000000FF; padding: 0 16px; min-width: 64px; line-height: 34px; background-color: transparent; -webkit-user-select: none; text-transform: uppercase; color: rgb(76, 142, 250); box-sizing: border-box; cursor: pointer; font-size: .875em; margin: 0; font-weight: 500;}button:hover{box-shadow: 0 1px 2px rgba(1, 1, 1, 0.5);}.error-code{color: #777; display: inline; font-size: .86667em; margin-top: 15px; opacity: .5; text-transform: uppercase;}.interstitial-wrapper{box-sizing: border-box;font-size: 1em;margin: 100px auto 0;max-width: 600px;width: 100%;}.offline .interstitial-wrapper{color: #2b2b2b;font-size: 1em;line-height: 1.55;margin: 0 auto;max-width: 600px;padding-top: 100px;width: 100%;}.hidden{display: none;}.nav-wrapper{margin-top: 51px; display:inline-block;}#buttons::after{clear: both; content: ''; display: block; width: 100%;}.nav-wrapper::after{clear: both; content: ''; display: table; width: 100%;}.small-link{color: #696969; font-size: .875em;}@media (max-width: 640px), (max-height: 640px){h1{margin: 0 0 15px;}button{width: 100%;}}";
+const PAGE_STYLE: &str = "html{-webkit-text-size-adjust: 100%;}body{margin: 0; padding: 3em 1em; background: linear-gradient(to bottom, #ccd 0%, #f6f6fa 45%, #f6f6fa 100%); font-family: \"DejaVu Sans\", sans-serif; color: #222;}#box{background: #fff; border: 1px solid #bbc; border-radius: 0.8em; max-width: 640px; margin: auto; overflow: hidden; box-shadow: 0 2px 14px rgba(34, 34, 85, 0.15);}#header{background: linear-gradient(to bottom, #228 0%, #66a 90%, #668 100%); color: #fff; padding: 20px 28px; overflow: hidden;}#header img{float: right; height: 56px;}#header h1{font-size: 1.3em; font-weight: bold; margin: 0.4em 0;}#content{padding: 22px 28px 26px;}h2{font-size: 1em; font-weight: normal; color: #445; border-bottom: 1px solid #dde; padding-bottom: 0.8em; margin: 0 0 1em;}ul{font-size: 0.85em; color: #556;}ul li{margin: 0.35em 0;}#buttons{margin-top: 1.6em;}#buttons button{display: inline-block; border: 1px solid #66a; border-radius: 0.5em; padding: 0.5em 1.2em; margin: 0 0.8em 0.6em 0; cursor: pointer; -webkit-user-select: none; color: #224; background: linear-gradient(to bottom, #eff, #cdf); font-size: 0.9em;}#buttons button.primary{background: linear-gradient(to bottom, #66a, #558); color: #fff; font-weight: bold;}#buttons button.danger{color: #8a0d0d; border-color: #c99; background: #fff;}html.arktos-dark body{background: linear-gradient(to bottom, #2a2a30 0%, #1e1e23 45%, #1e1e23 100%); color: #e4e4e8;}html.arktos-dark #box{background: #2b2b30; border-color: #474750; box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);}html.arktos-dark h2{color: #c9c9d2; border-bottom-color: #3f3f48;}html.arktos-dark ul{color: #babac4;}html.arktos-dark #buttons button{border-color: #558; color: #d7dcf0; background: linear-gradient(to bottom, #343a45, #2a2f38);}html.arktos-dark #buttons button.danger{color: #e89a9a; border-color: #6f4444; background: #2b2b30;}@media (max-width: 640px){#buttons button{width: 100%;}}";
+
+const ARKTOS_LOGO: &str = "file:///android_asset/arktos.webp";
+
+/// The `class="arktos-dark"` attribute for the `<html>` tag — the
+/// caller's [color] fragment is only ever non-empty on a non-LIGHT
+/// theme, so it doubles as the dark-mode flag.
+fn html_class(color: &str) -> &'static str {
+    if color.is_empty() {
+        ""
+    } else {
+        " class=\"arktos-dark\""
+    }
+}
 
 /// `Utils.buildErrorPage` — the network-error interstitial. [color]
 /// is the theme override fragment appended verbatim (empty on the
-/// light theme), [reload_code] the JS run by the reload button.
+/// light theme), [hint] the small suggestion under the error, and
+/// [reload_code] the JS run by the reload button.
 #[uniffi::export]
 pub fn build_error_page(
     color: String,
     title: String,
     error: String,
+    hint: String,
     reload: String,
     show_button: bool,
     reload_code: String,
 ) -> String {
     let reload_button = if show_button {
         format!(
-            "<button onclick=\"reload();\" id=\"reload-button\" class=\"blue-button text-button reload\">{reload}</button>"
+            "<button onclick=\"reload();\" id=\"reload-button\" class=\"primary\">{reload}</button>"
         )
     } else {
         String::new()
     };
 
     format!(
-        "<html><head><script language=\"javascript\"> \
+        "<html{}><head><script language=\"javascript\"> \
          function reload(){{setTimeout(function(){{{reload_code}}}, 500);}};</script>\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
-         <style>{PAGE_STYLE}</style></head><center><body class=\"offline\">\
-         <div class=\"interstitial-wrapper\"><div id=\"main-content\">\
-         <img src=\"file:///android_asset/warning.webp\" height=\"52\" width=\"52\"><br><br>\
-         <div class=\"icon icon-offline\"></div><div id=\"main-message\">\
-         <h1>{title}</h1></h1><p></p><div class=\"error-code\">{error}</div></div></div>\
-         <div id=\"buttons\" class=\"nav-wrapper\"><div id=\"control-buttons\">{reload_button}\
-         </div></div></div></body></center></html>{color}"
+         <title>{title}</title><style>{PAGE_STYLE}</style></head><body>\
+         <div id=\"box\"><div id=\"header\">\
+         <img src=\"{ARKTOS_LOGO}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
+         <div id=\"content\"><h2>{error}</h2><ul><li>{hint}</li></ul>\
+         <div id=\"buttons\">{reload_button}</div></div></div>\
+         </body></html>{color}",
+        html_class(&color)
     )
 }
 
@@ -54,32 +79,33 @@ pub fn build_block_page(
     title: String,
     error: String,
     blocked_url: String,
+    hint: String,
     proceed_label: String,
     go_back_label: String,
     show_proceed: bool,
 ) -> String {
     let proceed_button = if show_proceed {
         format!(
-            "<button onclick=\"location.href = '{blocked_url}';\" id=\"reload-button\" class=\"blue-button text-button reload\">{proceed_label}</button>"
+            "<button onclick=\"location.href = '{blocked_url}';\" id=\"proceed-button\" class=\"danger\">{proceed_label}</button>"
         )
     } else {
         String::new()
     };
     let go_back_button = format!(
-        "<button onclick=\"window.history.back();\" id=\"reload-button\" class=\"blue-button text-button reload\">{go_back_label}</button>"
+        "<button onclick=\"window.history.back();\" id=\"back-button\" class=\"primary\">{go_back_label}</button>"
     );
 
     format!(
-        "<html><head><script language=\"javascript\"> \
+        "<html{}><head><script language=\"javascript\"> \
          function reload(){{setTimeout(function(){{$!!!}}, 500);}};</script>\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
-         <style>{PAGE_STYLE}</style></head><center><body class=\"offline\">\
-         <div class=\"interstitial-wrapper\"><div id=\"main-content\">\
-         <div class=\"icon icon-offline\"></div><div id=\"main-message\">\
-         <h1>{title}</h1></h1><p></p><div class=\"error-code\">{error}</div></div></div>\
-         <div id=\"buttons\" class=\"nav-wrapper\"><div id=\"control-buttons\">\
-         {proceed_button} <br /><br /> {go_back_button}\
-         </div></div></div></body></center></html>{color}"
+         <title>{title}</title><style>{PAGE_STYLE}</style></head><body>\
+         <div id=\"box\"><div id=\"header\">\
+         <img src=\"{ARKTOS_LOGO}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
+         <div id=\"content\"><h2>{error}</h2><ul><li>{blocked_url}</li><li>{hint}</li></ul>\
+         <div id=\"buttons\">{go_back_button}{proceed_button}</div></div></div>\
+         </body></html>{color}",
+        html_class(&color)
     )
 }
 
@@ -93,21 +119,62 @@ mod tests {
             "<style>x</style>".into(),
             "No connection".into(),
             "NET::ERR_INTERNET_DISCONNECTED".into(),
+            "Check the address or your connection, then try again.".into(),
             "Reload".into(),
             true,
             "window.history.back();".into(),
         );
         assert!(html.contains("<h1>No connection</h1>"));
-        assert!(html.contains("NET::ERR_INTERNET_DISCONNECTED"));
+        assert!(html.contains("<h2>NET::ERR_INTERNET_DISCONNECTED</h2>"));
+        assert!(html.contains("<li>Check the address or your connection, then try again.</li>"));
         assert!(html.contains("window.history.back();"));
         assert!(html.contains(">Reload</button>"));
         assert!(html.ends_with("<style>x</style>"));
-        assert!(html.contains("warning.webp"));
+        assert!(html.contains("arktos.webp"));
+    }
+
+    #[test]
+    fn error_page_has_desktop_card_structure() {
+        // UI01 — the card design ported from the desktop's
+        // notfound.html: rounded #box, gradient #header, #content.
+        let html = build_error_page(
+            "".into(), "t".into(), "e".into(), "h".into(), "r".into(), true, "x".into(),
+        );
+        for marker in [
+            "<div id=\"box\">",
+            "<div id=\"header\">",
+            "<div id=\"content\">",
+            "<div id=\"buttons\">",
+            "border-radius: 0.8em",
+            "#228 0%, #66a 90%",
+            "float: right",
+        ] {
+            assert!(html.contains(marker), "missing {marker}");
+        }
+        assert!(html.starts_with("<html>"));
+    }
+
+    #[test]
+    fn error_page_dark_class_from_color() {
+        // UI01 — a non-empty color fragment is the caller's dark-theme
+        // signal, so it tags <html> like decorateInternalPage does.
+        let dark = build_error_page(
+            "<style>x</style>".into(), "t".into(), "e".into(), "h".into(), "r".into(), true, "x".into(),
+        );
+        assert!(dark.starts_with("<html class=\"arktos-dark\">"));
+        assert!(dark.contains("html.arktos-dark body"));
+        let light = build_error_page(
+            "".into(), "t".into(), "e".into(), "h".into(), "r".into(), true, "x".into(),
+        );
+        assert!(light.starts_with("<html>"));
+        assert!(!light.contains("arktos-dark\">"));
     }
 
     #[test]
     fn error_page_hides_button() {
-        let html = build_error_page("".into(), "t".into(), "e".into(), "r".into(), false, "x".into());
+        let html = build_error_page(
+            "".into(), "t".into(), "e".into(), "h".into(), "r".into(), false, "x".into(),
+        );
         assert!(!html.contains("reload();"));
         // The reload function stub still embeds the code verbatim.
         assert!(html.contains("setTimeout(function(){x}, 500)"));
@@ -120,17 +187,20 @@ mod tests {
             "Blocked".into(),
             "reason".into(),
             "https://ads.example/x".into(),
+            "This page was blocked for your protection.".into(),
             "Proceed".into(),
             "Go back".into(),
             true,
         );
         assert!(html.contains("location.href = 'https://ads.example/x';"));
+        assert!(html.contains("<li>https://ads.example/x</li>"));
+        assert!(html.contains("<li>This page was blocked for your protection.</li>"));
         assert!(html.contains(">Proceed</button>"));
         assert!(html.contains(">Go back</button>"));
         // The upstream dead `$!!!` in the script tag is preserved.
         assert!(html.contains("$!!!"));
-        // No warning image on the block page.
-        assert!(!html.contains("warning.webp"));
+        // The Arktos logo rides in the header band.
+        assert!(html.contains("arktos.webp"));
     }
 
     #[test]
@@ -140,6 +210,7 @@ mod tests {
             "t".into(),
             "e".into(),
             "https://u/".into(),
+            "h".into(),
             "P".into(),
             "G".into(),
             false,

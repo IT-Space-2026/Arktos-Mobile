@@ -86,13 +86,18 @@ class SmartCookieWebClient(
 
     private val titleBlocked = activity.getString(R.string.blocked_title)
     private val reloadBlocked = activity.getString(R.string.error_reload)
+    private val hintBlocked = activity.getString(R.string.page_blocked_hint)
 
     private var zoomed = false
     private var first = true
     private var errored = false
     private var initScale = 0f
 
-    private var color = "<style>body{background-color:#424242 !important;} h1{color:#ffffff !important;} .error-code{color:#e6e6e6 !important;}</style>"
+    // UI01 — non-empty marks a non-LIGHT theme: the Rust page builder
+    // emits <html class="arktos-dark"> from that signal. The fragment
+    // still appends verbatim; no !important so it can't clobber the
+    // card CSS.
+    private var color = "<style>body{background-color:#424242;} h1{color:#ffffff;}</style>"
 
     @Inject internal lateinit var proxyUtils: ProxyUtils
     @Inject internal lateinit var userPreferences: UserPreferences
@@ -187,6 +192,7 @@ class SmartCookieWebClient(
             blockPageColor(),
             activity.getString(R.string.error_offline_title),
             activity.getString(R.string.error_offline_message),
+            activity.getString(R.string.error_page_hint),
             activity.getString(R.string.error_reload),
             true,
             "window.location.href = '" + url + "';"
@@ -198,7 +204,7 @@ class SmartCookieWebClient(
     private fun adBlockResponse(request: WebResourceRequest, requestUrl: String): WebResourceResponse? {
         if (request.isForMainFrame && request.url.host.toString() != lastBlockedDomain) {
             lastBlockedDomain = request.url.host.toString()
-            return blockedPageResponse(ArktosCore.buildBlockPage(blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, activity.resources.getString(R.string.proceed), activity.resources.getString(R.string.go_back), true))
+            return blockedPageResponse(ArktosCore.buildBlockPage(blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, activity.resources.getString(R.string.page_blocked_hint), activity.resources.getString(R.string.proceed), activity.resources.getString(R.string.go_back), true))
         } else if (request.isForMainFrame) {
             return null
         }
@@ -228,12 +234,12 @@ class SmartCookieWebClient(
                     adBlockResponse(request, requestUrl)
                 }
             RequestVerdict.BLOCK_SITE -> blockedPageResponse(
-                ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false))
+                ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", hintBlocked, reloadBlocked, false))
             RequestVerdict.BLOCK_MALWARE -> blockedPageResponse(
-                ArktosCore.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), reloadBlocked, false))
+                ArktosCore.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), hintBlocked, reloadBlocked, false))
             RequestVerdict.BLOCK_LOCAL_NETWORK ->
                 if (request.isForMainFrame) {
-                    blockedPageResponse(ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), reloadBlocked, false))
+                    blockedPageResponse(ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), hintBlocked, reloadBlocked, false))
                 } else {
                     emptyResponse()
                 }
@@ -515,7 +521,7 @@ class SmartCookieWebClient(
                 val title = activity.getString(R.string.https_title)
                 val reload = activity.getString(R.string.error_reload)
                 errorPageOriginalUrl = url
-                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
+                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", activity.getString(R.string.error_page_hint), reload, true), "text/html; charset=utf-8", "UTF-8", null)
                 view.invalidate()
                 view.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(url)
             }
@@ -639,7 +645,7 @@ class SmartCookieWebClient(
             val reload = activity.getString(R.string.error_reload)
             webview.loadUrl("about:blank")
             errorPageOriginalUrl = failingUrl
-            webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, errorText, reload, true, reloadCode), "text/html", "UTF-8", null)
+            webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, errorText, activity.getString(R.string.error_page_hint), reload, true, reloadCode), "text/html", "UTF-8", null)
             uiController.updateUrl(failingUrl, false)
             currentUrl = failingUrl
             webview.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(failingUrl)
