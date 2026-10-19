@@ -40,13 +40,19 @@ android {
             testCoverageEnabled false
 
             ndk {
-                abiFilters "arm64-v8a", "armeabi-v7a", "armeabi", "mips"
+                // Rust cannot target armeabi/mips — dead ABIs dropped
+                // with the libarktos.so introduction (RCORE01).
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
             }
         }
     }
 
     testOptions {
         unitTests.all {
+            // Let JNA find the host-built libarktos.so so unit tests
+            // exercise the real Rust core (PORT01) instead of only
+            // asserting linkage failures.
+            jvmArgs "-Djna.library.path=${rootDir}/rust/target/debug"
             jacoco {
                 // This option needs to be included for robolectric tests
                 includeNoLocationClasses = true
@@ -109,6 +115,10 @@ dependencies {
     testImplementation 'com.nhaarman:mockito-kotlin:1.6.0', {
         exclude group: 'org.jetbrains.kotlin'
     }
+
+    // The @aar JNA artifact only ships Android natives; unit tests run
+    // on the host JVM and need the desktop jar's libjnidispatch.
+    testImplementation 'net.java.dev.jna:jna:5.19.1'
 
     // support libraries
     implementation "androidx.palette:palette-ktx:1.0.0"
@@ -174,11 +184,15 @@ dependencies {
     // color picker
     implementation 'com.github.QuadFlask:colorpicker:0.0.15'
 
-    // reading mode
-    implementation 'net.dankito.readability4j:readability4j:1.0.8'
+    // reading mode — extraction ported to the Rust core (dom_smoothie,
+    // PORT01); readability4j is no longer needed.
 
     // webview tools
     implementation 'androidx.webkit:webkit:1.12.1'
+
+    // UniFFI-generated Kotlin bindings for the Rust core call into
+    // libarktos.so via JNA.
+    implementation 'net.java.dev.jna:jna:5.19.1@aar'
 
     // onboarding
     implementation 'com.github.AppIntro:AppIntro:6.2.0'
@@ -201,5 +215,118 @@ dependencies {
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+}
+
+// ---- Rust core (libarktos.so via UniFFI) ---------------------------------
+//
+// Two halves, both built from Gradle so `./gradlew assemble...` stays a
+// one-command build:
+//  * cargo-ndk cross-compiles the cdylib for each supported ABI into
+//    build/rustJniLibs/{debug,release} (added as per-build-type jniLibs
+//    source dirs).
+//  * uniffi-bindgen emits Kotlin bindings into build/generated/source/uniffi
+//    (registered on the main `kotlin` source dir set).
+
+def rustDir = "${rootDir}/rust"
+def rustHostLib = "${rustDir}/target/debug/libarktos.so"
+def uniffiGenDir = "${buildDir}/generated/source/uniffi"
+def rustJniLibsDebug = "${buildDir}/rustJniLibs/debug"
+def rustJniLibsRelease = "${buildDir}/rustJniLibs/release"
+
+// cargo-ndk needs ANDROID_NDK_HOME (or ANDROID_NDK); resolve the newest
+// side-by-side NDK under the configured SDK, falling back to ndk-bundle.
+def rustNdkHome = {
+    def sdkDir = androidComponents.sdkComponents.sdkDirectory.get().asFile
+    def sideBySide = new File(sdkDir, 'ndk')
+    if (sideBySide.directory) {
+        def newest = sideBySide.listFiles()?.findAll { it.directory }?.sort()?.last()
+        if (newest != null) return newest.absolutePath
+    }
+    def bundle = new File(sdkDir, 'ndk-bundle')
+    return bundle.directory ? bundle.absolutePath : null
+}
+
+tasks.register('buildRustHostLib', Exec) {
+    group = 'build'
+    description = 'Builds libarktos for the host — input for uniffi-bindgen metadata.'
+    workingDir rustDir
+    commandLine 'cargo', 'build', '-p', 'arktos-core'
+    inputs.files "${rustDir}/Cargo.toml", "${rustDir}/Cargo.lock"
+    inputs.dir "${rustDir}/arktos-core"
+    outputs.file rustHostLib
+}
+
+tasks.register('generateUniffiBindings', Exec) {
+    group = 'build'
+    description = 'Generates Kotlin bindings for libarktos.so via uniffi-bindgen.'
+    dependsOn 'buildRustHostLib'
+    workingDir rustDir
+    // --no-format: ktlint is not a build prerequisite.
+    commandLine 'cargo', 'run', '--quiet', '-p', 'arktos-core',
+            '--features', 'cli', '--bin', 'uniffi-bindgen', '--',
+            'generate', '--library', rustHostLib,
+            '--language', 'kotlin', '--no-format',
+            '--out-dir', uniffiGenDir
+    inputs.file "${rustDir}/arktos-core/uniffi.toml"
+    // Track the built library too — bindings must regenerate when the
+    // exported UniFFI surface changes, not just when uniffi.toml does.
+    inputs.file rustHostLib
+    outputs.dir uniffiGenDir
+}
+
+['Debug': rustJniLibsDebug, 'Release': rustJniLibsRelease].each { type, outDir ->
+    tasks.register("cargoNdkBuild${type}", Exec) {
+        group = 'build'
+        description = "Cross-compiles libarktos.so for Android ABIs (${type.toLowerCase()})."
+
+        def ndk = rustNdkHome()
+        if (ndk != null) {
+            environment 'ANDROID_NDK_HOME', ndk
+        }
+        workingDir rustDir
+
+        def args = ['cargo', 'ndk',
+                    '-t', 'arm64-v8a', '-t', 'armeabi-v7a', '-t', 'x86_64',
+                    '--platform', project.minSdkVersion.toString(),
+                    '-o', outDir, 'build']
+        if (type == 'Release') {
+            args += '--release'
+        }
+        commandLine args
+
+        inputs.files "${rustDir}/Cargo.toml", "${rustDir}/Cargo.lock"
+        inputs.dir "${rustDir}/arktos-core"
+        outputs.dir outDir
+    }
+}
+
+android {
+    sourceSets {
+        debug.jniLibs.srcDir rustJniLibsDebug
+        release.jniLibs.srcDir rustJniLibsRelease
+        // Kotlin sources only — the `java` source dir set carries a
+        // `*.java` filter, so the generated .kt must go on `kotlin`.
+        main.kotlin.srcDir uniffiGenDir
+    }
+}
+
+// File-based srcDirs carry no task dependency, so wire the generator and
+// the cargo-ndk build into the variant compile/preBuild graph by name.
+// KSP also reads the generated bindings off the main source set, so the
+// ksp* tasks must depend on the generator too (Gradle fails the build on
+// implicit dependencies otherwise).
+afterEvaluate {
+    tasks.matching {
+        it.name ==~ /compile\w*(Kotlin|JavaWithJavac)/ || it.name.startsWith('ksp')
+    }.configureEach {
+        it.dependsOn 'generateUniffiBindings'
+    }
+    tasks.matching { it.name.startsWith('pre') && it.name.endsWith('Build') }.configureEach {
+        if (it.name.contains('Debug')) {
+            it.dependsOn 'cargoNdkBuildDebug'
+        } else if (it.name.contains('Release')) {
+            it.dependsOn 'cargoNdkBuildRelease'
+        }
     }
 }

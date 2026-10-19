@@ -2,7 +2,7 @@ package com.arktosbrowser.mobile.browser
 
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.utils.Utils
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import com.arktosbrowser.mobile.utils.trimmedForDisplay
 import android.app.Application
@@ -51,7 +51,7 @@ class SearchBoxModel @Inject constructor(
             }
         }
 
-    private fun safeDomain(url: String) = Utils.getDomainName(url)
+    private fun safeDomain(url: String) = ArktosCore.domainName(url)
 
     private fun String.forUrlBar(): String =
         if (userPreferences.trimUrlBarEnabled) trimmedForDisplay() else this

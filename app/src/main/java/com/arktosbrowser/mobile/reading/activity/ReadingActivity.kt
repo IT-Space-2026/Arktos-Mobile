@@ -42,12 +42,11 @@ import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
-import com.arktosbrowser.mobile.utils.Utils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Scheduler
 import io.reactivex.disposables.Disposable
-import net.dankito.readability4j.Readability4J
 import okhttp3.*
 import org.json.JSONException
 import org.json.JSONObject
@@ -188,14 +187,16 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 }
                 line.close()
                 val htmlData = stringBuffer.toString()
-                val readability4J = Readability4J(mUrl!!, htmlData) // url is just needed to resolve relative urls
-                val article = readability4J.parse()
-                extractedContentHtml = article.content
-                extractedContentHtmlWithUtf8Encoding = article.contentWithUtf8Encoding
-                extractedContentPlainText = article.textContent
-                title = article.title
-                byline = article.byline
-                excerpt = article.excerpt
+                // PORT01 — extraction lives in the Rust core
+                // (dom_smoothie); url is just needed to resolve
+                // relative urls.
+                val article = ArktosCore.extractReadableArticle(mUrl!!, htmlData)
+                extractedContentHtml = article?.content
+                extractedContentHtmlWithUtf8Encoding = article?.content
+                extractedContentPlainText = article?.textContent
+                title = article?.title
+                byline = article?.byline
+                excerpt = article?.excerpt
             } catch (e: IOException) {
                 e.printStackTrace()
             }
@@ -245,7 +246,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 return false
             }
         if (supportActionBar != null) {
-            supportActionBar!!.title = Utils.getDomainName(mUrl)
+            supportActionBar!!.title = ArktosCore.domainName(mUrl ?: "")
         }
         mProgressDialog = ProgressDialog(this@ReadingActivity)
         mProgressDialog!!.setProgressStyle(ProgressDialog.STYLE_SPINNER)

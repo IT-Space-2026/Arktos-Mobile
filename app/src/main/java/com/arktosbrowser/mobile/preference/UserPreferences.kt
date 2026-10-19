@@ -49,6 +49,13 @@ class UserPreferences @Inject constructor(
 
     var blockMalwareEnabled by preferences.booleanPreference(BLOCK_MALWARE, true)
 
+    /**
+     * True if requests from public pages to private-IP/localhost hosts
+     * should be blocked (upstream #244). Enforced by the Rust
+     * blocklist engine at the `shouldInterceptRequest` seam.
+     */
+    var blockLanRequestsEnabled by preferences.booleanPreference(BLOCK_LAN_REQUESTS, true)
+
     var startPageThemeEnabled by preferences.booleanPreference(START_THEME, true)
 
     var tabsToForegroundEnabled by preferences.booleanPreference(FOREGROUND, true)
@@ -61,6 +68,24 @@ class UserPreferences @Inject constructor(
     var adBlockEnabled by preferences.booleanPreference(BLOCK_ADS, true)
 
     var cookieBlockEnabled by preferences.booleanPreference(COOKIE_BLOCK, false)
+
+    /**
+     * Remote-list consent (PREFS01) — the mobile mirror of the
+     * desktop `AdBlockManager::remoteListsAllowed`. True while remote
+     * filter/rank-list downloads may happen automatically (the 7-day
+     * staleness path); manual refresh actions always work regardless.
+     * Defaults true to preserve the pre-PREFS01 behavior where an
+     * enabled ad blocker was the implicit consent signal.
+     */
+    var remoteListsConsentEnabled by preferences.booleanPreference(REMOTE_LISTS_CONSENT, true)
+
+    /**
+     * Per-source participation for the two site-rank lists (PREFS01).
+     * A disabled source is skipped by rank-list updates and its
+     * committed drop file is removed so it stops contributing ranks.
+     */
+    var trancoListEnabled by preferences.booleanPreference(TRANCO_LIST_ENABLED, true)
+    var majesticListEnabled by preferences.booleanPreference(MAJESTIC_LIST_ENABLED, true)
 
     var preferHTTPSenabled by preferences.booleanPreference(PREFER_HTTPS, false)
 
@@ -490,7 +515,11 @@ private const val USE_PASSWORD = "usePassword"
 private const val USE_PASSWORD_LOCK = "usePasswordLock"
 private const val PASSWORD_LOCK = "passwordLock"
 private const val BLOCK_MALWARE = "blockMalware"
+private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
+private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"
+private const val TRANCO_LIST_ENABLED = "trancoListEnabled"
+private const val MAJESTIC_LIST_ENABLED = "majesticListEnabled"
 private const val START_THEME = "startPageTheme"
 private const val FOREGROUND = "tabsToForeground"
 private const val EXTRA = "showExtraOptions"

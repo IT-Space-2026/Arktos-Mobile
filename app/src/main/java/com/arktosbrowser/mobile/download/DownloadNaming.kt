@@ -1,5 +1,6 @@
 package com.arktosbrowser.mobile.download
 
+import com.arktosbrowser.mobile.rust.ArktosCore
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
@@ -53,8 +54,8 @@ object DownloadNaming {
             return null
         }
         val raw = try {
-            ContentDispositionFileNameParser.parse(contentDisposition)
-        } catch (e: IllegalArgumentException) {
+            ArktosCore.contentDispositionFilename(contentDisposition)
+        } catch (e: Exception) {
             null
         } ?: return null
         if (raw.none { it.isLetterOrDigit() }) return null

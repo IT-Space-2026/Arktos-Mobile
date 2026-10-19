@@ -14,22 +14,17 @@ import android.webkit.WebView;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.arktosbrowser.mobile.R;
 import com.arktosbrowser.mobile.constant.Constants;
+import com.arktosbrowser.mobile.rust.ArktosCore;
 
 public class IntentUtils {
 
     @NonNull private final Activity mActivity;
 
-    private static final Pattern ACCEPTED_URI_SCHEMA = Pattern.compile("(?i)"
-        + // switch on case insensitive matching
-        '('
-        + // begin group for schema
-        "(?:http|https|file)://" + "|(?:inline|data|about|javascript):" + "|(?:.*:.*@)"
-        + ')' + "(.*)");
+    // PORT02 — the ACCEPTED_URI_SCHEMA regex lives in the Rust core
+    // (`ArktosCore.acceptedUriScheme`), shared with UrlUtils.
 
     // Extra placed by sites in intent:// URIs naming a page to load when
     // the pinned app is not installed (S.browser_fallback_url=...).
@@ -101,8 +96,7 @@ public class IntentUtils {
             intent.putExtra(Constants.INTENT_ORIGIN, tab.hashCode());
         }
 
-        Matcher m = ACCEPTED_URI_SCHEMA.matcher(url);
-        if (m.matches() && !isSpecializedHandlerAvailable(intent)) {
+        if (ArktosCore.INSTANCE.acceptedUriScheme(url) && !isSpecializedHandlerAvailable(intent)) {
             return false;
         }
         try {

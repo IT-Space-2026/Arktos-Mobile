@@ -29,6 +29,8 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
 import com.arktosbrowser.mobile.html.incognito.IncognitoPageReader
 import com.arktosbrowser.mobile.js.*
+import com.arktosbrowser.mobile.rust.ArktosCore
+import com.arktosbrowser.mobile.uniffi.ArktosStore
 import dagger.Module
 import dagger.Provides
 import io.reactivex.Scheduler
@@ -185,7 +187,19 @@ class AppModule {
     @Provides
     @Singleton
     fun provideI2PAndroidHelper(application: Application): I2PAndroidHelper = I2PAndroidHelper(application)
+
+    /**
+     * The single Rust storage core shared by all `Rust*Repository`
+     * implementations (STORE01). `getDatabasePath` puts the file in the
+     * app-private databases dir and creates the parent if missing.
+     */
+    @Provides
+    @Singleton
+    fun providesArktosStore(application: Application): ArktosStore =
+        ArktosCore.openStore(application.getDatabasePath(ARKTOS_DB_NAME).absolutePath)
 }
+
+private const val ARKTOS_DB_NAME = "arktos.db"
 
 @Qualifier
 @Retention(AnnotationRetention.SOURCE)

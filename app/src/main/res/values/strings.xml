@@ -343,6 +343,28 @@
     <string name="block_ad_source">Hosts file source</string>
     <string name="block_ad_remote_refresh_frequency_description">For remote hosts file</string>
     <string name="block_ad_refresh_now">Refresh hosts now</string>
+    <string name="block_ad_refresh_lists_description">Fetch updates for all enabled lists</string>
+    <string name="block_add_subscription">Add custom filter list</string>
+    <string name="block_add_subscription_description">Subscribe to a remote or local filter list</string>
+    <string name="block_add_subscription_url">Remote list URL</string>
+    <string name="block_add_subscription_file">Local file</string>
+    <string name="block_subscription_never">Not downloaded yet</string>
+    <string name="block_subscription_summary">%1$,d domains · last updated %2$s</string>
+
+    <!-- List management (PREFS01) -->
+    <string name="lists_settings_title">Filter &amp; rank lists</string>
+    <string name="lists_settings_summary">Manage filter subscriptions and site-rank lists</string>
+    <string name="lists_general_category">Content blocking</string>
+    <string name="lists_remote_consent">Update lists automatically</string>
+    <string name="lists_remote_consent_summary">Allow background downloads of remote filter and rank lists. Manual refresh always works.</string>
+    <string name="lists_updates_category">Updates</string>
+    <string name="lists_refresh_cadence">Update frequency</string>
+    <string name="lists_refresh_cadence_summary">Remote lists refresh automatically about once a week</string>
+    <string name="lists_refresh_all">Refresh all lists now</string>
+    <string name="lists_refresh_all_summary">Fetch updates for every enabled list</string>
+    <string name="lists_rank_category">Site rank lists</string>
+    <string name="lists_last_updated">Last updated %1$s</string>
+    <string name="list_row_refresh">Refresh this list</string>
 
     <string name="webrtc_support">Allow WebRTC permission requests</string>
     <string name="save_data">Request \'Save-Data\'</string>
@@ -385,6 +407,8 @@
     <string name="privacy_info">Read the Arktos Mobile privacy policy</string>
     <string name="url_project" translatable="false">https://github.com/IT-Space-2026/Arktos-Mobile</string>
     <string name="block_malware">Block malicious sites</string>
+    <string name="block_lan_requests">Block local network requests</string>
+    <string name="block_lan_requests_summary">Stop websites from accessing devices on your local network</string>
     <string name="block_sites">Custom site block</string>
     <string name="block_sites_title">Custom site block (separate sites with a comma)</string>
     <string name="none">None</string>
@@ -620,6 +644,7 @@
     <string name="page_blocked">Page blocked</string>
     <string name="page_blocked_adblocker">BLOCKED_BY_ADBLOCKER</string>
     <string name="page_blocked_parental">BLOCKED_BY_PARENTAL_CONTROLS</string>
+    <string name="page_blocked_lan">NET::BLOCKED_LOCAL_NETWORK</string>
     <string name="go_back">Go back</string>
     <string name="proceed">Proceed anyway</string>
 

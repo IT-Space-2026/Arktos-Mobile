@@ -15,7 +15,7 @@ import com.arktosbrowser.mobile.extensions.inflater
 import com.arktosbrowser.mobile.extensions.tint
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ThemeUtils
-import com.arktosbrowser.mobile.utils.Utils
+import com.arktosbrowser.mobile.rust.ArktosCore
 
 /**
  * The adapter for horizontal desktop style browser tabs.
@@ -73,7 +73,7 @@ class TabsDesktopAdapter(
             uiController.changeToolbarBackground(favicon, foregroundDrawable)
         } else {
             val backgroundDrawable = resources.getDrawable(R.drawable.desktop_tab)
-            backgroundDrawable.tint(Utils.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f))
+            backgroundDrawable.tint(ArktosCore.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f))
             TextViewCompat.setTextAppearance(viewHolder.txtTitle, R.style.normalText)
             viewHolder.layout.background = backgroundDrawable
         }
