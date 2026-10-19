@@ -53,7 +53,6 @@ import io.reactivex.subjects.PublishSubject
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.*
-import java.net.HttpURLConnection
 import java.net.URISyntaxException
 import java.net.URL
 import java.util.*
@@ -78,6 +77,7 @@ class SmartCookieWebClient(
     private var knownUndetectedVideoUrls: Array<String> = arrayOf("xvideos.com")
 
     private var badsslList: MutableList<String> = ArrayList()
+    private val httpsUpgradedHosts = mutableSetOf<String>()
     private var badsslErrors: MutableList<SslError> = ArrayList<SslError>()
 
     private val titleBlocked = activity.getString(R.string.blocked_title)
@@ -147,25 +147,6 @@ class SmartCookieWebClient(
     private fun shouldRequestBeBlocked(pageUrl: String, requestUrl: String) =
         !whitelistModel.isUrlAllowedAds(pageUrl) && adBlock.isAd(requestUrl)
 
-    fun exists(URLName: String): Boolean {
-
-        try {
-            HttpURLConnection.setFollowRedirects(false)
-            val con = URL(URLName)
-                    .openConnection() as HttpURLConnection
-            con.requestMethod = "HEAD"
-            var response = con.responseCode
-            if(response == HttpURLConnection.HTTP_OK || response == HttpURLConnection.HTTP_NOT_FOUND || response == HttpURLConnection.HTTP_MOVED_PERM) {
-                return true
-            }
-            return false
-        }
-        catch (e: Exception) {
-            e.printStackTrace()
-            return false
-        }
-
-    }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -377,20 +358,7 @@ class SmartCookieWebClient(
             )
         }
 
-        if(userPreferences.translateExtension && url.contains("translatetheweb.com/")){
-            val lang: String
-            if(Build.VERSION.SDK_INT > 20){
-                lang = Locale.getDefault().toLanguageTag()
-            }
-            else{
-                lang = Locale.getDefault().displayLanguage
-            }
-            when(lang){
-                "pt-BR" -> view.evaluateJavascript("lang = 'pt'; " + translate.provideJs(activity), null)
-                "pt", "português" -> view.evaluateJavascript("lang = 'pt-PT'; " + translate.provideJs(activity), null)
-                else -> view.evaluateJavascript("lang = '" + lang + "'; " + translate.provideJs(activity), null)
-            }
-        }
+
 
         if (view.title == null || view.title.isNullOrEmpty()) {
             smartCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
@@ -599,38 +567,29 @@ class SmartCookieWebClient(
         if(userPreferences.noAmp){
             view.evaluateJavascript(noAMP.provideJs(activity), null)
             if(url.contains("&ampcf=1")){
-                view.evaluateJavascript("window.location.replace(\"" + url.replace("&ampcf=1", "") + "\");", null)
+                view.evaluateJavascript("window.location.replace(" + org.json.JSONObject.quote(url.replace("&ampcf=1", "")) + ");", null)
             }
         }
 
-        if (userPreferences.forceHTTPSenabled || userPreferences.preferHTTPSenabled) {
-            if (url.contains("http://")) {
-                if (url.contains("https://")) {
-                    //Secure!
-                    return
-                } else {
-                    view.pauseTimers()
-                    val newUrl = url.replace("http://", "https://")
-                    if (exists(newUrl)) {
-                        //Supports HTTPS, but SSL isn't used, so redirect to HTTPS
-                        view.resumeTimers()
-
-                        view.loadUrl(newUrl)
-                    } else {
-                        //No HTTPS support
-                        if (userPreferences.forceHTTPSenabled) {
-                            view.settings.javaScriptEnabled = true
-                            if(userPreferences.useTheme == AppTheme.LIGHT){
-                                color = ""
-                            }
-                            val title = activity.getString(R.string.https_title)
-                            val reload = activity.getString(R.string.error_reload)
-                            view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
-                            view.invalidate()
-                            view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-                        }
-                    }
+        if ((userPreferences.forceHTTPSenabled || userPreferences.preferHTTPSenabled) && url.startsWith("http://")) {
+            val host = Uri.parse(url).host.orEmpty()
+            if (host !in httpsUpgradedHosts) {
+                //Upgrade to HTTPS once per host; if the site has no HTTPS the
+                //page fails to load and the user retries the original URL,
+                //which then falls through without re-upgrading (no ping-pong).
+                httpsUpgradedHosts += host
+                view.loadUrl(url.replaceFirst("http://", "https://"))
+                return
+            } else if (userPreferences.forceHTTPSenabled) {
+                view.settings.javaScriptEnabled = true
+                if(userPreferences.useTheme == AppTheme.LIGHT){
+                    color = ""
                 }
+                val title = activity.getString(R.string.https_title)
+                val reload = activity.getString(R.string.error_reload)
+                view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
+                view.invalidate()
+                view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
             }
         }
 

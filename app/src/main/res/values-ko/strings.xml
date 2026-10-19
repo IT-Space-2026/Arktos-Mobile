@@ -311,7 +311,7 @@
 
     
     <string name="title_permission_request">권한 요청</string>
-    <string name="message_permission_request">%1$s \n \n 사용하고 싶습니다 : \n \n %2$s</string>
+    <string name="message_permission_request">%1$s\n\n사용하고 싶습니다:\n\n%2$s</string>
 
     
     <string name="block_ad_source">호스트 파일 소스</string>

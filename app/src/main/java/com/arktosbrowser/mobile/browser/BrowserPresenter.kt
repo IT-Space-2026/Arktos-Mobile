@@ -2,7 +2,6 @@ package com.arktosbrowser.mobile.browser
 
 import android.app.Activity
 import android.content.Intent
-import android.os.Environment
 import android.util.Log
 import android.webkit.URLUtil
 import com.arktosbrowser.mobile.R
@@ -22,10 +21,6 @@ import com.arktosbrowser.mobile.view.find.FindResults
 import io.reactivex.Scheduler
 import io.reactivex.disposables.Disposable
 import io.reactivex.rxkotlin.subscribeBy
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.OutputStreamWriter
 
 /**
  * Presenter in charge of keeping track of the current tab and setting the current tab of the
@@ -224,39 +219,18 @@ class BrowserPresenter(
      * @param intent the intent to handle, may be null.
      */
     fun onNewIntent(intent: Intent?) = tabsModel.doAfterInitialization {
-        if(intent?.getBooleanExtra("EXPORT_TABS", false) == true){
-
-            try {
-                var bookmarksExport = File(
-                    Environment.getExternalStorageDirectory(),
-                    "TabsExport.txt")
-                var counter = 0
-                while (bookmarksExport.exists()) {
-                    counter++
-                    bookmarksExport = File(
-                        Environment.getExternalStorageDirectory(),
-                        "TabsExport-$counter.txt")
-                }
-                val exportFile = bookmarksExport
-
-                val fOut = FileOutputStream(exportFile)
-                val myOutWriter = OutputStreamWriter(fOut)
-                for(i in tabsModel.allTabs){
-                    myOutWriter.append("${i.title}\n${i.url}\n=================\n")
-                }
-                myOutWriter.close()
-                fOut.close()
-            } catch (e: IOException) {
-                Log.e("Exception", "File write failed: " + e.toString())
-            }
-
+        val url = if (intent?.action == Intent.ACTION_WEB_SEARCH) {
+            tabsModel.extractSearchFromIntent(intent)
+        } else {
+            intent?.dataString
+        }
+        // Only well-known content schemes may arrive via external intents —
+        // javascript:, data: and other exotic schemes would run attacker
+        // content in a page context or confuse the tab loader.
+        if (url != null && !isIntentUrlAllowed(url)) {
+            Log.w("BrowserPresenter", "Rejected intent URL with disallowed scheme: ${url.substringBefore(':')}")
             return@doAfterInitialization
         }
-     val url = if (intent?.action == Intent.ACTION_WEB_SEARCH) {
-        tabsModel.extractSearchFromIntent(intent)
-    } else {
-        intent?.dataString
-    }
         val tabHashCode = intent?.extras?.getInt(INTENT_ORIGIN, 0) ?: 0
         if (tabHashCode != 0 && url != null) {
             tabsModel.getTabForHashCode(tabHashCode)?.loadUrl(url)
@@ -389,6 +363,10 @@ class BrowserPresenter(
 
     companion object {
         private const val TAG = "BrowserPresenter"
+        private val INTENT_URL_SCHEMES = setOf("http", "https", "file", "about", "inline", "content")
+
+        internal fun isIntentUrlAllowed(url: String): Boolean =
+            url.substringBefore(':', "").lowercase() in INTENT_URL_SCHEMES
     }
 
 }
