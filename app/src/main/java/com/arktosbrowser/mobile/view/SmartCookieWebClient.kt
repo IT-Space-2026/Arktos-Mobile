@@ -29,7 +29,7 @@ import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.JavaScriptChoice
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.controller.UIController
-import com.arktosbrowser.mobile.database.javascript.JavaScriptDatabase
+import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
@@ -261,7 +261,7 @@ class SmartCookieWebClient(
         val inc = TextUtils.join(",", include)
         val reqs = TextUtils.join(",", requirements)
 
-        javascriptRepository.addJavaScriptIfNotExists(JavaScriptDatabase.JavaScriptEntry(name!!, "", version, author, inc, "", "", "", code, reqs))
+        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name!!, "", version, author, inc, "", "", "", code, reqs))
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {
@@ -416,7 +416,7 @@ class SmartCookieWebClient(
         }
 
     override fun onPageCommitVisible(view: WebView?, url: String?) {
-        var jsList = emptyList<JavaScriptDatabase.JavaScriptEntry>()
+        var jsList = emptyList<JavaScriptEntry>()
         javascriptRepository.lastHundredVisitedJavaScriptEntries()
             .subscribe { list ->
                 jsList = list

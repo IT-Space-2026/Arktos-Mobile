@@ -33,14 +33,14 @@ interface JavaScriptRepository {
      * @return a valid observable that emits
      * a list of history items.
      */
-    fun findJavaScriptEntriesContaining(query: String): Single<List<JavaScriptDatabase.JavaScriptEntry>>
+    fun findJavaScriptEntriesContaining(query: String): Single<List<JavaScriptEntry>>
 
     /**
      * An observable that emits a list of the last 100 visited history items.
      *
      * @return a valid observable that emits a list of history items.
      */
-    fun lastHundredVisitedJavaScriptEntries(): Single<List<JavaScriptDatabase.JavaScriptEntry>>
+    fun lastHundredVisitedJavaScriptEntries(): Single<List<JavaScriptEntry>>
 
 
     /**
@@ -49,5 +49,5 @@ interface JavaScriptRepository {
      * @param entry the script to add.
      * @return an observable that emits true if the download was added, false otherwise.
      */
-    fun addJavaScriptIfNotExists(entry: JavaScriptDatabase.JavaScriptEntry): Single<Boolean>
+    fun addJavaScriptIfNotExists(entry: JavaScriptEntry): Single<Boolean>
 }

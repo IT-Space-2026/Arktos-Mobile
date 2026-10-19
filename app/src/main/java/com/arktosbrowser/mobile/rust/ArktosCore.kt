@@ -10,12 +10,15 @@ package com.arktosbrowser.mobile.rust
 // explicit System.loadLibrary here.
 
 import com.arktosbrowser.mobile.browser.SiteBlockChoice
+import com.arktosbrowser.mobile.uniffi.ArktosStore
 import com.arktosbrowser.mobile.uniffi.BlocklistConfig
 import com.arktosbrowser.mobile.uniffi.BlocklistEngine
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.uniffi.SiteBlockMode
+import com.arktosbrowser.mobile.uniffi.StoreBookmark
 import com.arktosbrowser.mobile.uniffi.corePing
 import com.arktosbrowser.mobile.uniffi.coreVersion
+import com.arktosbrowser.mobile.uniffi.parseNetscapeBookmarks
 
 object ArktosCore {
 
@@ -62,6 +65,19 @@ object ArktosCore {
      */
     fun requestVerdict(requestUrl: String, pageUrl: String, isMainFrame: Boolean): RequestVerdict =
         blocklistEngine.verdict(requestUrl, pageUrl, isMainFrame)
+
+    /**
+     * Open (creating if needed) the Rust storage core at [path]
+     * (STORE01). One instance is shared by all repositories — see
+     * `AppModule.providesArktosStore`.
+     */
+    fun openStore(path: String): ArktosStore = ArktosStore.open(path)
+
+    /**
+     * Parse a Netscape-format bookmark file in the Rust core
+     * (STORE01). Returns flat rows — folder is the slash-joined path.
+     */
+    fun importNetscapeBookmarks(html: String): List<StoreBookmark> = parseNetscapeBookmarks(html)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {

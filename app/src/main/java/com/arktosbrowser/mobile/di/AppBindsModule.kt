@@ -6,16 +6,16 @@ import com.arktosbrowser.mobile.adblock.source.AssetsHostsDataSource
 import com.arktosbrowser.mobile.adblock.source.HostsDataSource
 import com.arktosbrowser.mobile.adblock.source.HostsDataSourceProvider
 import com.arktosbrowser.mobile.adblock.source.PreferencesHostsDataSourceProvider
-import com.arktosbrowser.mobile.database.allowlist.AdBlockAllowListDatabase
 import com.arktosbrowser.mobile.database.allowlist.AdBlockAllowListRepository
-import com.arktosbrowser.mobile.database.bookmark.BookmarkDatabase
+import com.arktosbrowser.mobile.database.allowlist.RustAllowListRepository
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
-import com.arktosbrowser.mobile.database.downloads.DownloadsDatabase
+import com.arktosbrowser.mobile.database.bookmark.RustBookmarkRepository
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
-import com.arktosbrowser.mobile.database.history.HistoryDatabase
+import com.arktosbrowser.mobile.database.downloads.RustDownloadsRepository
 import com.arktosbrowser.mobile.database.history.HistoryRepository
-import com.arktosbrowser.mobile.database.javascript.JavaScriptDatabase
+import com.arktosbrowser.mobile.database.history.RustHistoryRepository
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
+import com.arktosbrowser.mobile.database.javascript.RustJavaScriptRepository
 import com.arktosbrowser.mobile.ssl.SessionSslWarningPreferences
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
 import dagger.Binds
@@ -28,19 +28,19 @@ import dagger.Module
 abstract class AppBindsModule {
 
     @Binds
-    abstract fun provideBookmarkModel(bookmarkDatabase: BookmarkDatabase): BookmarkRepository
+    abstract fun provideBookmarkModel(rustBookmarkRepository: RustBookmarkRepository): BookmarkRepository
 
     @Binds
-    abstract fun provideDownloadsModel(downloadsDatabase: DownloadsDatabase): DownloadsRepository
+    abstract fun provideDownloadsModel(rustDownloadsRepository: RustDownloadsRepository): DownloadsRepository
 
     @Binds
-    abstract fun providesHistoryModel(historyDatabase: HistoryDatabase): HistoryRepository
+    abstract fun providesHistoryModel(rustHistoryRepository: RustHistoryRepository): HistoryRepository
 
     @Binds
-    abstract fun providesJavaScriptModel(javaScriptDatabase: JavaScriptDatabase): JavaScriptRepository
+    abstract fun providesJavaScriptModel(rustJavaScriptRepository: RustJavaScriptRepository): JavaScriptRepository
 
     @Binds
-    abstract fun providesAdBlockAllowListModel(adBlockAllowListDatabase: AdBlockAllowListDatabase): AdBlockAllowListRepository
+    abstract fun providesAdBlockAllowListModel(rustAllowListRepository: RustAllowListRepository): AdBlockAllowListRepository
 
     @Binds
     abstract fun providesAllowListModel(sessionAllowListModel: SessionAllowListModel): AllowListModel
