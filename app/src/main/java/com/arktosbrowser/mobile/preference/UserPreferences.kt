@@ -437,10 +437,10 @@ class UserPreferences @Inject constructor(
     var showShortcuts by preferences.booleanPreference(SHOW_SHORTCUTS, true)
 
     // Homepage shortcuts
-    var link1 by preferences.stringPreference(LINK1, "https://github.com")
-    var link2 by preferences.stringPreference(LINK2, "https://google.com")
-    var link3 by preferences.stringPreference(LINK3, "https://youtube.com")
-    var link4 by preferences.stringPreference(LINK4, "https://fast.com")
+    var link1 by preferences.stringPreference(LINK1, "https://github.com/IT-Space-2026/Arktos-Mobile/releases")
+    var link2 by preferences.stringPreference(LINK2, "https://it-space.info")
+    var link3 by preferences.stringPreference(LINK3, "https://arktos-browser.com")
+    var link4 by preferences.stringPreference(LINK4, "https://github.com/IT-Space-2026/Arktos-Mobile/security")
 
     // API endpoints
     var translationEndpoint by preferences.stringPreference(TRANSLATION_ENDPOINT, "https://libretranslate.de")
