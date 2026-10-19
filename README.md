@@ -49,6 +49,10 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Site-rank table (Tranco + Majestic Million) in the Rust core — a
   vendored top-100k seed merged best-rank-wins with consent-gated
   downloads, ready for "top-N site" trust policy
+- List management screen under Privacy settings (desktop
+  AdBlockDialog mirror): per-list toggles, counts and last-update
+  stamps, per-row and refresh-all actions, plus a remote-list
+  auto-download consent toggle (manual refresh always works)
 - Bookmarks, history, downloads, the ad-block allow list and
   userscripts persist through a single Rust `ArktosStore` (SQLite via
   bundled rusqlite) behind the existing repository interfaces;

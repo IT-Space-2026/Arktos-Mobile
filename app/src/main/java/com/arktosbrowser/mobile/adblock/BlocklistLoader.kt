@@ -126,6 +126,28 @@ class BlocklistLoader @Inject constructor(
     }
 
     /**
+     * Refresh one subscription — the settings row's per-list update
+     * action (PREFS01). Consent-free like the desktop's
+     * "Update Subscription" button: the user's explicit click is the
+     * consent. No-op for unknown or disabled ids — refreshing a
+     * disabled list must not merge rules into the engine.
+     */
+    fun refreshSubscription(id: String) {
+        compositeDisposable += Single
+            .fromCallable { arktosStore.allAdblockSubscriptions() }
+            .subscribeOn(databaseScheduler)
+            .observeOn(mainScheduler)
+            .subscribeBy(
+                onSuccess = { subs ->
+                    subs.firstOrNull { it.id == id }
+                        ?.takeIf { it.enabled }
+                        ?.let { loadSubscription(it, forceRefresh = true) }
+                },
+                onError = { logger.log(TAG, "Unable to refresh subscription $id", it) }
+            )
+    }
+
+    /**
      * Toggle one subscription: persist the flag, then either load its
      * content into the engine or drop its contribution.
      */
@@ -320,6 +342,15 @@ class BlocklistLoader @Inject constructor(
         }
     }
 
+    /**
+     * Remote-list consent, mirroring the desktop
+     * `AdBlockManager::remoteListsAllowed()` — PREFS01's dedicated
+     * toggle gates automatic remote fetches for the filter
+     * subscriptions AND the rank lists; manual refresh actions are
+     * the user's explicit consent and bypass it.
+     */
+    private fun remoteListsAllowed(): Boolean = userPreferences.remoteListsConsentEnabled
+
     private fun remoteContent(
         sub: StoreAdblockSubscription,
         forceRefresh: Boolean
@@ -329,6 +360,18 @@ class BlocklistLoader @Inject constructor(
             sub.lastUpdated > 0uL &&
             System.currentTimeMillis() - sub.lastUpdated.toLong() < STALE_AFTER_MS &&
             cacheFile.exists()
+
+        // Automatic path is consent-gated like the desktop: without
+        // remote-list consent a stale/uncached copy is simply skipped
+        // (a cached copy still loads — it's local data). Explicit
+        // refreshes always fetch.
+        if (!forceRefresh && !fresh && !remoteListsAllowed()) {
+            return if (cacheFile.exists()) {
+                Single.fromCallable { cacheFile.readText() }
+            } else {
+                Single.error(IllegalStateException("Remote-list consent not granted"))
+            }
+        }
 
         if (fresh) {
             return Single.fromCallable { cacheFile.readText() }

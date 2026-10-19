@@ -346,6 +346,21 @@
     <string name="block_subscription_never">Not downloaded yet</string>
     <string name="block_subscription_summary">%1$,d domains · last updated %2$s</string>
 
+    <!-- List management (PREFS01) -->
+    <string name="lists_settings_title">Filter &amp; rank lists</string>
+    <string name="lists_settings_summary">Manage filter subscriptions and site-rank lists</string>
+    <string name="lists_general_category">Content blocking</string>
+    <string name="lists_remote_consent">Update lists automatically</string>
+    <string name="lists_remote_consent_summary">Allow background downloads of remote filter and rank lists. Manual refresh always works.</string>
+    <string name="lists_updates_category">Updates</string>
+    <string name="lists_refresh_cadence">Update frequency</string>
+    <string name="lists_refresh_cadence_summary">Remote lists refresh automatically about once a week</string>
+    <string name="lists_refresh_all">Refresh all lists now</string>
+    <string name="lists_refresh_all_summary">Fetch updates for every enabled list</string>
+    <string name="lists_rank_category">Site rank lists</string>
+    <string name="lists_last_updated">Last updated %1$s</string>
+    <string name="list_row_refresh">Refresh this list</string>
+
     <string name="webrtc_support">Allow WebRTC permission requests</string>
     <string name="save_data">Request \'Save-Data\'</string>
 

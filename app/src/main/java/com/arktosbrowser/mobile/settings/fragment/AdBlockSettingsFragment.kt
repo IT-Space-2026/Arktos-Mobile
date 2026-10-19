@@ -1,6 +1,7 @@
 package com.arktosbrowser.mobile.settings.fragment
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -47,10 +48,16 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
     private val compositeDisposable = CompositeDisposable()
     private val subscriptionCategories = mutableListOf<PreferenceCategory>()
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // Inject here, not in onCreate: PreferenceFragmentCompat calls
+        // onCreatePreferences inside super.onCreate, and the
+        // subscription table built there needs the loader already.
+        injector.inject(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        injector.inject(this)
 
 
         switchPreference(
