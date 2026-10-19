@@ -366,8 +366,10 @@ class ArktosCookieWebClient(
         }
 
         if(userPreferences.forceZoom){
+            // Same guard as WidenViewport.js — create the meta tag when the
+            // page has none, instead of throwing on querySelector's null.
             view.loadUrl(
-                    "javascript:(function() { document.querySelector('meta[name=\"viewport\"]').setAttribute(\"content\",\"width=device-width\"); })();"
+                    "javascript:(function() { var m = document.querySelector('meta[name=\"viewport\"]'); if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.appendChild(m); } m.setAttribute(\"content\",\"width=device-width\"); })();"
             )
         }
 
