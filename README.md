@@ -88,6 +88,80 @@ SmartCookieWeb#314).
 
 ---
 
+## Source structure
+
+```
+rust/arktos-core/     Rust browser-core library (libarktos.so) — UniFFI crate
+  src/blocklist.rs      unified ad/malware/site-block/LAN request verdicts
+  src/subscriptions.rs  multi-list ad-block subscriptions (desktop catalog)
+  src/ranklist.rs       Tranco + Majestic Million site-rank tables
+  src/storage.rs        ArktosStore: bookmarks/history/downloads/userscripts
+                        (SQLite via bundled rusqlite)
+  src/download.rs       download filename/MIME resolution
+  src/netscape.rs       Netscape bookmark-file import/export
+  src/readability.rs    reading-mode extraction (dom_smoothie)
+  src/suggestions.rs    search-suggestion client (Google/DDG/Baidu/Naver)
+  src/userscript.rs     Greasemonkey metadata parsing + @require resolution
+  src/translate.rs      LibreTranslate-compatible request/response format
+  src/password.rs       Argon2id app-lock / parental-control hashing
+  src/urlutils.rs       URL filtering, special pages, intent-scheme checks
+  src/pages.rs          error/block/changelog page HTML generation
+  src/misc.rs           color math, hosts-file parsing, misc pure logic
+app/src/main/java/com/arktosbrowser/mobile/
+                      Android shell (Kotlin; no Java sources remain)
+  view/                 ArktosCookieView/WebClient/ChromeClient — WebView seam
+  browser/              activity, tabs, presenter, drawer views
+  settings/             settings fragments incl. Privacy + list management
+  rust/ArktosCore.kt    thin Kotlin façade over UniFFI-generated bindings
+  i2p/                  vendored I2P Android helper (bind/AIDL platform glue)
+app/src/main/aidl/    I2P router-service AIDL contract (wire compatibility)
+app/src/main/assets/  injected JS (dark mode, reflow, translate, blockers) +
+                      generated pages (homepage, private, changelog, warning)
+app/src/test/         JVM unit tests (Rust core exercised via JNA)
+.devin/               task-loop machinery, ENGINE.md touchpoint doc,
+                      check-engine-audit.sh (webview-boundary lint)
+```
+
+Architecture rule: portable logic lives in `rust/`; Kotlin owns WebView,
+UI, lifecycle and platform IPC (including the I2P `bindService` glue).
+Anything touching `android.webkit` must be documented in
+`.devin/ENGINE.md` — enforced by `check-engine-audit.sh`.
+
+---
+
+## Third-party components
+
+Android (Gradle) — highlights:
+
+- AndroidX (appcompat, core-ktx, webkit, preference, recyclerview,
+  constraintlayout, drawerlayout, cardview, palette) — Apache-2.0
+- Jetpack Compose UI (view-source editor dialogs) — Apache-2.0
+- Material Components — Apache-2.0
+- Dagger 2 — Apache-2.0; ButterKnife — Apache-2.0
+- RxJava 2 / RxAndroid / RxKotlin — Apache-2.0
+- OkHttp 3 + Okio — Apache-2.0
+- jsoup — MIT
+- sora-editor (view-source editor) — LGPL-2.1
+- netcipher-webkit (Orbot/Tor WebView proxying) — LGPL
+- mozilla.components concept-fetch — MPL-2.0
+- permissionx, QuadFlask colorpicker, AppIntro — Apache-2.0
+- JNA (host-side UniFFI tests) — Apache-2.0 / LGPL-2.1
+- Vendored I2P Android helper — Apache-2.0 (upstream i2p.android.base)
+
+Rust (Cargo) — `rust/arktos-core` pins exact versions:
+
+- uniffi — MPL-2.0; rusqlite (bundled SQLite) — MIT
+- dom_smoothie — MIT; html5gum — MIT
+- serde_json — MIT/Apache-2.0; aho-corasick — MIT
+- argon2 — MIT/Apache-2.0; miniz_oxide — MIT
+- encoding_rs, mime_guess, rand_core — Apache-2.0/MIT
+
+In-app copies: Settings → About lists the same set with links to each
+license text. Bundled data lists: hosts.txt (AdGuard-derived, GPL),
+Tranco + Majestic seeds (see `.devin/` notes for refresh policy).
+
+---
+
 ## Contributing
 
 Contributions are greatly appreciated. Feel free to open an issue or pull request.
