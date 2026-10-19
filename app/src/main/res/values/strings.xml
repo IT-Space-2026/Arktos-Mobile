@@ -248,9 +248,15 @@
     <string name="reading_mode">Reading mode</string>
     <string name="loading">Loading&#8230;</string>
     <string name="loading_failed">Couldn\'t load anything from the page.</string>
-    <string name="snacktory">Snacktory</string>
     <string name="jsoup">jsoup: Java HTML Parser</string>
     <string name="mit_license">MIT License</string>
+    <string name="library_sora_editor">sora-editor</string>
+    <string name="library_okhttp">OkHttp</string>
+    <string name="library_uniffi">UniFFI (Mozilla)</string>
+    <string name="library_i2p_helper">I2P Android helper (vendored)</string>
+    <string name="library_rust_crates">Rust crates (rusqlite, dom_smoothie, serde, argon2)</string>
+    <string name="mpl_or_mit_license">MPL-2.0 / MIT</string>
+    <string name="apache_mit_license">Apache-2.0 / MIT</string>
     <string name="url_contents">URL box contents</string>
     <string name="trim_url_bar">Shorten address bar URLs</string>
     <string name="trim_url_bar_summary">Hide the protocol and www. prefix in the address bar (display only)</string>

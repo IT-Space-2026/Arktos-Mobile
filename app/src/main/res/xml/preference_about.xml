@@ -82,8 +82,52 @@
             </intent>
         </Preference>
         <Preference
+            android:summary="@string/license_gnu"
+            android:title="@string/library_sora_editor">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="http://www.gnu.org/licenses/lgpl.html">
+                <extra
+                    android:name="SOURCE"
+                    android:value="SELF" />
+            </intent>
+        </Preference>
+        <Preference
             android:summary="@string/apache"
-            android:title="@string/snacktory">
+            android:title="@string/library_okhttp">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="http://www.apache.org/licenses/LICENSE-2.0">
+                <extra
+                    android:name="SOURCE"
+                    android:value="SELF" />
+            </intent>
+        </Preference>
+        <Preference
+            android:summary="@string/apache"
+            android:title="@string/library_i2p_helper">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="http://www.apache.org/licenses/LICENSE-2.0">
+                <extra
+                    android:name="SOURCE"
+                    android:value="SELF" />
+            </intent>
+        </Preference>
+        <Preference
+            android:summary="@string/mpl_or_mit_license"
+            android:title="@string/library_uniffi">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="https://www.mozilla.org/MPL/2.0/">
+                <extra
+                    android:name="SOURCE"
+                    android:value="SELF" />
+            </intent>
+        </Preference>
+        <Preference
+            android:summary="@string/apache_mit_license"
+            android:title="@string/library_rust_crates">
             <intent
                 android:action="android.intent.action.VIEW"
                 android:data="http://www.apache.org/licenses/LICENSE-2.0">

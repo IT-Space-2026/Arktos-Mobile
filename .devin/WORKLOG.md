@@ -52,3 +52,7 @@ Pre-loop work (done outside the task loop):
 ## J2K01 — Java → Kotlin (2026-10-19)
 
 All remaining .java converted: StringBuilderUtils, WebUtils, DrawableUtils, MemoryLeakUtils, ThemeUtils, ProxyUtils, IntentUtils, FileUtils (objects); BookmarkExporter (object); Vertical/HorizontalItemAnimator (faithful ports, axis differences preserved); ProxyUtils (class, @Inject/@Singleton). 0 .java files remain. 232 unit tests, 0 failures; assemble + engine-audit PASS.
+
+## LICENSE01 — licenses + README (2026-10-19)
+
+About→Licenses synced to real deps: dropped snacktory (removed with Rust readability), added sora-editor (LGPL-2.1), OkHttp, vendored I2P helper, UniFFI (MPL-2.0), Rust crates (MIT/Apache). README gained desktop-style Source structure + Third-party components; Acknowledgements untouched. Post-J2K audit commit also landed (crash dumps → private storage, dead code purge).
