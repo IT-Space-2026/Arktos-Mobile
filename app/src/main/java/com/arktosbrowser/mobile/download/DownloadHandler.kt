@@ -10,22 +10,19 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
 import android.webkit.CookieManager
-import android.webkit.URLUtil
+import android.widget.Toast
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
+import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.database.downloads.DownloadEntry
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
-import com.arktosbrowser.mobile.download.ContentDispositionFileNameParser
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import io.reactivex.Maybe
 import io.reactivex.Scheduler
-import java.io.File
-import java.io.IOException
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,6 +30,7 @@ import javax.inject.Singleton
 class DownloadHandler @Inject constructor(
     private val downloadsRepository: DownloadsRepository,
     private val downloadManager: DownloadManager,
+    private val downloadMetaStore: DownloadMetaStore,
     @param:DatabaseScheduler private val databaseScheduler: Scheduler,
     @param:NetworkScheduler private val networkScheduler: Scheduler,
     @param:MainScheduler private val mainScheduler: Scheduler,
@@ -41,7 +39,8 @@ class DownloadHandler @Inject constructor(
 
     fun onDownloadStart(
         context: Activity, manager: UserPreferences, url: String, userAgent: String,
-        contentDisposition: String?, mimeType: String, contentSize: String
+        contentDisposition: String?, mimeType: String, contentSize: String,
+        referer: String? = null
     ) {
         logger.log(TAG, "DOWNLOAD: Trying to download from URL: $url")
         logger.log(TAG, "DOWNLOAD: Content disposition: $contentDisposition")
@@ -67,12 +66,13 @@ class DownloadHandler @Inject constructor(
             }
         }
 
-        onDownloadStartNoStream(context, manager, url, userAgent, contentDisposition, mimeType, contentSize)
+        onDownloadStartNoStream(context, manager, url, userAgent, contentDisposition, mimeType, contentSize, referer)
     }
 
     fun onDownloadStartNoStream(
         context: Activity, manager: UserPreferences, url: String, userAgent: String,
-        contentDisposition: String?, mimeType: String, contentSize: String
+        contentDisposition: String?, mimeType: String, contentSize: String,
+        referer: String? = null
     ) {
         logger.log(TAG, "DOWNLOAD: Trying to download from URL: $url")
         logger.log(TAG, "DOWNLOAD: Content disposition: $contentDisposition")
@@ -82,88 +82,117 @@ class DownloadHandler @Inject constructor(
         if (manager.useThirdPartyDownloaderApps) {
             // Show dialog listing third party downloaders
         } else {
-            val filename = sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
-            downloadManager.enqueue(
-                DownloadManager.Request(Uri.parse(url))
-                    .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-                    .setAllowedOverRoaming(false)
-                    .setTitle(filename)
-                    .setDescription(contentSize)
-                    .setMimeType(mimeType)
-                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
-                    .addRequestHeader(COOKIE_REQUEST_HEADER, CookieManager.getInstance().getCookie(url))
-            )
+            val cookies = runCatching { CookieManager.getInstance().getCookie(url) }.getOrNull()
+
+            // Probe the real response headers first: the WebView-supplied mime
+            // type is often application/octet-stream and the URL may still be
+            // an interstitial that redirects to the actual file.
+            Maybe.fromCallable { DownloadHttpProbe.probe(url, cookies, userAgent, referer) }
+                .subscribeOn(networkScheduler)
+                .observeOn(mainScheduler)
+                .subscribe(
+                    { probe ->
+                        enqueueRequest(context, url, userAgent, cookies, referer,
+                            contentDisposition, mimeType, contentSize, probe)
+                    },
+                    {
+                        enqueueRequest(context, url, userAgent, cookies, referer,
+                            contentDisposition, mimeType, contentSize, null)
+                    },
+                    {
+                        enqueueRequest(context, url, userAgent, cookies, referer,
+                            contentDisposition, mimeType, contentSize, null)
+                    }
+                )
         }
+    }
+
+    private fun enqueueRequest(
+        context: Activity,
+        originalUrl: String,
+        userAgent: String,
+        cookies: String?,
+        referer: String?,
+        contentDisposition: String?,
+        mimeType: String,
+        contentSize: String,
+        probe: DownloadHttpProbe.Result?
+    ) {
+        val url = probe?.finalUrl ?: originalUrl
+        val effectiveDisposition = probe?.contentDisposition ?: contentDisposition
+        val effectiveMime = probe?.contentType ?: mimeType
+        val fileName = DownloadNaming.resolveFileName(url, effectiveDisposition, effectiveMime)
+
+        if (probe != null && probe.contentType == "text/html" &&
+            probe.contentDisposition == null
+        ) {
+            // The link resolved to a page, not a file (upstream #303) — the
+            // download still proceeds but it is named .html and the user is
+            // told the server did not offer the file.
+            logger.log(TAG, "DOWNLOAD: server returned a web page for $url")
+            Toast.makeText(
+                context,
+                context.getString(R.string.download_server_returned_page),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
+            .setAllowedOverRoaming(false)
+            .setTitle(fileName)
+            .setDescription(contentSize)
+            .setMimeType(effectiveMime)
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+
+        // Cookies and the page's user agent have to travel with the request —
+        // hosts that see a bare DownloadManager UA answer with a login or
+        // interstitial HTML page (upstream #303).
+        if (!cookies.isNullOrEmpty()) {
+            request.addRequestHeader(COOKIE_REQUEST_HEADER, cookies)
+        }
+        if (userAgent.isNotBlank()) {
+            request.addRequestHeader(USER_AGENT_REQUEST_HEADER, userAgent)
+        }
+        if (!referer.isNullOrBlank()) {
+            request.addRequestHeader(REFERER_REQUEST_HEADER, referer)
+        }
+
+        val downloadId = try {
+            downloadManager.enqueue(request)
+        } catch (e: Exception) {
+            logger.log(TAG, "DOWNLOAD: failed to enqueue $url")
+            return
+        }
+
+        downloadMetaStore.save(
+            downloadId,
+            DownloadIntegrity.Meta(
+                url = url,
+                fileName = fileName,
+                mimeType = effectiveMime,
+                userAgent = userAgent,
+                expectedBytes = probe?.contentLength ?: -1L
+            )
+        )
+        downloadsRepository
+            .addDownloadIfNotExists(DownloadEntry(url, fileName, contentSize))
+            .subscribeOn(databaseScheduler)
+            .subscribe()
     }
 
     companion object {
         private const val TAG = "DownloadHandler"
         private const val COOKIE_REQUEST_HEADER = "Cookie"
+        private const val USER_AGENT_REQUEST_HEADER = "User-Agent"
+        private const val REFERER_REQUEST_HEADER = "Referer"
 
         fun getFileNameFromURL(url: String?, contentDisposition: String?, mimeType: String?): String {
-            return if (contentDisposition?.contains("filename=") == true) {
-                var fileName: String? = ContentDispositionFileNameParser.parse(contentDisposition)
-                fileName = URLDecoder.decode(fileName, StandardCharsets.ISO_8859_1.toString())
-                sanitizeFileName(fileName)
-            } else {
-                var substring: String? = url!!.substring(url.lastIndexOf('/') + 1).split("\\?")[0].split("#")[0]
-                if (substring?.contains(".") == true) {
-                    sanitizeFileName(substring)
-                } else {
-                    sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
-                }
-            }
+            return DownloadNaming.resolveFileName(url, contentDisposition, mimeType)
         }
 
-        internal fun sanitizeFileName(name: String?): String {
-            val cleaned = name.orEmpty()
-                .substringAfterLast('/')
-                .substringAfterLast('\\')
-                .replace("..", "")
-                .trim()
-            return cleaned.ifBlank { "download" }
-        }
-
-        private fun isWriteAccessAvailable(fileUri: Uri): Boolean {
-            if (fileUri.path == null) {
-                return false
-            }
-            val file = File(fileUri.path)
-            return if (!file.isDirectory && !file.mkdirs()) {
-                false
-            } else try {
-                if (file.createNewFile()) {
-                    file.delete()
-                }
-                true
-            } catch (ignored: IOException) {
-                false
-            }
-        }
-
-        private fun encodePath(path: String): String {
-            val chars = path.toCharArray()
-            var needed = false
-            for (c in chars) {
-                if (c == '[' || c == ']' || c == '|') {
-                    needed = true
-                    break
-                }
-            }
-            if (!needed) {
-                return path
-            }
-            val sb = StringBuilder()
-            for (c in chars) {
-                if (c == '[' || c == ']' || c == '|') {
-                    sb.append('%')
-                    sb.append(Integer.toHexString(c.code))
-                } else {
-                    sb.append(c)
-                }
-            }
-            return sb.toString()
-        }
+        internal fun sanitizeFileName(name: String?): String =
+            DownloadNaming.sanitizeFileName(name)
     }
 }

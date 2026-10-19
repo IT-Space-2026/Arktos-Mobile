@@ -50,7 +50,7 @@ internal object ContentDispositionFileNameParser {
             val part = parts[i]
             val eqIndex = part.indexOf('=')
             if (eqIndex != -1) {
-                val attribute = part.substring(0, eqIndex)
+                val attribute = part.substring(0, eqIndex).trim().lowercase()
                 val value =
                     if (part.startsWith("\"", eqIndex + 1) && part.endsWith("\"")) part.substring(
                         eqIndex + 2,
