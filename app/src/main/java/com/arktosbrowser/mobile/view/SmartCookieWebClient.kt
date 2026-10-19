@@ -572,9 +572,6 @@ class SmartCookieWebClient(
             activity.findViewById<FrameLayout>(R.id.download_button).visibility = View.GONE
         }
 
-        if(view.settings.userAgentString!!.contains("wv")){
-            view.settings.userAgentString = view.settings.userAgentString?.replace("; wv", "")
-        }
         zoomed = false
         first = true
         if (!url.isGeneratedPageUrl()) {
