@@ -64,7 +64,7 @@ NO SUDO — everything user-local.
 | DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | done | 0 | #168 N/A (own icon set); #314 decided: GitHub Releases + in-repo fastlane metadata (README); #315 userscript + proxy bullets in README + fastlane full_description; #325 answer = built-in Settings→General→HTTP proxy (ProxyUtils/netcipher); decision record + userscript @require caveat in details; docs-only, engine-audit PASS |
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | done | 0 | desktop notfound/certerror card ported into rust pages.rs (#box/#header/#content, gradient band, floated arktos.webp, h2 divider + hint <ul>, pill buttons); new hint params + error_page_hint/page_blocked_hint strings wired at all call sites; arktos-dark class emitted off non-empty color (fragment de-!importanted); reloadCode/$!!!/showButton-proceed contracts kept — cargo 120/120, 211 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
-| UI02 | Start page styled like Arktos desktop (no search bar) — details below | in_progress | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
+| UI02 | Start page styled like Arktos desktop (no search bar) — details below | done | 0 | aurora hero+gradient ported into homepage.html/private.html (+4 svg assets), search box dropped, tile/modal/localStorage contract kept; arktos-dark class theming in both factories; fixed upstream incognito.html→private.html filename bugs (reader + onPageFinished) — StartPageTest 10/10 + assembleScMainDebug + engine-audit PASS |
 | J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
 | RENAM01 | Rename residual SmartCookie* identifiers to Arktos* — details below | pending | 0 | needs:tool:java — user-requested: SmartCookieView→ArktosCookieView + siblings; upstream-citation comments keep the name |
 | CHLOG01 | Changelog: repo file + in-app page — details below | pending | 0 | needs:tool:java — root ChangeLog (desktop format) + assets/changelog.html + Settings→About entry; optional arktos://changelog URL + open-once-on-upgrade |
@@ -324,6 +324,36 @@ URL bar).
 - Verify: `./gradlew assembleScMainDebug`; homepage + incognito
   render without JS errors; link-tile save/read still works;
   engine-audit PASS.
+
+Outcome / notes (2026-10-19):
+
+- Ported `aurora-wave.svg`, `aurora-wave-private.svg`,
+  `arktos-plain.svg`, `private-sunglasses.svg` from the desktop
+  worktree into `app/src/main/assets/`; both pages reference them via
+  `file:///android_asset/` (generated pages live under filesDir, so
+  relative asset URLs would not resolve).
+- homepage.html: `#aurora` 240px wave stage + 170px `image_url` logo
+  (id kept — `FOCUSED` homepage type still removes it), gradient
+  `#header` card, link tiles as a rounded card, news `.card`s kept for
+  `INFORMATIVE`, `html.arktos-dark` palette replacing the factories'
+  appended `<style>` override (now `tag("html"){addClass}` in both
+  factories). Search box, `search()`/`${BASE_URL}`/`${IMAGE}` removed.
+- private.html: navy palette + private wave + `#privatelogo`,
+  `title-pm`/`desc-pm` kept; dropped the obfuscated hex-escape
+  cookie.info/SmartCookieWeb easter-egg blob from save.onclick and the
+  dead i.stack.imgur.com favicon fallback.
+- Fixed two upstream filename bugs blocking the incognito page:
+  `IncognitoPageReader` opened assets `incognito.html` (asset is
+  `private.html` — broken since the mezzanine→assets migration) and
+  `SmartCookieWebClient.onPageFinished` checked
+  `/files/incognito.html`, so link-var injection never ran for the
+  private page. Both now use `private.html`; `shouldUpdate`
+  write-back stays homepage-only as upstream.
+- Verified: jsoup simulation of the factory pipeline (first-script
+  `${ENDPOINT}` substitution + `&`→`u0026` escaping, arktos-dark
+  class, all contract ids survive outerHtml); StartPageTest 10/10;
+  assembleScMainDebug + testScMainDebugUnitTest green; engine-audit
+  PASS.
 
 ### J2K01
 Convert the remaining `.java` sources to Kotlin — target zero
