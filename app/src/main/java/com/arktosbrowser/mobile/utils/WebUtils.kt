@@ -3,7 +3,6 @@ package com.arktosbrowser.mobile.utils
 import android.content.Context
 import android.os.Build
 import android.webkit.CookieManager
-import android.webkit.CookieSyncManager
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewDatabase
@@ -17,15 +16,8 @@ import java.io.File
  */
 object WebUtils {
 
-    @Suppress("DEPRECATION")
     fun clearCookies(context: Context) {
-        val c = CookieManager.getInstance()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            c.removeAllCookies(null)
-        } else {
-            CookieSyncManager.createInstance(context)
-            c.removeAllCookie()
-        }
+        CookieManager.getInstance().removeAllCookies(null)
     }
 
     fun clearWebStorage() {

@@ -7,7 +7,6 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
-import com.arktosbrowser.mobile.preference.DeveloperPreferences
 import com.arktosbrowser.mobile.preference.UserPreferences
 import info.guardianproject.netcipher.webkit.WebkitProxy
 import javax.inject.Inject
@@ -16,16 +15,8 @@ import javax.inject.Singleton
 @Singleton
 class ProxyUtils @Inject constructor(
     private val userPreferences: UserPreferences,
-    private val developerPreferences: DeveloperPreferences,
     private val i2PAndroidHelper: I2PAndroidHelper
 ) {
-
-    /*
-     * If Orbot/Tor or I2P is installed, prompt the user if they want to enable
-     * proxying for this session
-     */
-    fun checkForProxy(activity: Activity) {
-    }
 
     /*
      * Initialize WebKit Proxying

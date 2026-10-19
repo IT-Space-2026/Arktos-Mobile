@@ -581,7 +581,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             }
             presenter?.setupTabs(intent)
             setIntent(null)
-            proxyUtils.checkForProxy(this)
 
         }
 
