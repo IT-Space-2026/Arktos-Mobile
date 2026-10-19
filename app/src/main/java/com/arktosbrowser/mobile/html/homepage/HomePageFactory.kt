@@ -6,8 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.Base64
 import android.webkit.URLUtil
-import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.browser.HomepageTypeChoice
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.constant.UTF8
@@ -113,7 +113,7 @@ class HomePageFactory @Inject constructor(
 
                 // Follow the app theme: dark/black themes flip the page to
                 // the aurora dark palette via the arktos-dark class.
-                if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) != AppTheme.LIGHT){
+                if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application).isDark){
                     tag("html"){ addClass("arktos-dark") }
                 }
             }

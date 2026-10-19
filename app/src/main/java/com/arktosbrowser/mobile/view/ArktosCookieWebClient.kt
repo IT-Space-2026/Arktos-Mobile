@@ -173,7 +173,8 @@ class ArktosCookieWebClient(
      * light theme, matching the previous behavior.
      */
     private fun blockPageColor(): String {
-        if (userPreferences.useTheme == AppTheme.LIGHT) {
+        if (userPreferences.useTheme == AppTheme.LIGHT ||
+            userPreferences.useTheme == AppTheme.ARKTOS_LIGHT) {
             color = ""
         }
         return color
@@ -548,7 +549,8 @@ class ArktosCookieWebClient(
                 return
             } else if (userPreferences.forceHTTPSenabled) {
                 view.settings.javaScriptEnabled = true
-                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
+                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT ||
+                        userPreferences.resolvedTheme(activity) == AppTheme.ARKTOS_LIGHT){
                     color = ""
                 }
                 val title = activity.getString(R.string.https_title)
@@ -663,7 +665,8 @@ class ArktosCookieWebClient(
             errored = true
             Thread.sleep(500)
             webview.settings.javaScriptEnabled = true
-            if (userPreferences.resolvedTheme(activity) == AppTheme.LIGHT) {
+            if (userPreferences.resolvedTheme(activity) == AppTheme.LIGHT ||
+                    userPreferences.resolvedTheme(activity) == AppTheme.ARKTOS_LIGHT) {
                 color = ""
             }
             val reloadCode = "window.location.href = '" + failingUrl + "';"

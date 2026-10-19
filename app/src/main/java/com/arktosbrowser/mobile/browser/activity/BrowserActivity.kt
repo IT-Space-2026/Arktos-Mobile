@@ -53,6 +53,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
 import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
+import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.IncognitoActivity
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.*
@@ -370,8 +371,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         //TODO make sure dark theme flag gets set correctly
-        isDarkTheme = userPreferences.resolvedTheme(this) == AppTheme.DARK ||
-                userPreferences.resolvedTheme(this) == AppTheme.BLACK || isIncognito()
+        isDarkTheme = userPreferences.resolvedTheme(this).isDark || isIncognito()
         shouldShowTabsInDrawer = userPreferences.showTabsInDrawer
         swapBookmarksAndTabs = userPreferences.bookmarksAndTabsSwapped
         swapDrawerIcons = userPreferences.bookmarksAndTabsIconsSwapped
@@ -1586,10 +1586,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         } //Reset theme without needing a restart
         else if(userPreferences.navbarColChoice == ChooseNavbarCol.NONE){
             var currentColor = Color.WHITE
-            if(userPreferences.resolvedTheme(this) == AppTheme.LIGHT && !isIncognito()){
+            val resolvedTheme = userPreferences.resolvedTheme(this)
+            if(resolvedTheme == AppTheme.ARKTOS_DARK && !isIncognito()){
+                currentColor = ContextCompat.getColor(this, R.color.arktos_navy)
+            }
+            else if(!resolvedTheme.isDark && !isIncognito()){
                 currentColor = ContextCompat.getColor(this, R.color.primary_color)
             }
-            else if(userPreferences.resolvedTheme(this) == AppTheme.DARK || isIncognito()){
+            else if(resolvedTheme == AppTheme.DARK || isIncognito()){
                 currentColor = ContextCompat.getColor(this, R.color.primary_color_dark)
             }
             else{

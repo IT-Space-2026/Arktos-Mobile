@@ -75,6 +75,8 @@ class ThemeSettingsFragment : AbstractSettingsFragment() {
         AppTheme.LIGHT -> R.string.light_theme
         AppTheme.DARK -> R.string.dark_theme
         AppTheme.BLACK -> R.string.black_theme
+        AppTheme.ARKTOS_LIGHT -> R.string.arktos_light_theme
+        AppTheme.ARKTOS_DARK -> R.string.arktos_dark_theme
     })
 
 

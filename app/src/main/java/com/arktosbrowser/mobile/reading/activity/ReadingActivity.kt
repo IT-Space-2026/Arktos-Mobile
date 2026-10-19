@@ -35,6 +35,7 @@ import androidx.appcompat.widget.Toolbar
 import butterknife.BindView
 import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
+import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
@@ -96,22 +97,20 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val color: Int
         val theme = mUserPreferences!!.resolvedTheme(this)
         if (mInvert) {
-            if (theme === AppTheme.LIGHT) {
+            if (!theme.isDark) {
                 setTheme(R.style.Theme_SettingsTheme_Black)
-                color = ThemeUtils.getPrimaryColor(this)
-                window.setBackgroundDrawable(ColorDrawable(color))
             } else {
                 setTheme(R.style.Theme_SettingsTheme)
-                color = ThemeUtils.getPrimaryColor(this)
-                window.setBackgroundDrawable(ColorDrawable(color))
             }
+            color = ThemeUtils.getPrimaryColor(this)
+            window.setBackgroundDrawable(ColorDrawable(color))
         } else {
-            if (theme === AppTheme.LIGHT) {
-                setTheme(R.style.Theme_SettingsTheme)
-            } else if (theme === AppTheme.DARK) {
-                setTheme(R.style.Theme_SettingsTheme_Dark)
-            } else {
-                setTheme(R.style.Theme_SettingsTheme_Black)
+            when (theme) {
+                AppTheme.LIGHT -> setTheme(R.style.Theme_SettingsTheme)
+                AppTheme.DARK -> setTheme(R.style.Theme_SettingsTheme_Dark)
+                AppTheme.ARKTOS_LIGHT -> setTheme(R.style.Theme_SettingsTheme_Arktos)
+                AppTheme.ARKTOS_DARK -> setTheme(R.style.Theme_SettingsTheme_Arktos_Dark)
+                else -> setTheme(R.style.Theme_SettingsTheme_Black)
             }
         }
         super.onCreate(savedInstanceState)
