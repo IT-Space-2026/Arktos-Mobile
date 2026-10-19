@@ -41,10 +41,12 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
+import com.arktosbrowser.mobile.utils.ERROR_PAGE_ORIGIN
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.Utils.buildErrorPage
+import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Observable
@@ -71,7 +73,6 @@ class SmartCookieWebClient(
     private val uiController: UIController
     private val intentUtils = IntentUtils(activity)
     private val emptyResponseByteArray: ByteArray = byteArrayOf()
-    private var urlLoaded = ""
     private var lastBlockedDomain = ""
 
     private var knownUndetectedVideoUrls: Array<String> = arrayOf("xvideos.com")
@@ -111,6 +112,15 @@ class SmartCookieWebClient(
     private var zoomScale = 0.0f
 
     private var currentUrl: String = ""
+
+    /**
+     * The original URL of the page currently replaced by a generated error or
+     * interstitial page, or null when the WebView is not showing one. Generated
+     * pages commit as `data:` URIs, so the tab uses this to keep reporting and
+     * persisting the real address (upstream #281).
+     */
+    var errorPageOriginalUrl: String? = null
+        private set
 
     var sslState: SslState = SslState.None
         private set(value) {
@@ -385,7 +395,8 @@ class SmartCookieWebClient(
                 val reload = activity.getString(R.string.error_reload)
                 val error = activity.getString(R.string.malware_message)
 
-                view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
+                errorPageOriginalUrl = url
+                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
                 view.invalidate()
                 view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
             }
@@ -410,7 +421,8 @@ class SmartCookieWebClient(
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL("https://arktos-error.local",  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
+                            errorPageOriginalUrl = url
+                            view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN,  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
                             view.invalidate()
                             view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
                         }
@@ -432,7 +444,8 @@ class SmartCookieWebClient(
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
+                            errorPageOriginalUrl = url
+                            view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
                             view.invalidate()
                             view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
                         }
@@ -548,6 +561,9 @@ class SmartCookieWebClient(
     }
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+        if (url != errorPageOriginalUrl && !url.isGeneratedPageUrl()) {
+            errorPageOriginalUrl = null
+        }
         errored = true
         if(isPackageInstalled(activity.resources.getString(R.string.ytdl_package_name), activity.packageManager) && stringContainsItemFromList(url, knownUndetectedVideoUrls)){
             activity.findViewById<FrameLayout>(R.id.download_button).visibility = View.VISIBLE
@@ -561,7 +577,9 @@ class SmartCookieWebClient(
         }
         zoomed = false
         first = true
-        currentUrl = url
+        if (!url.isGeneratedPageUrl()) {
+            currentUrl = url
+        }
         view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
 
         if(userPreferences.noAmp){
@@ -587,7 +605,8 @@ class SmartCookieWebClient(
                 }
                 val title = activity.getString(R.string.https_title)
                 val reload = activity.getString(R.string.error_reload)
-                view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
+                errorPageOriginalUrl = url
+                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
                 view.invalidate()
                 view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
             }
@@ -740,10 +759,10 @@ class SmartCookieWebClient(
             val title = activity.getString(R.string.error_title)
             val reload = activity.getString(R.string.error_reload)
             webview.loadUrl("about:blank")
+            errorPageOriginalUrl = failingUrl
             webview.loadDataWithBaseURL(failingUrl, buildErrorPage(color, title, error, reload, true, reloadCode), "text/html", "UTF-8", null)
             uiController.updateUrl(failingUrl, false)
             currentUrl = failingUrl
-            urlLoaded = failingUrl
             webview.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
         }
 

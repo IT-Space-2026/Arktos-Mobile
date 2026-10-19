@@ -172,7 +172,7 @@ class TabsManager @Inject constructor(
                     url.isDownloadsUrl() -> downloadPageInitializer
                     url.isStartPageUrl() -> homePageInitializer
                     url.isHistoryUrl() -> historyPageInitializer
-                    else -> homePageInitializer
+                    else -> UrlInitializer(url)
                 }
             } ?: BundleInitializer(bundle)
         }
@@ -461,7 +461,7 @@ class TabsManager @Inject constructor(
         private const val TAG = "TabsManager"
 
         private const val BUNDLE_KEY = "WEBVIEW_"
-        private const val URL_KEY = "URL_KEY"
+        internal const val URL_KEY = "URL_KEY"
         private const val BUNDLE_STORAGE = "SAVED_TABS.parcel"
     }
 

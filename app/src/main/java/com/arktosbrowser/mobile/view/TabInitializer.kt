@@ -6,6 +6,7 @@ import android.os.Message
 import android.webkit.WebView
 import androidx.appcompat.app.AlertDialog
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.constant.SCHEME_BOOKMARKS
 import com.arktosbrowser.mobile.constant.SCHEME_HOMEPAGE
 import com.arktosbrowser.mobile.di.DiskScheduler
@@ -175,12 +176,15 @@ class ResultMessageInitializer(private val resultMessage: Message) : TabInitiali
 }
 
 /**
- * An initializer that restores the [WebView] state using the [bundle].
+ * An initializer that restores the [WebView] state using the [bundle]. Bundles holding a saved URL
+ * instead of serialized WebView state (e.g. generated error pages, which commit as `data:` URIs)
+ * load that URL directly.
  */
 class BundleInitializer(private val bundle: Bundle) : TabInitializer {
 
     override fun initialize(webView: WebView, headers: Map<String, String>) {
-        webView.restoreState(bundle)
+        bundle.getString(TabsManager.URL_KEY)?.let { webView.loadUrl(it, headers) }
+            ?: webView.restoreState(bundle)
     }
 
 }

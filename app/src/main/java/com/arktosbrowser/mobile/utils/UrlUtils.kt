@@ -100,6 +100,40 @@ fun String.trimmedForDisplay(): String {
 }
 
 /**
+ * The placeholder origin used as `baseUrl` when the app's generated error and
+ * interstitial pages are loaded via `WebView.loadDataWithBaseURL`. It exists
+ * only to give those pages a stable origin and is never navigable on its own.
+ */
+const val ERROR_PAGE_ORIGIN = "https://arktos-error.local"
+
+/**
+ * Returns whether the url is a locally generated page rather than a real,
+ * navigable address: `data:` URIs committed by `loadDataWithBaseURL`, the
+ * [ERROR_PAGE_ORIGIN] base, and `about:blank` (loaded just before an error
+ * page replaces it). Generated pages must never be persisted as a tab's URL
+ * (upstream #281).
+ */
+fun String?.isGeneratedPageUrl(): Boolean =
+    this != null
+        && (this == "about:blank"
+        || this.startsWith("data:")
+        || this.startsWith(ERROR_PAGE_ORIGIN))
+
+/**
+ * Resolves the URL a tab should report — and persist — for the WebView's
+ * [committedUrl]. When the WebView is showing a generated error/interstitial
+ * page, the committed URL is a synthetic `data:` URI, so the original page
+ * URL ([generatedPageOriginalUrl]) is returned instead (upstream #281).
+ * Genuine `data:` navigations and all real pages pass through untouched.
+ */
+fun resolveTabUrl(committedUrl: String?, generatedPageOriginalUrl: String?): String =
+    if (generatedPageOriginalUrl != null && committedUrl.isGeneratedPageUrl()) {
+        generatedPageOriginalUrl
+    } else {
+        committedUrl.orEmpty()
+    }
+
+/**
  * Determines if the url is a url for the bookmark page.
  *
  * @return true if the url is a bookmark url, false otherwise.
