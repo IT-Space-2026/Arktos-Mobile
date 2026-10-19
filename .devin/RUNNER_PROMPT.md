@@ -65,6 +65,12 @@ Hard rules:
 - No force-push, no git history rewrite, no git config changes.
 - No sudo, no system package installs, no writes outside $HOME.
 - Do not commit secrets or large binaries.
+- Commits + push only — never create git tags, GitHub
+  releases, signed release artifacts, or publish to any store.
+- Tests are mandatory: any code change must add or extend tests
+  covering it (JUnit/Kotlin unit tests under app/src/test, cargo
+  tests under rust/); behavior changes that cannot be tested must
+  be justified in the task Notes.
 - Upstream issue numbers in task specs refer to
   github.com/CookieJarApps/SmartCookieWeb issues.
 - If the build is already broken from a previous interrupted run,

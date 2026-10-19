@@ -47,6 +47,12 @@ Hard rules:
 - No force-push, no history rewrite, no git config changes.
 - No sudo, no system installs, no writes outside $HOME.
 - No secrets or large binaries in commits.
+- Commits + push only — never create git tags, GitHub
+  releases, signed release artifacts, or publish to any store.
+- Tests are mandatory: any code change must add or extend tests
+  covering it (JUnit/Kotlin unit tests under app/src/test, cargo
+  tests under rust/); behavior changes that cannot be tested must
+  be justified in the task Notes.
 - Rust dependency additions: pin exact versions, prefer crates
   published >7 days ago, keep the dependency surface small.
 - Upstream issue numbers refer to
