@@ -24,6 +24,7 @@ import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.BlocklistLoader
+import com.arktosbrowser.mobile.adblock.RankListLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.JavaScriptChoice
 import com.arktosbrowser.mobile.constant.FILE
@@ -104,6 +105,7 @@ class SmartCookieWebClient(
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
     @Inject internal lateinit var blocklistLoader: BlocklistLoader
+    @Inject internal lateinit var rankListLoader: RankListLoader
 
     @Volatile private var isRunning = false
     private var zoomScale = 0.0f
@@ -124,6 +126,7 @@ class SmartCookieWebClient(
         activity.injector.inject(this)
         uiController = activity as UIController
         blocklistLoader.ensureInitialized()
+        rankListLoader.ensureInitialized()
     }
 
     fun sslStateObservable(): Observable<SslState> = sslStateSubject.hide()

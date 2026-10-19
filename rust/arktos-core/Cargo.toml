@@ -42,3 +42,7 @@ mime_guess = "=2.0.5"
 # PORT01 — readability port replacing readability4j (same crate the
 # desktop core uses).
 dom_smoothie = "=0.18.2"
+# RANK01 — pure-Rust DEFLATE for extracting the *.csv member out of
+# the Tranco top-1m.csv.zip download (same pin the desktop rustcore
+# uses for its zip member walk).
+miniz_oxide = "=0.8.9"

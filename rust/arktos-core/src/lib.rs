@@ -10,11 +10,14 @@ mod blocklist;
 mod bookmarks;
 mod download;
 mod netscape;
+mod ranklist;
 mod readability;
 mod storage;
 mod subscriptions;
 mod suggestions;
 mod userscript;
+mod util;
+mod zipwalk;
 
 uniffi::setup_scaffolding!();
 
