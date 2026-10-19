@@ -29,6 +29,7 @@ import androidx.collection.ArrayMap
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.DeviceCapabilities
+import com.arktosbrowser.mobile.browser.TextZoom
 import com.arktosbrowser.mobile.constant.DESKTOP_USER_AGENT
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.di.DatabaseScheduler
@@ -367,17 +368,7 @@ class SmartCookieView(
 
         settings.useWideViewPort = userPreferences.useWideViewPortEnabled
         settings.loadWithOverviewMode = userPreferences.overviewModeEnabled
-        settings.textZoom = when (userPreferences.textSize) {
-            0 -> 200
-            1 -> 150
-            2 -> 125
-            3 -> 100
-            4 -> 75
-            5 -> 50
-            6 -> 25
-            7 -> 20
-            else -> throw IllegalArgumentException("Unsupported text size")
-        }
+        settings.textZoom = TextZoom.zoomPercent(userPreferences.textSize)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             CookieManager.getInstance().setAcceptThirdPartyCookies(webView,
