@@ -29,6 +29,7 @@ import androidx.collection.ArrayMap
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.DeviceCapabilities
+import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.browser.TextZoom
 import com.arktosbrowser.mobile.constant.DESKTOP_USER_AGENT
 import com.arktosbrowser.mobile.controller.UIController
@@ -191,12 +192,20 @@ class SmartCookieView(
 
     /**
      * Get the current URL of the WebView, or an empty string if the WebView is null or the URL is
-     * null.
+     * null. While a generated error/interstitial page is shown, the WebView's committed URL is a
+     * synthetic `data:` URI, so the original page URL is reported instead (upstream #281).
      *
      * @return the current URL or an empty string.
      */
     val url: String
-        get() = webView?.url ?: ""
+        get() = resolveTabUrl(webView?.url, smartCookieWebClient.errorPageOriginalUrl)
+
+    /**
+     * Whether the WebView is currently displaying a generated error/interstitial page in place of
+     * the page at [SmartCookieWebClient.errorPageOriginalUrl].
+     */
+    val isShowingErrorPage: Boolean
+        get() = smartCookieWebClient.errorPageOriginalUrl != null && webView?.url.isGeneratedPageUrl()
 
     init {
         activity.injector.inject(this)
@@ -449,10 +458,16 @@ class SmartCookieView(
     }
 
     /**
-     * Save the state of the tab and return it as a [Bundle].
+     * Save the state of the tab and return it as a [Bundle]. When the tab is showing a generated
+     * error/interstitial page, only its original URL is stored — the WebView history entry is a
+     * `data:` URI that must never be persisted (upstream #281).
      */
     fun saveState(): Bundle = Bundle(ClassLoader.getSystemClassLoader()).also {
-        webView?.saveState(it)
+        if (isShowingErrorPage) {
+            it.putString(TabsManager.URL_KEY, url)
+        } else {
+            webView?.saveState(it)
+        }
     }
 
     /**
