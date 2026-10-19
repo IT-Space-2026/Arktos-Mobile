@@ -17,7 +17,6 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
-import android.os.Handler
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -29,9 +28,10 @@ import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.IncognitoActivity
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
-import com.arktosbrowser.mobile.browser.JavaScriptChoice
 import com.arktosbrowser.mobile.browser.MenuDividerClass
 import com.arktosbrowser.mobile.browser.MenuItemClass
+import com.arktosbrowser.mobile.browser.SiteOverrides
+import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
 import com.arktosbrowser.mobile.controller.UIController
@@ -52,10 +52,8 @@ import com.arktosbrowser.mobile.settings.activity.SettingsActivity
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.isSpecialUrl
-import com.arktosbrowser.mobile.utils.stringContainsItemFromList
 import com.github.ahmadaghazadeh.editor.widget.CodeEditor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import java.net.URL
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -72,6 +70,9 @@ class PopUpClass {
 
     @Inject
     lateinit var allowListModel: AllowListModel
+
+    @Inject
+    lateinit var siteSettings: SiteSettings
 
     @Inject
     lateinit var translateBridge: TranslateBridge
@@ -159,6 +160,20 @@ class PopUpClass {
            container.setPadding(container.paddingLeft, container.paddingTop - noTopMenu, container.paddingRight, container.paddingBottom)
         }
 
+        // Per-site JS/cookie quick-toggles (#305): only offered when the
+        // current page has a real host to key the override on.
+        val hasSiteHost = SiteOverrides.siteHost(currentUrl) != null
+        val jsToggleTitle = if (siteSettings.javaScriptEnabled(currentUrl)) {
+            R.string.block_javascript
+        } else {
+            R.string.allow_javascript
+        }
+        val cookieToggleTitle = if (siteSettings.cookiesEnabled(currentUrl)) {
+            R.string.block_cookies_site
+        } else {
+            R.string.allow_cookies_site
+        }
+
         val menu = mutableListOf(
                 MenuDividerClass(),
                 MenuItemClass("new_tab", R.string.action_new_tab, R.drawable.ic_round_add, true),
@@ -177,6 +192,8 @@ class PopUpClass {
                 MenuItemClass("copy_link", R.string.dialog_copy_link, R.drawable.ic_content_copy_black, true),
                 MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, true),
                 MenuDividerClass(),
+                MenuItemClass("toggle_javascript", jsToggleTitle, R.drawable.ic_baseline_code, hasSiteHost),
+                MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
                 MenuItemClass("page_tools", R.string.dialog_tools_title, R.drawable.ic_page_tools, true),
                 MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, true),
                 MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true)
@@ -192,6 +209,9 @@ class PopUpClass {
                 MenuDividerClass(),
                 MenuItemClass("bookmarks", R.string.action_bookmarks, R.drawable.ic_action_star, true),
                 MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, true),
+                MenuDividerClass(),
+                MenuItemClass("toggle_javascript", jsToggleTitle, R.drawable.ic_baseline_code, hasSiteHost),
+                MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
                 MenuDividerClass(),
                 MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true),
                 MenuItemClass("exit_private", R.string.quit_private, R.drawable.incognito_mode, true)
@@ -250,6 +270,20 @@ class PopUpClass {
                         ReadingActivity.launch(view.context, currentUrl, false)
                     }
                 }
+                "toggle_javascript" -> {
+                    currentView?.let { tab ->
+                        val enabled = siteSettings.toggleJavaScript(tab.url)
+                        tab.webView?.settings?.javaScriptEnabled = enabled
+                        tab.reload()
+                    }
+                }
+                "toggle_cookies" -> {
+                    currentView?.let { tab ->
+                        val enabled = siteSettings.toggleCookies(tab.url)
+                        CookieManager.getInstance().setAcceptCookie(enabled)
+                        tab.reload()
+                    }
+                }
                 "page_tools" -> {
                     val currentTab = activity.tabsManager.currentTab ?: return@setOnItemClickListener
                     val isAllowedAds = allowListModel.isUrlAllowedAds(currentTab.url)
@@ -258,17 +292,10 @@ class PopUpClass {
                     } else {
                         R.string.dialog_adblock_disable_for_site
                     }
-                    val arrayOfURLs = userPreferences.javaScriptBlocked
-                    val strgs: Array<String>
-                    if (arrayOfURLs.contains(", ")) {
-                        strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    } else {
-                        strgs = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }
-                    var jsEnabledString = if(userPreferences.javaScriptChoice == JavaScriptChoice.BLACKLIST && !stringContainsItemFromList(currentTab.url, strgs) || userPreferences.javaScriptChoice == JavaScriptChoice.WHITELIST && stringContainsItemFromList(currentTab.url, strgs)) {
-                        R.string.allow_javascript
-                    } else{
+                    val jsEnabledString = if (siteSettings.javaScriptEnabled(currentTab.url)) {
                         R.string.block_javascript
+                    } else {
+                        R.string.allow_javascript
                     }
 
 
@@ -368,31 +395,11 @@ class PopUpClass {
                         }, DialogItem(
                             icon = activity.drawable(R.drawable.ic_action_delete),
                             title = jsEnabledString,
-                            isConditionMet = !currentTab.url.isSpecialUrl()
+                            isConditionMet = SiteOverrides.siteHost(currentTab.url) != null
                         ) {
-                            val url = URL(currentTab.url)
-                            if (userPreferences.javaScriptChoice != JavaScriptChoice.NONE) {
-                                if (!stringContainsItemFromList(currentTab.url, strgs)) {
-                                    if (userPreferences.javaScriptBlocked.equals("")) {
-                                        userPreferences.javaScriptBlocked = url.host
-                                    } else {
-                                        userPreferences.javaScriptBlocked = userPreferences.javaScriptBlocked + ", " + url.host
-                                    }
-                                } else {
-                                    if (!userPreferences.javaScriptBlocked.contains(", " + url.host)) {
-                                        userPreferences.javaScriptBlocked = userPreferences.javaScriptBlocked.replace(url.host, "")
-                                    } else {
-                                        userPreferences.javaScriptBlocked = userPreferences.javaScriptBlocked.replace(", " + url.host, "")
-                                    }
-                                }
-                            } else {
-                                userPreferences.javaScriptChoice = JavaScriptChoice.WHITELIST
-                            }
+                            val enabled = siteSettings.toggleJavaScript(currentTab.url)
+                            currentTab.webView?.settings?.javaScriptEnabled = enabled
                             activity.tabsManager.currentTab?.reload()
-                            Handler().postDelayed({
-                                activity.tabsManager.currentTab?.reload()
-                            }, 250)
-
                         }
                     ) // 14 - Page Tools
                 }

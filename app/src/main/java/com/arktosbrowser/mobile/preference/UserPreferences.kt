@@ -141,6 +141,21 @@ class UserPreferences @Inject constructor(
     var javaScriptEnabled by preferences.booleanPreference(JAVASCRIPT, true)
 
     /**
+     * Per-site JavaScript overrides (upstream #305), serialized as
+     * `host=0,other=1` pairs keyed on hostname. An entry wins over the
+     * global [javaScriptEnabled] switch and the [javaScriptChoice] site
+     * list; absent entries inherit both.
+     */
+    var perSiteJavaScriptOverrides by preferences.stringPreference(PER_SITE_JS_OVERRIDES, "")
+
+    /**
+     * Per-site cookie overrides (upstream #305), serialized like
+     * [perSiteJavaScriptOverrides]. An entry wins over the global
+     * [cookiesEnabled] switch.
+     */
+    var perSiteCookieOverrides by preferences.stringPreference(PER_SITE_COOKIE_OVERRIDES, "")
+
+    /**
      * True if the device location should be accessible by websites, false otherwise.
      *
      * NOTE: If this is enabled, permission will still need to be granted on a per-site basis.
@@ -464,6 +479,8 @@ private const val HIDE_STATUS_BAR = "hidestatus"
 private const val HOMEPAGE = "home"
 private const val INCOGNITO_COOKIES = "incognitocookies"
 private const val JAVASCRIPT = "java"
+private const val PER_SITE_JS_OVERRIDES = "perSiteJsOverrides"
+private const val PER_SITE_COOKIE_OVERRIDES = "perSiteCookieOverrides"
 private const val LOCATION = "location"
 private const val OVERVIEW_MODE = "overviewmode"
 private const val POPUPS = "newwindows"

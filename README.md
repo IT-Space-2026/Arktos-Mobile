@@ -46,6 +46,9 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Multi-list ad-block subscriptions: the desktop preset catalog
   (EasyList, uBlock, AdGuard, regional lists, …) plus custom remote or
   local lists, each toggleable and auto-refreshed on a 7-day cadence
+- Per-site JavaScript and cookie quick-toggles in the toolbar menu and
+  on long-pressing a link — host-keyed overrides that persist per
+  origin on top of the global switches
 - Site-rank table (Tranco + Majestic Million) in the Rust core — a
   vendored top-100k seed merged best-rank-wins with consent-gated
   downloads, ready for "top-N site" trust policy
