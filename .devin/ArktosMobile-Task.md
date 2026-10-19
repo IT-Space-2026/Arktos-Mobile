@@ -62,7 +62,7 @@ NO SUDO — everything user-local.
 | FIXB11 | Forced SafeSearch for parental controls (upstream #327) — details below | done | 0 | SafeSearch.enforcedUrl (google safe=active / bing adlt=strict / ddg kp=1 / yandex family=1; replaces non-strict values) enforced in SmartCookieView.loadUrl + shouldOverrideLoading + onPageStarted backstop; safeSearchForced pref + switch on password-gated parental screen; 8 SafeSearchTest tests + assembleScMainDebug + engine-audit PASS |
 | FIXB12 | Replace translation provider (upstream #300) — details below | done | 0 | LibreTranslate-compatible default (libretranslate.de, pref-configurable); in-page translation via Rust wire format + TranslateBridge JS interface (added on-demand only) + TranslatePage.js DOM walker; ReadingActivity selected-text path rewired to same Rust builders — cargo 7/7, TranslateBridgeTest 6/6 |
 | DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
-| HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | pending | 0 | mostly closed/answered items; decide Arktos-side equivalents |
+| HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | done | 0 | #168 N/A (own icon set); #314 decided: GitHub Releases + in-repo fastlane metadata (README); #315 userscript + proxy bullets in README + fastlane full_description; #325 answer = built-in Settings→General→HTTP proxy (ProxyUtils/netcipher); decision record + userscript @require caveat in details; docs-only, engine-audit PASS |
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | pending | 0 | needs:tool:java — port desktop src/htmls/notfound.html+certerror.html look into Utils.buildErrorPage/buildBlockPage |
 | UI02 | Start page styled like Arktos desktop (no search bar) — details below | pending | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
 | J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
@@ -226,6 +226,45 @@ Housekeeping ports: #168 (icon vote — N/A for Arktos), #314 (beta on
 F-Droid/IzzyOnDroid — decide repo strategy), #315 (mention
 'userscript' support in README/store text), #325 (manual-proxy APK —
 answer pattern is already in-tree).
+
+Outcome / decision record (2026-10-19):
+
+- #168 (Icon Voting Round 2): upstream ran a community vote for a new
+  default launcher icon; closed/locked Jan 2021. N/A for Arktos —
+  REBRAND01 already shipped a new Arktos icon set in all
+  densities/flavors. No action.
+- #314 (beta on F-Droid/IzzyOnDroid): decided — GitHub Releases stays
+  the distribution channel; fastlane metadata
+  (`fastlane/metadata/android/en-US/`: title, short+full description,
+  icon) is kept in-repo so the package already meets the
+  F-Droid/IzzyOnDroid metadata prerequisite. Actual store listing is a
+  maintainer/packaging action (fdroiddata RFP / IzzyOnDroid ticket),
+  not a code change. Documented in README Installation section.
+- #315 ('userscript' keyword): real feature — `.user.js` pages prompt
+  an install dialog (SmartCookieWebClient.installExtension → Rust
+  `ArktosCore.parseUserScript` → JavaScriptRepository/ArktosStore),
+  scripts inject on `@include` regex match in `onPageCommitVisible`
+  and are removable under Extensions settings. Added explicit
+  'userscript' wording to README Features + fastlane
+  full_description.txt. Caveat found while verifying (follow-up
+  candidate, not fixed here): `onPageCommitVisible` only evaluates the
+  stored script body inside the `!i.requirements.isNullOrEmpty()`
+  branch — a script with `@include` but no `@require` installs but
+  never runs. Fix = hoist the `i.code` evaluation out of the
+  requirements branch; needs a test seam first since the block is
+  WebView-bound.
+- #325 (manual-proxy APK): answer pattern already in-tree and
+  verified — Settings → General → HTTP proxy offers None / Orbot
+  (localhost:8118) / I2P (localhost:4444) / Manual host:port
+  (dialog_manual_proxy.xml), applied via ProxyUtils + netcipher
+  `WebkitProxy.setProxy` in SmartCookieView. No special APK needed; a
+  fork wanting proxy-on-by-default only needs to default
+  `UserPreferences.proxyChoice` to `MANUAL` (the upstream poster's
+  real bug was a transient upstream break, since reverted).
+  Documented in README Features + fastlane description.
+
+Verify: docs-only (no code change → no new tests; no build needed);
+`./.devin/check-engine-audit.sh` PASS.
 
 ### UI01
 Restyle the WebView error/interstitial pages to match the Arktos

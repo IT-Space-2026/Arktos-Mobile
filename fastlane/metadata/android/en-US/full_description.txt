@@ -5,5 +5,7 @@ Features:
 - Modern UI
 - Tracking and ad blocker
 - Customizable
+- Userscript support (Greasemonkey-style .user.js scripts)
+- Proxy support: Orbot/Tor, I2P, or a manual HTTP proxy
 
 https://github.com/IT-Space-2026/Arktos-Mobile
