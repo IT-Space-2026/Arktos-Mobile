@@ -14,6 +14,7 @@ import android.widget.Toast
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.database.downloads.DownloadEntry
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
@@ -23,6 +24,8 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import io.reactivex.Maybe
 import io.reactivex.Scheduler
+import java.net.InetSocketAddress
+import java.net.Proxy
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -87,7 +90,14 @@ class DownloadHandler @Inject constructor(
             // Probe the real response headers first: the WebView-supplied mime
             // type is often application/octet-stream and the URL may still be
             // an interstitial that redirects to the actual file.
-            Maybe.fromCallable { DownloadHttpProbe.probe(url, cookies, userAgent, referer) }
+            val proxy = when (manager.proxyChoice) {
+                ProxyChoice.ORBOT -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 8118))
+                ProxyChoice.I2P -> Proxy(Proxy.Type.HTTP, InetSocketAddress("localhost", 4444))
+                ProxyChoice.MANUAL -> Proxy(Proxy.Type.HTTP,
+                    InetSocketAddress(manager.proxyHost, manager.proxyPort))
+                else -> null
+            }
+            Maybe.fromCallable { DownloadHttpProbe.probe(url, cookies, userAgent, referer, proxy) }
                 .subscribeOn(networkScheduler)
                 .observeOn(mainScheduler)
                 .subscribe(

@@ -77,6 +77,12 @@
         <meta-data
             android:name="android.webkit.WebView.MetricsOptOut"
             android:value="true" />
+        <!-- Disable WebView Safe Browsing: it phones visited URLs to
+             Google's Safe Browsing service. The app's own local
+             malware list (adblock engine) covers the protection. -->
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="false" />
         <!--
  <meta-data
             android:name="android.max_aspect"
