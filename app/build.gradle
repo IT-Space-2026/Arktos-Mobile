@@ -99,6 +99,7 @@ android {
         compose = true
         buildConfig = true
         resValues = true
+        aidl = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -160,11 +161,8 @@ dependencies {
     // permissions
     implementation 'com.guolindev.permissionx:permissionx:1.8.1'
 
-    // proxy support — upstream is dead (0.9.5, 2017); the AAR declares a
-    // support-v4 dep it never references in bytecode, so exclude it.
-    implementation ('net.i2p.android:helper:0.9.5') {
-        exclude group: 'com.android.support'
-    }
+    // proxy support — I2P Android binding is vendored (i2p/ + aidl/);
+    // upstream net.i2p.android:helper stopped releasing in 2017.
 
     //TODO: drop android 4.4 support - no TLS1.2 support on OKhttp3
     implementation ("com.squareup.okhttp3:okhttp"){
