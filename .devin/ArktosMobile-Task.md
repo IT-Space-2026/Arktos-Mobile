@@ -63,6 +63,8 @@ NO SUDO — everything user-local.
 | FIXB12 | Replace translation provider (upstream #300) — details below | pending | 0 | needs:tool:java — endpoint emptied during rebrand; pick a working public/self-host option or remove the menu entry |
 | DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | pending | 0 | mostly closed/answered items; decide Arktos-side equivalents |
+| UI01 | Error/interstitial pages styled like Arktos desktop — details below | pending | 0 | needs:tool:java — port desktop src/htmls/notfound.html+certerror.html look into Utils.buildErrorPage/buildBlockPage |
+| UI02 | Start page styled like Arktos desktop (no search bar) — details below | pending | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
 
 ## Task details
 
@@ -223,3 +225,60 @@ Housekeeping ports: #168 (icon vote — N/A for Arktos), #314 (beta on
 F-Droid/IzzyOnDroid — decide repo strategy), #315 (mention
 'userscript' support in README/store text), #325 (manual-proxy APK —
 answer pattern is already in-tree).
+
+### UI01
+Restyle the WebView error/interstitial pages to match the Arktos
+desktop error pages.
+
+- Source of truth (desktop repo, arora worktree):
+  `src/htmls/notfound.html`, `src/htmls/certerror.html`.
+- Mobile entry points: `Utils.buildErrorPage()` +
+  `Utils.buildBlockPage()` in
+  `app/src/main/java/com/arktosbrowser/mobile/utils/Utils.kt` —
+  they emit inline-HTML strings loaded via
+  `loadDataWithBaseURL("https://arktos-error.local", ...)`
+  (stable baseUrl from FIXA02 — keep it).
+- Desktop design to port: white rounded card (`#box`,
+  border-radius 0.8em, subtle shadow, max-width ~640px, centered),
+  blue gradient header band (`#228 → #66a`) with the Arktos logo
+  floated right, error list under a thin divider, small
+  suggestion text.
+- Logo asset: add `arktos.svg`/`arktos.webp` reference via
+  file:///android_asset (arktos.webp already shipped in assets).
+- Dark mode: desktop tags `<html class="arktos-dark">` when the
+  forced dark palette is active — replicate by emitting the dark
+  CSS variant when `userPreferences.useTheme != AppTheme.LIGHT`
+  (callers already know the theme via the `color` param).
+- Do NOT break the `reloadCode` callback contract or the
+  `showButton`/proceed-button logic — only restyle.
+- Verify: `./gradlew assembleScMainDebug`; unit test asserting the
+  generated HTML contains the card structure + still contains
+  $title/$error substitution + reload JS hook.
+
+### UI02
+Restyle the in-app start/home page to match the Arktos desktop
+startpage — WITHOUT the centered search bar (mobile already has the
+URL bar).
+
+- Source of truth (desktop repo, arora worktree):
+  `src/htmls/startpage.html`, `startpage.css`, plus assets
+  `aurora-wave.svg`, `aurora-wave-private.svg` (incognito variant),
+  `arktos-plain.svg`.
+- Mobile entry points: `app/src/main/assets/homepage.html`,
+  `private.html` (+ `HomePageFactory`/`IncognitoPageFactory` fill
+  `${TITLE}` etc.).
+- Port: aurora-wave band across the top (~240px hero stage), the
+  Arktos logo cresting the wave (~170px, centered), the header
+  title, and the page gradient (radial cyan/purple aurora glow over
+  light gradient). Copy the wave/logo SVGs into
+  `app/src/main/assets/`.
+- Remove the page's own search box (#search_input/.search_bar) —
+  redundant with the toolbar URL bar.
+- Keep the customizable link tiles (localStorage link1..linkN +
+  `shouldUpdate` flow in SmartCookieWebClient.onPageFinished) —
+  render them under the hero in the same card style as UI01.
+- Incognito page (`private.html`) uses `aurora-wave-private.svg`
+  and dark palette.
+- Verify: `./gradlew assembleScMainDebug`; homepage + incognito
+  render without JS errors; link-tile save/read still works;
+  engine-audit PASS.
