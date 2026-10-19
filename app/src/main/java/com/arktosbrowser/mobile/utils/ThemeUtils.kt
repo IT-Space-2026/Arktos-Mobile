@@ -1,6 +1,5 @@
 package com.arktosbrowser.mobile.utils
 
-import android.annotation.TargetApi
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -8,13 +7,11 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.drawable.Drawable
-import android.os.Build
 import android.util.TypedValue
 import androidx.annotation.AttrRes
 import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.DrawableCompat
 import com.arktosbrowser.mobile.R
 
 object ThemeUtils {
@@ -49,7 +46,6 @@ object ThemeUtils {
      * @return the status bar color of the current theme.
      */
     @ColorInt
-    @TargetApi(21)
     fun getStatusBarColor(context: Context): Int =
         getColor(context, android.R.attr.statusBarColor)
 
@@ -88,27 +84,11 @@ object ThemeUtils {
     private fun getIconDarkThemeColor(context: Context): Int =
         ContextCompat.getColor(context, R.color.icon_dark_theme)
 
-    /**
-     * Gets the color icon for the light or
-     * dark theme.
-     *
-     * @param context the context to use.
-     * @param dark    true for the dark theme,
-     *                false for the light theme.
-     * @return the color of the icon.
-     */
-    @ColorInt
-    fun getIconThemeColor(context: Context, dark: Boolean): Int =
-        if (dark) getIconDarkThemeColor(context) else getIconLightThemeColor(context)
-
     private fun getVectorDrawable(context: Context, drawableId: Int): Drawable {
-        var drawable = ContextCompat.getDrawable(context, drawableId)
+        val drawable = ContextCompat.getDrawable(context, drawableId)
 
         Preconditions.checkNonNull(drawable)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            drawable = DrawableCompat.wrap(drawable!!).mutate()
-        }
         return drawable!!
     }
 

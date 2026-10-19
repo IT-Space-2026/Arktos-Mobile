@@ -1,60 +1,20 @@
 package com.arktosbrowser.mobile.utils
 
 import android.app.Application
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.annotation.ColorInt
-import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.rust.ArktosCore
 
 object DrawableUtils {
-
-    /**
-     * Creates a white rounded drawable with an inset image of a different color.
-     *
-     * @param context     the context needed to work with resources.
-     * @param drawableRes the drawable to inset on the rounded drawable.
-     * @return a bitmap with the desired content.
-     */
-    fun createImageInsetInRoundedSquare(
-        context: Context,
-        @DrawableRes drawableRes: Int
-    ): Bitmap {
-        val icon = ThemeUtils.getBitmapFromVectorDrawable(context, drawableRes)
-
-        val image = Bitmap.createBitmap(icon.width, icon.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(image)
-        val paint = Paint()
-        paint.color = Color.WHITE
-        paint.isAntiAlias = true
-        paint.isFilterBitmap = true
-        paint.isDither = true
-
-        val radius = Utils.dpToPx(2f)
-
-        val outer = RectF(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat())
-        canvas.drawRoundRect(outer, radius.toFloat(), radius.toFloat(), paint)
-
-        val dest = Rect(
-            Math.round(outer.left + radius),
-            Math.round(outer.top + radius),
-            Math.round(outer.right - radius),
-            Math.round(outer.bottom - radius)
-        )
-        canvas.drawBitmap(icon, null, dest, paint)
-
-        return image
-    }
 
     /**
      * Creates a rounded square of a certain color with

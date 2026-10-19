@@ -1,20 +1,16 @@
 package com.arktosbrowser.mobile.database.bookmark
 
 import android.content.Context
-import android.os.Environment
 import android.util.Log
-import androidx.annotation.WorkerThread
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.bookmark.toBookmarkEntry
 import com.arktosbrowser.mobile.bookmark.legacyExportJson
 import com.arktosbrowser.mobile.database.Bookmark
 import com.arktosbrowser.mobile.rust.ArktosCore
-import com.arktosbrowser.mobile.utils.Preconditions
 import com.arktosbrowser.mobile.utils.Utils
 import io.reactivex.Completable
 import java.io.BufferedReader
 import java.io.BufferedWriter
-import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.OutputStream
@@ -66,7 +62,6 @@ object BookmarkExporter {
         bookmarkList: List<Bookmark.Entry>,
         aStream: OutputStream
     ): Completable = Completable.fromAction {
-        Preconditions.checkNonNull(bookmarkList)
         var bookmarkWriter: BufferedWriter? = null
         try {
             bookmarkWriter = BufferedWriter(OutputStreamWriter(aStream))
@@ -77,33 +72,5 @@ object BookmarkExporter {
         } finally {
             Utils.close(bookmarkWriter)
         }
-    }
-
-    /**
-     * A blocking call that creates a new export file with
-     * the name "BookmarkExport.txt" and an appropriate
-     * numerical appendage if a file already exists with
-     * that name.
-     *
-     * @return a non null empty file that can be used
-     * to export bookmarks to.
-     */
-    @WorkerThread
-    @Suppress("DEPRECATION")
-    fun createNewExportFile(): File {
-        var bookmarksExport = File(
-            Environment.getExternalStorageDirectory(),
-            "BookmarksExport.txt"
-        )
-        var counter = 0
-        while (bookmarksExport.exists()) {
-            counter++
-            bookmarksExport = File(
-                Environment.getExternalStorageDirectory(),
-                "BookmarksExport-$counter.txt"
-            )
-        }
-
-        return bookmarksExport
     }
 }

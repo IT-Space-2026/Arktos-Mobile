@@ -67,7 +67,7 @@ class BrowserApp : Application() {
 
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
             if (BuildConfig.DEBUG) {
-                FileUtils.writeCrashToStorage(ex)
+                FileUtils.writeCrashToStorage(this, ex)
             }
 
             if (defaultHandler != null) {
@@ -79,7 +79,7 @@ class BrowserApp : Application() {
 
         RxJavaPlugins.setErrorHandler { throwable: Throwable? ->
             if (BuildConfig.DEBUG && throwable != null) {
-                FileUtils.writeCrashToStorage(throwable)
+                FileUtils.writeCrashToStorage(this, throwable)
                 throw throwable
             }
         }

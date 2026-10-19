@@ -83,9 +83,8 @@ object FileUtils {
         try {
             inputStream = FileInputStream(inputFile)
             val parcel = Parcel.obtain()
-            val data = ByteArray(inputStream.channel.size().toInt())
+            val data = inputStream.readBytes()
 
-            inputStream.read(data, 0, data.size)
             parcel.unmarshall(data, 0, data.size)
             parcel.setDataPosition(0)
             val out = parcel.readBundle(ClassLoader.getSystemClassLoader())
@@ -103,21 +102,20 @@ object FileUtils {
     }
 
     /**
-     * Writes a stacktrace to the downloads folder with
+     * Writes a stacktrace to the app-private crash directory with
      * the following filename: [EXCEPTION]_[TIME OF CRASH IN MILLIS].txt
+     * Private storage — stacktraces can embed URLs carrying tokens.
      *
-     * @param throwable the Throwable to log to external storage
+     * @param app       the application whose files directory holds the dumps.
+     * @param throwable the Throwable to log to storage
      */
-    @Suppress("DEPRECATION")
-    fun writeCrashToStorage(throwable: Throwable) {
+    fun writeCrashToStorage(app: Application, throwable: Throwable) {
         val fileName = throwable.javaClass.simpleName + '_' + System.currentTimeMillis() + ".txt"
-        val outputFile = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            fileName
-        )
+        val outputFile = File(File(app.filesDir, "crash"), fileName)
 
         var outputStream: FileOutputStream? = null
         try {
+            outputFile.parentFile?.mkdirs()
             outputStream = FileOutputStream(outputFile)
             throwable.printStackTrace(PrintStream(outputStream))
             outputStream.flush()
@@ -157,8 +155,8 @@ object FileUtils {
         for (n in 0 until 100) {
             if (!file.exists()) {
                 try {
-                    if (file.createNewFile()) {
-                        file.delete()
+                    if (file.createNewFile() && !file.delete()) {
+                        Log.w(TAG, "Unable to delete probe file: $file")
                     }
                     return true
                 } catch (ignored: IOException) {
