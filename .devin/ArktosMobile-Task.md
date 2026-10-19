@@ -50,7 +50,7 @@ NO SUDO — everything user-local.
 | FIXA07 | Follow system dark mode + auto dark-web addon (upstream #251) — details below | done | 1 | AppTheme.SYSTEM(3) resolves via uiMode (Context.isNightMode + resolve()); dark-web addon auto-on under system dark via darkWebAddonEnabled(); uiMode added to Main/Incognito configChanges + ThemableBrowserActivity restarts on resolved-theme flip; FORCE_DARK now applied in initializePreferences so it toggles live; all useTheme reads go through resolvedTheme(); 6 unit tests + assemble + engine-audit PASS |
 | FIXA08 | Easier new-tab creation in drawer mode (upstream #299) — details below | done | 0 | persistent new_tab_button added to toolbar_content (default gone, shown when showTabsInDrawer) wired to newTabButtonClicked/LongClicked in BrowserActivity; one-tap + beside overflow — assembleScMainDebug + 5 DrawerNewTabButtonTest tests + engine-audit PASS |
 | FIXA09 | Swap tabs/bookmarks icon positions (upstream #297) — details below | done | 0 | bookmarksAndTabsIconsSwapped pref + cb_swapicons switch in drawer settings; bookmarks_button (star, gone-by-default) at toolbar start, shown + home_button moved next to overflow when on; bottom nav uses new bottom_menu_swapped.xml; activity restarts on toggle; 5 DrawerIconSwapTest tests + assembleScMainDebug + engine-audit PASS |
-| FIXB01 | Downloads correctness: early-stop + .bin fallback + html-instead-of-file (upstream #270/#311/#303) — details below | pending | 0 | needs:tool:java — note: Rust download core lands later (rust lane PORT01), keep Kotlin-side seam clean |
+| FIXB01 | Downloads correctness: early-stop + .bin fallback + html-instead-of-file (upstream #270/#311/#303) — details below | in_progress | 1 | needs:tool:java — note: Rust download core lands later (rust lane PORT01), keep Kotlin-side seam clean |
 | FIXB02 | Connection-refused replaces tab URL with data: URI after restart (upstream #281) — details below | pending | 0 | needs:tool:java |
 | FIXB03 | Tapped URL ignored on first try after app switch (upstream #309) — details below | pending | 0 | needs:tool:java |
 | FIXB04 | Cert warning flicker + freeze — dialog loop (upstream #296) — details below | pending | 0 | needs:tool:java |
@@ -65,6 +65,7 @@ NO SUDO — everything user-local.
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | pending | 0 | mostly closed/answered items; decide Arktos-side equivalents |
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | pending | 0 | needs:tool:java — port desktop src/htmls/notfound.html+certerror.html look into Utils.buildErrorPage/buildBlockPage |
 | UI02 | Start page styled like Arktos desktop (no search bar) — details below | pending | 0 | needs:tool:java — port desktop src/htmls/startpage.html look into assets/homepage.html + private.html, minus the search form |
+| J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
 
 ## Task details
 
@@ -282,3 +283,29 @@ URL bar).
 - Verify: `./gradlew assembleScMainDebug`; homepage + incognito
   render without JS errors; link-tile save/read still works;
   engine-audit PASS.
+
+### J2K01
+Convert the remaining `.java` sources to Kotlin — target zero
+`.java` files under `app/src/main`.
+
+- Remaining files (12): `list/HorizontalItemAnimator.java`,
+  `list/VerticalItemAnimator.java`, `utils/ThemeUtils.java`,
+  `utils/ProxyUtils.java`, `utils/FileUtils.java`,
+  `utils/IntentUtils.java`, `utils/StringBuilderUtils.java`,
+  `utils/DrawableUtils.java`, `utils/MemoryLeakUtils.java`,
+  `utils/WebUtils.java`,
+  `database/bookmark/BookmarkExporter.java`,
+  `download/FetchUrlMimeType.java`.
+  All are platform-bound (Android views/intents/files/drawables) —
+  convert, do NOT redesign. MurmurHash + WebAddress already moved
+  to Rust on the rust-work branch — if a file on this list is
+  already gone/ported when the task runs, skip it and note it.
+- Method: Android Studio-style Java→Kotlin conversion semantics —
+  static utility classes become `object`s, keep public API
+  signatures so Kotlin call sites don't churn (check
+  `@JvmStatic`-style usage patterns already in the codebase).
+- If a file turns out to be dead code on this branch, delete it
+  instead of converting.
+- Verify: `find app/src/main -name "*.java"` → empty (or only
+  files justified in Notes), `./gradlew assembleScMainDebug` +
+  `testScMainDebugUnitTest` green, engine-audit PASS.
