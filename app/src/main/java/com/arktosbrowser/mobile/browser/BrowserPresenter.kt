@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.util.Log
 import android.webkit.URLUtil
+import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.*
 import com.arktosbrowser.mobile.di.MainScheduler
+import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.html.bookmark.BookmarkPageFactory
 import com.arktosbrowser.mobile.html.homepage.HomePageFactory
 import com.arktosbrowser.mobile.html.incognito.IncognitoPageFactory
@@ -62,9 +64,33 @@ class BrowserPresenter(
                     view.notifyTabViewInitialized()
                     view.updateTabNumber(tabsModel.size())
                     tabChanged(tabsModel.positionOf(it))
+                    openChangelogOncePerUpgrade(intent)
                 }
             )
 
+    }
+
+    /**
+     * CHLOG01 — one-shot "what's new": after a versionCode bump, open
+     * the changelog once in a new tab — foreground when the launch
+     * carried no external URL, background when an intent link is being
+     * opened. Regular mode only: the incognito process must not race
+     * the SharedPreferences write that marks the version seen.
+     */
+    private fun openChangelogOncePerUpgrade(intent: Intent?) {
+        if (isIncognito || !userPreferences.whatsNewEnabled) {
+            return
+        }
+        if (!ChangelogGate.shouldShow(userPreferences.lastChangelogVersionCode, BuildConfig.VERSION_CODE)) {
+            return
+        }
+        userPreferences.lastChangelogVersionCode = BuildConfig.VERSION_CODE
+        if (tabsModel.allTabs.any { it.url == ChangelogPage.URL }) {
+            // Restored session already carries the changelog tab.
+            return
+        }
+        val hadIntentUrl = intent?.action == Intent.ACTION_WEB_SEARCH || intent?.dataString != null
+        newTab(UrlInitializer(ChangelogPage.URL), !hadIntentUrl)
     }
 
     /**

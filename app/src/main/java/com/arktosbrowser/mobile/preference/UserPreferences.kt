@@ -236,6 +236,14 @@ class UserPreferences @Inject constructor(
 
     var whatsNewEnabled by preferences.booleanPreference(WHATS_NEW, true)
 
+    /**
+     * VersionCode of the last build that already showed its changelog
+     * (CHLOG01). [com.arktosbrowser.mobile.browser.ChangelogGate]
+     * compares it against the running build — a mismatch opens the
+     * changelog once and this is updated, so it never re-shows.
+     */
+    var lastChangelogVersionCode by preferences.intPreference(LAST_CHANGELOG_VERSION, 0)
+
 
 
     /**
@@ -552,6 +560,7 @@ private const val EXTRA = "showExtraOptions"
 private const val BOTTOM_BAR = "bottomBar"
 private const val IMAGE_URL = "imageUrl"
 private const val WHATS_NEW = "whatsNew"
+private const val LAST_CHANGELOG_VERSION = "lastChangelogVersionCode"
 private const val ALWAYS_INCOGNITO = "alwaysincognito"
 private const val FORCE_ZOOM = "forcezoom"
 private const val NAVBAR_COL = "navbarcol"

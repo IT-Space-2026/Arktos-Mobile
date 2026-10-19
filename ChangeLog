@@ -1,0 +1,129 @@
+Arktos Mobile changelog
+=======================
+
+Two-file convention: this file is the source of truth for release
+notes; `app/src/main/assets/changelog.html` renders the same entries
+inside the app (Settings → About → Changelog, or arktos://changelog).
+When you add an entry here, mirror it in the HTML page.
+
+17.0 — Arktos Mobile: first release
+Rebrand / project:
+- Rebranded the project from SmartCookieWeb to Arktos Mobile: package
+  com.cookiegames.smartcookie → com.arktosbrowser.mobile, Arktos logo
+  icon set in every density and flavor, dead hosted services replaced
+  with neutral defaults (translate/news endpoints emptied, upstream
+  suggestion + SearX endpoints removed), and every user-visible string,
+  README, ONLINE doc and fastlane metadata now says Arktos (REBRAND01).
+- Residual SmartCookie* identifiers renamed to ArktosCookie*
+  (SmartCookieView → ArktosCookieView, SmartCookieWebClient →
+  ArktosCookieWebClient, SmartCookieChromeClient →
+  ArktosCookieChromeClient, SmartCookieViewTitle →
+  ArktosCookieViewTitle); upstream project-name citations kept as
+  attribution (RENAM01).
+- Engine-coupling audit groundwork: engine/BrowserEngine.kt boundary
+  sketch plus .devin/ENGINE.md + check-engine-audit.sh tracking every
+  android.webkit touchpoint for a possible future selectable-engine
+  effort (ENG01).
+- LIMITATIONS.md documents the upstream issues that are Android
+  WebView platform limits rather than fixable bugs (DOCS01).
+
+Rust core:
+- New rust/ workspace with an arktos-core cdylib exposed to Kotlin
+  through UniFFI; Gradle cross-compiles per-ABI jniLibs via cargo-ndk
+  and generates the Kotlin bindings at build time (RCORE01).
+- BlocklistEngine in Rust unifies ad/malware/site-block/LAN verdicts —
+  one call per shouldInterceptRequest; hosts-file parsing moved to
+  Rust; public-page→private-network requests blocked behind a privacy
+  toggle (BLOCK01).
+- ArktosStore (rusqlite) replaces the five SQLiteOpenHelper databases
+  behind unchanged repository interfaces; Netscape bookmark import
+  uses a Rust HTML tokenizer (STORE01).
+- Search suggestions, userscript metadata/@include parsing, download
+  filename rules, bookmark JSON import/export and reader-mode
+  extraction (dom_smoothie) all run in the Rust core; matching Kotlin
+  models and helpers deleted (PORT01).
+- URL utilities, error/block page builders, color math and the
+  app-lock/parental password hashing (argon2id, in-place upgrade of
+  legacy plaintext entries) ported to Rust in a second sweep (PORT02).
+- Multi-list adblock subscriptions mirroring the desktop preset
+  catalog, with per-list toggles, custom URL/file lists, staleness
+  refresh and a privacy-settings screen managing them (LIST01,
+  PREFS01).
+- Tranco + Majestic site-rank lists merge a vendored seed with
+  downloaded drop files through a streaming Rust parser, consent-gated
+  behind the same privacy screen (RANK01).
+
+Web-view fixes (upstream SmartCookieWeb issues):
+- Error/interstitial pages got a stable non-null baseUrl
+  (https://arktos-error.local) instead of loading with a null base
+  under JavaScript enabled (upstream PR #329 for #328; FIXA02).
+- StartPage search moved off the retired startpage.com/do/* endpoints
+  to www.startpage.com/sp/search (#326; FIXA01).
+- AMOLED theme: the active tab in the drawer now has a visible
+  selection contrast against the black background (#298; FIXA03).
+- The URL bar can trim protocol/www for display only — the loaded
+  URL is untouched (#278; FIXA04).
+- Certificate info dialog stays fully reachable at maximum system
+  font/display scaling (#277; FIXA05).
+- Text zoom ceiling raised to 400% while keeping the original
+  25–200% steps and default (#275; FIXA06).
+- New 'Follow system' theme option flips the browser theme and the
+  dark-web addon with the system night mode; manual override still
+  wins (#251; FIXA07).
+- One-tap new-tab button in the toolbar while tabs live in the drawer
+  (#299; FIXA08), plus an option to swap the tabs/bookmarks drawer
+  icon positions (#297; FIXA09).
+- Downloads verify completeness and retry truncated or retryable
+  failures, resolve real filenames from Content-Disposition/mime type
+  instead of falling back to .bin, and warn when a server returns HTML
+  for a file download (#270/#311/#303; FIXB01).
+- Error pages no longer persist their data: URI as the tab's URL —
+  the original address survives restarts and undo-close (#281; FIXB02).
+- First tapped link or pasted URL after returning to the app is no
+  longer eaten by a mid-navigation user-agent rewrite (#309; FIXB03).
+- SSL warnings are gated to one prompt per page load instead of a
+  dialog loop that could freeze the app (#296; FIXB04).
+- App links prefer installed handler apps over the Play Store, honour
+  browser_fallback_url, and can no longer loop back into the browser
+  itself (#316; FIXB05).
+- target=_blank links no longer crash on undeliverable popup
+  transports — the window request is declined and the link loads in
+  the current tab (#306; FIXB06).
+- A mistyped app-lock password keeps the prompt open with an error
+  instead of killing the app (#302; FIXB07).
+- Per-site JavaScript/cookie quick-toggles from the page menu and the
+  long-press link dialog, overriding the global setting per origin
+  (#305; FIXB09).
+- A dedicated 'No internet connection' page replaces the generic
+  error when the device is offline; reload retries the real URL
+  (#323; FIXB10).
+- Forced SafeSearch across Google/Bing/DuckDuckGo/Yandex behind the
+  password-gated parental-control setting survives URL-bar edits,
+  bookmarks and redirects (#327; FIXB11).
+- Page translation rebuilt on a LibreTranslate-compatible endpoint
+  (configurable, default libretranslate.de) with the wire format in
+  Rust and an on-demand JS bridge — the dead Microsoft translator
+  path is gone (#300; FIXB12).
+- WebView hardening pass: intent-scheme allowlist on incoming VIEW
+  intents, no user-CA trust, no cloud backup, download filename
+  sanitization and dead-code removal (SECFIX).
+
+UI:
+- Error/block interstitials restyled to the Arktos desktop look —
+  centered card, gradient header band, floated logo, hint list and
+  pill buttons, emitted by the Rust page builders with an arktos-dark
+  variant (UI01).
+- Start and incognito pages restyled to the Arktos desktop startpage —
+  aurora-wave hero, cresting logo and gradient header; the redundant
+  in-page search box removed; customizable link tiles kept (UI02).
+- In-app changelog page (this document) reachable from
+  Settings → About → Changelog and via arktos://changelog; after an
+  upgrade the changelog opens once in a new tab (CHLOG01).
+
+Build / housekeeping:
+- Build fixed for JDK 21 (jacoco bump, locale string fixes);
+  jetifier dropped; dead dependencies replaced (BOOT01).
+- Upstream housekeeping decisions recorded: own icon set (#168 N/A),
+  GitHub Releases + in-repo fastlane metadata as the F-Droid
+  prerequisite (#314), 'userscript' and manual-proxy support
+  documented (#315/#325; HOUSE01).

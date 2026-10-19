@@ -28,6 +28,7 @@ import com.arktosbrowser.mobile.uniffi.acceptedUriScheme as uniffiAcceptedUriSch
 import com.arktosbrowser.mobile.uniffi.adblockPresets
 import com.arktosbrowser.mobile.uniffi.buildBlockPage as uniffiBuildBlockPage
 import com.arktosbrowser.mobile.uniffi.buildErrorPage as uniffiBuildErrorPage
+import com.arktosbrowser.mobile.uniffi.changelogAssetName as uniffiChangelogAssetName
 import com.arktosbrowser.mobile.uniffi.composeSearchUrl as uniffiComposeSearchUrl
 import com.arktosbrowser.mobile.uniffi.contentDispositionFilename as uniffiContentDispositionFilename
 import com.arktosbrowser.mobile.uniffi.corePing
@@ -42,6 +43,7 @@ import com.arktosbrowser.mobile.uniffi.guessFileName as uniffiGuessFileName
 import com.arktosbrowser.mobile.uniffi.hashPassword as uniffiHashPassword
 import com.arktosbrowser.mobile.uniffi.importLegacyBookmarks as uniffiImportLegacyBookmarks
 import com.arktosbrowser.mobile.uniffi.isBookmarkUrl as uniffiIsBookmarkUrl
+import com.arktosbrowser.mobile.uniffi.isChangelogUrl as uniffiIsChangelogUrl
 import com.arktosbrowser.mobile.uniffi.isColorTooDark as uniffiIsColorTooDark
 import com.arktosbrowser.mobile.uniffi.isDownloadsUrl as uniffiIsDownloadsUrl
 import com.arktosbrowser.mobile.uniffi.isHistoryUrl as uniffiIsHistoryUrl
@@ -283,6 +285,15 @@ object ArktosCore {
     fun isDownloadsUrl(url: String): Boolean = uniffiIsDownloadsUrl(url)
     fun isHistoryUrl(url: String): Boolean = uniffiIsHistoryUrl(url)
     fun isStartPageUrl(url: String): Boolean = uniffiIsStartPageUrl(url)
+
+    /**
+     * CHLOG01 — true for `arktos://changelog` and for the bundled
+     * `file://…/changelog.html` asset path. [changelogAssetName]
+     * returns the flat asset filename under `arktos://changelog/<name>`
+     * ("" when the URL is not a changelog asset request).
+     */
+    fun isChangelogUrl(url: String): Boolean = uniffiIsChangelogUrl(url)
+    fun changelogAssetName(url: String): String = uniffiChangelogAssetName(url)
 
     /** `Utils.getDomainName` — display-only domain extraction (PORT02). */
     fun domainName(url: String): String = uniffiDomainName(url)
