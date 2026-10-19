@@ -1136,9 +1136,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     override fun updateSslState(sslState: SslState) {
-        val currentTab = tabsManager.currentTab
-        val url = currentTab?.url
-        if(url!!.contains("http://") || url.contains("https://")){
+        val url = tabsManager.currentTab?.url
+        if (url != null && (url.contains("http://") || url.contains("https://"))) {
             toolbarBinding.searchSslStatus.setImageDrawable(createSslDrawableForState(sslState))
         }
         else{
@@ -2049,9 +2048,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
      * @param resultMsg the transport message used to send the URL to
      * the newly created WebView.
      */
-    override fun onCreateWindow(resultMsg: Message) {
-        presenter?.newTab(ResultMessageInitializer(resultMsg), true)
-    }
+    override fun onCreateWindow(resultMsg: Message): Boolean =
+        presenter?.newTab(ResultMessageInitializer(resultMsg), true) == true
 
     /**
      * Closes the specified [SmartCookieView]. This implements

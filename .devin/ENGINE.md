@@ -28,6 +28,8 @@ WebView adapter:
 - `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
 - `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieKT.kt` — error/interstitial pages via `loadDataWithBaseURL`.
 - `app/src/main/java/com/arktosbrowser/mobile/view/TabInitializer.kt` — per-tab init.
+- `app/src/main/java/com/arktosbrowser/mobile/view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.
+- `app/src/test/java/com/arktosbrowser/mobile/view/NewWindowTransportTest.kt` — unit tests for the transport check (mocked `WebViewTransport`).
 - `app/src/main/java/com/arktosbrowser/mobile/view/webrtc/WebRtcPermissionsModel.kt` — WebRTC permission model.
 - `app/src/main/java/com/arktosbrowser/mobile/browser/TabsManager.kt` — tab collection; would become the `Page` registry and engine selector.
 - `app/src/main/java/com/arktosbrowser/mobile/browser/activity/BrowserActivity.kt` — WebView/WebSettings touchpoints (UA, zoom, text size, cookies, JS toggle, geolocation), `onPause`/`onResume` engine lifecycle.

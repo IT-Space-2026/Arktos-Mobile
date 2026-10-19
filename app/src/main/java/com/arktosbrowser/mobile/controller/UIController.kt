@@ -103,8 +103,11 @@ interface UIController {
      * Called when a website wants to open a link in a new window.
      *
      * @param resultMsg the message to send to the new web view that is created.
+     * @return true when a new window/tab was created and [resultMsg] delivered;
+     * false when the request can't be honoured, so the WebView loads the link
+     * in the current window.
      */
-    fun onCreateWindow(resultMsg: Message)
+    fun onCreateWindow(resultMsg: Message): Boolean
 
     /**
      * Notify the browser that the website currently being displayed by the [tab] wants to be
