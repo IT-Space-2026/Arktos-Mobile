@@ -12,6 +12,7 @@
 
     <dimen name="dialog_max_size">350dp</dimen>
     <dimen name="dialog_padding">24dp</dimen>
+    <dimen name="ssl_dialog_min_content_height">96dp</dimen>
 
     <dimen name="navigation_drawer_max_width">300dp</dimen>
 
