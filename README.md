@@ -26,6 +26,13 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 
  `gradlew assembleDebug` or `./gradlew assembleDebug`
 
+- The build cross-compiles the Rust core (`rust/arktos-core` →
+  `libarktos.so`, consumed through UniFFI-generated Kotlin bindings).
+  Required on PATH: a Rust toolchain (`rustup`/`cargo`) with the Android
+  targets (`aarch64-linux-android`, `armv7-linux-androideabi`,
+  `x86_64-linux-android`), `cargo-ndk`, and an Android NDK under the
+  configured SDK (`ndk/` side-by-side or `ndk-bundle`).
+
 ---
 
 ## Features
@@ -33,7 +40,31 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Modern, clean UI
 - < 5MB download
 - Tons of settings
-- Blocks ads and trackers
+- Blocks ads and trackers — unified in the Rust `BlocklistEngine`
+  (`libarktos.so`): ad hosts, malware list, custom site block, and
+  public→local-network request blocking all share one per-request verdict
+- Multi-list ad-block subscriptions: the desktop preset catalog
+  (EasyList, uBlock, AdGuard, regional lists, …) plus custom remote or
+  local lists, each toggleable and auto-refreshed on a 7-day cadence
+- Site-rank table (Tranco + Majestic Million) in the Rust core — a
+  vendored top-100k seed merged best-rank-wins with consent-gated
+  downloads, ready for "top-N site" trust policy
+- List management screen under Privacy settings (desktop
+  AdBlockDialog mirror): per-list toggles, counts and last-update
+  stamps, per-row and refresh-all actions, plus a remote-list
+  auto-download consent toggle (manual refresh always works)
+- Bookmarks, history, downloads, the ad-block allow list and
+  userscripts persist through a single Rust `ArktosStore` (SQLite via
+  bundled rusqlite) behind the existing repository interfaces;
+  Netscape bookmark imports are parsed in Rust too
+- Search suggestions (Google, DuckDuckGo, Baidu, Naver), userscript
+  metadata parsing, download filename/MIME resolution, legacy
+  bookmark imports/exports and reading-mode article extraction
+  (`dom_smoothie`) all run in the Rust core
+- URL filtering and special-page detection, error/block page HTML,
+  hosts-file parsing, intent-scheme checks, tab/reader color math and
+  the app-lock + parental-control passwords (Argon2id with in-place
+  upgrade from legacy plaintext) run in the Rust core too
 
 ---
 

@@ -1,0 +1,17 @@
+# Arktos Mobile Rust core workspace.
+#
+# `arktos-core` builds `libarktos.so`, consumed by the Kotlin shell
+# through UniFFI-generated bindings (see app/build.gradle for the
+# cargo-ndk + uniffi-bindgen wiring).
+
+[workspace]
+resolver = "2"
+members = ["arktos-core"]
+
+# Keep libarktos.so small — target is <= ~1.5 MB per ABI.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

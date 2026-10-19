@@ -1,0 +1,359 @@
+package com.arktosbrowser.mobile.rust
+
+// RCORE01 — seam between the Kotlin shell and the Rust core
+// (`libarktos.so`, UniFFI-generated bindings under
+// `com.arktosbrowser.mobile.uniffi`).
+//
+// Every Kotlin→Rust call should go through this object so the JNI/JNA
+// boundary stays in one place. The generated bindings load the native
+// library lazily on first use, so calling into them is safe without an
+// explicit System.loadLibrary here.
+
+import com.arktosbrowser.mobile.browser.SiteBlockChoice
+import com.arktosbrowser.mobile.uniffi.AdBlockListPreset
+import com.arktosbrowser.mobile.uniffi.ArktosStore
+import com.arktosbrowser.mobile.uniffi.BlocklistConfig
+import com.arktosbrowser.mobile.uniffi.BlocklistEngine
+import com.arktosbrowser.mobile.uniffi.RankListSource
+import com.arktosbrowser.mobile.uniffi.RankListSourceKind
+import com.arktosbrowser.mobile.uniffi.ReadableArticle
+import com.arktosbrowser.mobile.uniffi.RequestVerdict
+import com.arktosbrowser.mobile.uniffi.SiteBlockMode
+import com.arktosbrowser.mobile.uniffi.StoreBookmark
+import com.arktosbrowser.mobile.uniffi.SuggestionProvider
+import com.arktosbrowser.mobile.uniffi.UserScriptMeta
+import com.arktosbrowser.mobile.uniffi.PasswordCheck
+import com.arktosbrowser.mobile.uniffi.acceptedUriScheme as uniffiAcceptedUriScheme
+import com.arktosbrowser.mobile.uniffi.adblockPresets
+import com.arktosbrowser.mobile.uniffi.buildBlockPage as uniffiBuildBlockPage
+import com.arktosbrowser.mobile.uniffi.buildErrorPage as uniffiBuildErrorPage
+import com.arktosbrowser.mobile.uniffi.composeSearchUrl as uniffiComposeSearchUrl
+import com.arktosbrowser.mobile.uniffi.contentDispositionFilename as uniffiContentDispositionFilename
+import com.arktosbrowser.mobile.uniffi.corePing
+import com.arktosbrowser.mobile.uniffi.coreVersion as uniffiCoreVersion
+import com.arktosbrowser.mobile.uniffi.domainName as uniffiDomainName
+import com.arktosbrowser.mobile.uniffi.downloadFileName as uniffiDownloadFileName
+import com.arktosbrowser.mobile.uniffi.exportLegacyBookmarks as uniffiExportLegacyBookmarks
+import com.arktosbrowser.mobile.uniffi.extractReadableArticle as uniffiExtractReadableArticle
+import com.arktosbrowser.mobile.uniffi.fileExtension as uniffiFileExtension
+import com.arktosbrowser.mobile.uniffi.formatDataSize as uniffiFormatDataSize
+import com.arktosbrowser.mobile.uniffi.guessFileName as uniffiGuessFileName
+import com.arktosbrowser.mobile.uniffi.hashPassword as uniffiHashPassword
+import com.arktosbrowser.mobile.uniffi.importLegacyBookmarks as uniffiImportLegacyBookmarks
+import com.arktosbrowser.mobile.uniffi.isBookmarkUrl as uniffiIsBookmarkUrl
+import com.arktosbrowser.mobile.uniffi.isColorTooDark as uniffiIsColorTooDark
+import com.arktosbrowser.mobile.uniffi.isDownloadsUrl as uniffiIsDownloadsUrl
+import com.arktosbrowser.mobile.uniffi.isHistoryUrl as uniffiIsHistoryUrl
+import com.arktosbrowser.mobile.uniffi.isIntentUrlAllowed as uniffiIsIntentUrlAllowed
+import com.arktosbrowser.mobile.uniffi.isSpecialUrl as uniffiIsSpecialUrl
+import com.arktosbrowser.mobile.uniffi.isStartPageUrl as uniffiIsStartPageUrl
+import com.arktosbrowser.mobile.uniffi.mimeTypeForExtension as uniffiMimeTypeForExtension
+import com.arktosbrowser.mobile.uniffi.mixColorFraction as uniffiMixColorFraction
+import com.arktosbrowser.mobile.uniffi.mixTwoColors as uniffiMixTwoColors
+import com.arktosbrowser.mobile.uniffi.parseDefaultBookmarks as uniffiParseDefaultBookmarks
+import com.arktosbrowser.mobile.uniffi.parseHostsDomains as uniffiParseHostsDomains
+import com.arktosbrowser.mobile.uniffi.parseNetscapeBookmarks
+import com.arktosbrowser.mobile.uniffi.parseSuggestions as uniffiParseSuggestions
+import com.arktosbrowser.mobile.uniffi.parseUserscript
+import com.arktosbrowser.mobile.uniffi.sanitizeFileName as uniffiSanitizeFileName
+import com.arktosbrowser.mobile.uniffi.siteRank as uniffiSiteRank
+import com.arktosbrowser.mobile.uniffi.siteRankEntryCount as uniffiSiteRankEntryCount
+import com.arktosbrowser.mobile.uniffi.siteRankFileEntries as uniffiSiteRankFileEntries
+import com.arktosbrowser.mobile.uniffi.siteRankLastUpdate as uniffiSiteRankLastUpdate
+import com.arktosbrowser.mobile.uniffi.siteRankReload as uniffiSiteRankReload
+import com.arktosbrowser.mobile.uniffi.siteRankSetDataDir as uniffiSiteRankSetDataDir
+import com.arktosbrowser.mobile.uniffi.siteRankSources as uniffiSiteRankSources
+import com.arktosbrowser.mobile.uniffi.siteRankUpdateIfStale as uniffiSiteRankUpdateIfStale
+import com.arktosbrowser.mobile.uniffi.siteRankUpdateNow as uniffiSiteRankUpdateNow
+import com.arktosbrowser.mobile.uniffi.smartUrlFilter as uniffiSmartUrlFilter
+import com.arktosbrowser.mobile.uniffi.suggestionQueryUrl as uniffiSuggestionQueryUrl
+import com.arktosbrowser.mobile.uniffi.verifyPassword as uniffiVerifyPassword
+
+object ArktosCore {
+
+    /** Semantic version of the linked Rust core. */
+    fun coreVersion(): String = uniffiCoreVersion()
+
+    /**
+     * Cheap liveness check — verifies the native library loaded and the
+     * FFI trampoline works. Always true when reachable.
+     */
+    fun ping(): Boolean = corePing()
+
+    /**
+     * The shared [BlocklistEngine] (BLOCK01) — created lazily so
+     * touching the seam doesn't load libarktos before first use.
+     */
+    private val blocklistEngine: BlocklistEngine by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        BlocklistEngine()
+    }
+
+    /** Push the blocklist feature toggles in one call. */
+    fun configureBlocklist(adsEnabled: Boolean, malwareEnabled: Boolean, lanBlockEnabled: Boolean) =
+        blocklistEngine.configure(BlocklistConfig(adsEnabled, malwareEnabled, lanBlockEnabled))
+
+    /**
+     * Parse and load hosts-file content into the ad-block set.
+     * Returns the number of blocked domains.
+     */
+    fun loadAdHosts(content: String): Int = blocklistEngine.loadAdHosts(content).toInt()
+
+    /**
+     * Parse one subscription list's content (hosts-file or
+     * AdBlockPlus syntax) and merge its domains into the ad-block set
+     * under [id] (LIST01). Returns the extracted domain count.
+     */
+    fun loadSubscriptionHosts(id: String, content: String): Int =
+        blocklistEngine.loadSubscriptionHosts(id, content).toInt()
+
+    /**
+     * Drop a subscription's domains from the ad-block set (LIST01) —
+     * called when a list is disabled or removed.
+     */
+    fun removeSubscriptionHosts(id: String) = blocklistEngine.removeSubscriptionHosts(id)
+
+    /**
+     * The curated filter-list catalog (LIST01) — a verbatim port of
+     * the desktop's `adblockpresets.cpp`.
+     */
+    fun adBlockPresets(): List<AdBlockListPreset> = adblockPresets()
+
+    /**
+     * Load comma-separated malware terms (`malware.txt` format);
+     * an empty string clears the list. Returns the term count.
+     */
+    fun loadMalwareTerms(content: String): Int = blocklistEngine.loadMalwareTerms(content).toInt()
+
+    /** Push the raw `siteBlockNames` preference string and mode. */
+    fun setSiteBlockList(names: String, choice: SiteBlockChoice) =
+        blocklistEngine.setSiteBlockList(names, choice.toSiteBlockMode())
+
+    /**
+     * Per-request verdict — called once per `shouldInterceptRequest`.
+     * [pageUrl] is the URL of the loading page ("" when unknown).
+     */
+    fun requestVerdict(requestUrl: String, pageUrl: String, isMainFrame: Boolean): RequestVerdict =
+        blocklistEngine.verdict(requestUrl, pageUrl, isMainFrame)
+
+    /**
+     * Open (creating if needed) the Rust storage core at [path]
+     * (STORE01). One instance is shared by all repositories — see
+     * `AppModule.providesArktosStore`.
+     */
+    fun openStore(path: String): ArktosStore = ArktosStore.open(path)
+
+    /**
+     * Parse a Netscape-format bookmark file in the Rust core
+     * (STORE01). Returns flat rows — folder is the slash-joined path.
+     */
+    fun importNetscapeBookmarks(html: String): List<StoreBookmark> = parseNetscapeBookmarks(html)
+
+    // ---- PORT01 --------------------------------------------------
+
+    /**
+     * Suggestion endpoint URL for an already-URLEncoded query
+     * (PORT01). Kotlin builds the OkHttp request from it.
+     */
+    fun suggestionQueryUrl(provider: SuggestionProvider, encodedQuery: String, language: String): String =
+        uniffiSuggestionQueryUrl(provider, encodedQuery, language)
+
+    /**
+     * Parse a suggestion response body (raw bytes — the Rust side
+     * decodes each provider's wire charset) into bare suggestion
+     * strings (PORT01).
+     */
+    fun parseSuggestions(provider: SuggestionProvider, body: ByteArray): List<String> =
+        uniffiParseSuggestions(provider, body)
+
+    /**
+     * Parse a userscript source into metadata + body (PORT01).
+     * [UserScriptMeta.includes] are Java-regex strings — compile-check
+     * each before storing.
+     */
+    fun parseUserScript(source: String): UserScriptMeta = parseUserscript(source)
+
+    /** RFC 6266/5987 Content-Disposition filename (PORT01). */
+    fun contentDispositionFilename(header: String): String? = uniffiContentDispositionFilename(header)
+
+    /** `URLUtil.guessFileName` parity (PORT01). */
+    fun guessFileName(url: String, contentDisposition: String?, mimeType: String?): String =
+        uniffiGuessFileName(url, contentDisposition, mimeType)
+
+    /**
+     * `DownloadHandler.getFileNameFromURL` parity (PORT01) — honors
+     * `filename*`-only headers upstream ignored.
+     */
+    fun downloadFileName(url: String, contentDisposition: String?, mimeType: String?): String =
+        uniffiDownloadFileName(url, contentDisposition, mimeType)
+
+    /** Download filename sanitizer (PORT01). */
+    fun sanitizeFileName(name: String?): String = uniffiSanitizeFileName(name)
+
+    /** `DownloadUtil.getDataSize` parity (PORT01). */
+    fun formatDataSize(size: Long): String = uniffiFormatDataSize(size)
+
+    /** Extension → MIME type for the `FetchUrlMimeType` fixup (PORT01). */
+    fun mimeTypeForExtension(extension: String): String? = uniffiMimeTypeForExtension(extension)
+
+    /**
+     * Strict legacy (JSON-lines) bookmark import (PORT01).
+     * `null` on malformed input — callers surface the error.
+     */
+    fun importLegacyBookmarks(text: String): List<StoreBookmark>? = uniffiImportLegacyBookmarks(text)
+
+    /** Lenient parse for bundled default bookmarks (PORT01). */
+    fun parseDefaultBookmarks(text: String): List<StoreBookmark> = uniffiParseDefaultBookmarks(text)
+
+    /**
+     * Readability extraction via dom_smoothie (PORT01). `url` only
+     * resolves relative links.
+     */
+    fun extractReadableArticle(url: String, html: String): ReadableArticle? =
+        uniffiExtractReadableArticle(url, html)
+
+    // ---- RANK01 --------------------------------------------------
+
+    /**
+     * Point the site-rank engine at its drop directory — the Kotlin
+     * `RankListLoader` commits `tranco-list.dat` /
+     * `majestic-million.csv` there (RANK01).
+     */
+    fun setRankListDataDir(dir: String) = uniffiSiteRankSetDataDir(dir)
+
+    /**
+     * The host's merged Tranco+Majestic rank; 0 when unranked
+     * (RANK01). Lazy — the seed ∪ drop merge builds on first call, so
+     * this stays off the per-request hot path.
+     */
+    fun siteRank(host: String): Long = uniffiSiteRank(host).toLong()
+
+    /** The two rank-list sources with last-update stamps (RANK01). */
+    fun rankListSources(): List<RankListSource> = uniffiSiteRankSources()
+
+    /** ms-since-epoch stamp of one source's committed copy; 0 = never (RANK01). */
+    fun rankListLastUpdate(kind: RankListSourceKind): Long = uniffiSiteRankLastUpdate(kind).toLong()
+
+    /** Usable-entry count of one drop file under its grammar — the updater's validation probe (RANK01). */
+    fun rankFileEntries(fileName: String): Long = uniffiSiteRankFileEntries(fileName).toLong()
+
+    /** Rebuild the merged rank table after an update lands (RANK01). Throws on a corrupt drop file. */
+    fun reloadRankLists() = uniffiSiteRankReload()
+
+    /**
+     * Consent-gated staleness check (RANK01): the sources to fetch,
+     * or empty when consent is missing / every copy is fresh.
+     */
+    fun rankUpdateIfStale(consentGranted: Boolean, nowMs: Long): List<RankListSource> =
+        uniffiSiteRankUpdateIfStale(consentGranted, nowMs.toULong())
+
+    /** Explicit refresh list — consent-free (RANK01). */
+    fun rankUpdateNow(): List<RankListSource> = uniffiSiteRankUpdateNow()
+
+    /** Merged rank-table entry count (RANK01). */
+    fun rankEntryCount(): Long = uniffiSiteRankEntryCount().toLong()
+
+    // ---- PORT02 --------------------------------------------------
+
+    /**
+     * `UrlUtils.smartUrlFilter` (PORT02) — resolve user input to a URL
+     * or a composed search URL; `""` when [canBeSearch] is false and
+     * the input is no URL.
+     */
+    fun smartUrlFilter(url: String, canBeSearch: Boolean, searchUrl: String): String =
+        uniffiSmartUrlFilter(url, canBeSearch, searchUrl)
+
+    /** The `ACCEPTED_URI_SCHEMA` check shared by UrlUtils/IntentUtils (PORT02). */
+    fun acceptedUriScheme(url: String): Boolean = uniffiAcceptedUriScheme(url)
+
+    /** `BrowserPresenter.isIntentUrlAllowed` — incoming-intent scheme allowlist (PORT02). */
+    fun isIntentUrlAllowed(url: String): Boolean = uniffiIsIntentUrlAllowed(url)
+
+    /** `URLUtil.composeSearchUrl` — placeholder substitution with form encoding (PORT02). */
+    fun composeSearchUrl(query: String, template: String, placeholder: String): String =
+        uniffiComposeSearchUrl(query, template, placeholder)
+
+    /** Generated in-app `file://` page checks (PORT02). */
+    fun isSpecialUrl(url: String): Boolean = uniffiIsSpecialUrl(url)
+    fun isBookmarkUrl(url: String): Boolean = uniffiIsBookmarkUrl(url)
+    fun isDownloadsUrl(url: String): Boolean = uniffiIsDownloadsUrl(url)
+    fun isHistoryUrl(url: String): Boolean = uniffiIsHistoryUrl(url)
+    fun isStartPageUrl(url: String): Boolean = uniffiIsStartPageUrl(url)
+
+    /** `Utils.getDomainName` — display-only domain extraction (PORT02). */
+    fun domainName(url: String): String = uniffiDomainName(url)
+
+    /** `Utils.guessFileExtension` (PORT02). */
+    fun fileExtension(filename: String): String? = uniffiFileExtension(filename)
+
+    /**
+     * `Utils.buildErrorPage` (PORT02) — the error interstitial HTML;
+     * all strings arrive localized, [color] is the theme override
+     * fragment appended verbatim.
+     */
+    fun buildErrorPage(
+        color: String,
+        title: String,
+        error: String,
+        reload: String,
+        showButton: Boolean,
+        reloadCode: String = "window.history.back();"
+    ): String = uniffiBuildErrorPage(color, title, error, reload, showButton, reloadCode)
+
+    /** `Utils.buildBlockPage` (PORT02) — the block interstitial HTML. */
+    fun buildBlockPage(
+        color: String,
+        title: String,
+        error: String,
+        blockedUrl: String,
+        proceedLabel: String,
+        goBackLabel: String,
+        showProceed: Boolean
+    ): String =
+        uniffiBuildBlockPage(color, title, error, blockedUrl, proceedLabel, goBackLabel, showProceed)
+
+    /** `Utils.isColorTooDark` — tab-strip luminance heuristic (PORT02). */
+    fun isColorTooDark(color: Int): Boolean = uniffiIsColorTooDark(color)
+
+    /** `Utils.mixTwoColors` — ARGB blend (PORT02). */
+    fun mixTwoColors(color1: Int, color2: Int, amount: Float): Int =
+        uniffiMixTwoColors(color1, color2, amount)
+
+    /** `DrawableUtils.mixColor` — fraction-lerp incl. alpha (PORT02). */
+    fun mixColorFraction(fraction: Float, startValue: Int, endValue: Int): Int =
+        uniffiMixColorFraction(fraction, startValue, endValue)
+
+    /**
+     * Argon2id hash for the app-lock / parental-control passwords
+     * (PORT02) — replaces the plaintext SharedPreferences storage.
+     */
+    fun hashPassword(password: String): String = uniffiHashPassword(password)
+
+    /**
+     * Verify [candidate] against the stored value (PORT02). A legacy
+     * plaintext stored value that matches returns the Argon2id
+     * replacement in [PasswordCheck.upgradedHash] — persist it to
+     * complete the migration.
+     */
+    fun verifyPassword(stored: String, candidate: String): PasswordCheck =
+        uniffiVerifyPassword(stored, candidate)
+
+    /**
+     * Hosts-file → domain list (PORT02) — the Rust parser behind the
+     * engine, exposed for the `HostParserTest` parity check.
+     */
+    fun parseHostsDomains(content: String): List<String> = uniffiParseHostsDomains(content)
+
+    /**
+     * `BookmarkExporter` payload (PORT02) — the legacy JSON-lines
+     * export text for the given bookmarks (upstream field order and
+     * org.json escaping preserved).
+     */
+    fun exportLegacyBookmarks(bookmarks: List<StoreBookmark>): String =
+        uniffiExportLegacyBookmarks(bookmarks)
+}
+
+private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {
+    SiteBlockChoice.NONE -> SiteBlockMode.NONE
+    SiteBlockChoice.WHITELIST -> SiteBlockMode.WHITELIST
+    SiteBlockChoice.BLACKLIST -> SiteBlockMode.BLACKLIST
+}

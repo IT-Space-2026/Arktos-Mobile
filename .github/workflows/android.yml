@@ -18,6 +18,14 @@ jobs:
       with:
         distribution: temurin
         java-version: 21
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+    - name: Install cargo-ndk
+      run: cargo install cargo-ndk --version 4.1.2 --locked
+    - name: Install Android NDK
+      run: sdkmanager --install "ndk;28.2.13676358"
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build scMain debug APK

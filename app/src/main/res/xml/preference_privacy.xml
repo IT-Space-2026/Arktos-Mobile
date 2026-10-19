@@ -40,6 +40,12 @@
             android:key="start_incognito"
             android:singleLineTitle="false"
             android:title="@string/start_incognito"/>
+        <Preference
+            android:fragment="com.arktosbrowser.mobile.settings.fragment.ListsSettingsFragment"
+            android:key="lists_settings"
+            android:singleLineTitle="false"
+            android:summary="@string/lists_settings_summary"
+            android:title="@string/lists_settings_title"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/security_set">
     </PreferenceCategory>
@@ -60,6 +66,12 @@
             android:singleLineTitle="false"
             android:key="block_malicious_sites"
             android:title="@string/block_malware"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:singleLineTitle="false"
+            android:key="block_lan_requests"
+            android:summary="@string/block_lan_requests_summary"
+            android:title="@string/block_lan_requests"/>
         <SwitchPreference
             android:defaultValue="false"
             android:key="clear_cache_exit"

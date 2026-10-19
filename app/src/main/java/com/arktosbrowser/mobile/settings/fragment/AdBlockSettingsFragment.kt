@@ -1,15 +1,15 @@
 package com.arktosbrowser.mobile.settings.fragment
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.preference.Preference
+import android.provider.OpenableColumns
+import androidx.preference.PreferenceCategory
+import androidx.preference.SwitchPreference
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.adblock.BloomFilterAdBlocker
-import com.arktosbrowser.mobile.adblock.source.HostsSourceType
-import com.arktosbrowser.mobile.adblock.source.selectedHostsSource
-import com.arktosbrowser.mobile.adblock.source.toPreferenceIndex
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.di.DiskScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.injector
@@ -17,6 +17,7 @@ import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.extensions.toast
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.uniffi.StoreAdblockSubscription
 import io.reactivex.Maybe
 import io.reactivex.Scheduler
 import io.reactivex.disposables.CompositeDisposable
@@ -28,26 +29,35 @@ import okio.sink
 import okio.source
 import java.io.File
 import java.io.IOException
+import java.text.DateFormat
+import java.util.Date
 import javax.inject.Inject
 
 /**
- * Settings for the ad block mechanic.
+ * Settings for the ad block mechanic — master toggles plus the
+ * filter-list subscription table (LIST01): per-list switches grouped
+ * by category, add-custom and manual refresh actions.
  */
 class AdBlockSettingsFragment : AbstractSettingsFragment() {
 
     @Inject internal lateinit var userPreferences: UserPreferences
     @Inject @field:MainScheduler internal lateinit var mainScheduler: Scheduler
     @Inject @field:DiskScheduler internal lateinit var diskScheduler: Scheduler
-    @Inject internal lateinit var bloomFilterAdBlocker: BloomFilterAdBlocker
+    @Inject internal lateinit var blocklistLoader: BlocklistLoader
 
-    private var recentSummaryUpdater: SummaryUpdater? = null
     private val compositeDisposable = CompositeDisposable()
-    private var forceRefreshHostsPreference: Preference? = null
+    private val subscriptionCategories = mutableListOf<PreferenceCategory>()
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // Inject here, not in onCreate: PreferenceFragmentCompat calls
+        // onCreatePreferences inside super.onCreate, and the
+        // subscription table built there needs the loader already.
+        injector.inject(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        injector.inject(this)
 
 
         switchPreference(
@@ -68,74 +78,96 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
             onCheckChange = { userPreferences.adBlockEnabled = it }
         )
 
-        clickableDynamicPreference(
-            preference = "preference_hosts_source",
-            summary =  userPreferences.selectedHostsSource().toSummary(),
-            onClick = ::showHostsSourceChooser
+        clickablePreference(
+            preference = "preference_add_subscription",
+            onClick = ::showAddSubscriptionChooser
         )
 
-        forceRefreshHostsPreference = clickableDynamicPreference(
+        clickablePreference(
             preference = "preference_hosts_refresh_force",
-            isEnabled = isRefreshHostsEnabled(),
             onClick = {
-                bloomFilterAdBlocker.populateAdBlockerFromDataSource(forceRefresh = true)
+                blocklistLoader.refreshHosts(forceRefresh = true)
             }
         )
-    }
 
-    private fun updateRefreshHostsEnabledStatus() {
-        forceRefreshHostsPreference?.isEnabled = isRefreshHostsEnabled()
+        blocklistLoader.onSubscriptionsChanged = {
+            activity?.runOnUiThread { rebuildSubscriptionPreferences() }
+        }
     }
-
-    private fun isRefreshHostsEnabled() = userPreferences.selectedHostsSource() is HostsSourceType.Remote
 
     override fun onDestroy() {
+        blocklistLoader.onSubscriptionsChanged = null
         super.onDestroy()
         compositeDisposable.clear()
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preference_ad_block)
+        rebuildSubscriptionPreferences()
     }
 
-    private fun HostsSourceType.toSummary(): String = when (this) {
-        HostsSourceType.Default -> getString(R.string.block_source_default)
-        is HostsSourceType.Local -> getString(R.string.block_source_local_description, file.path)
-        is HostsSourceType.Remote -> getString(R.string.block_source_remote_description, httpUrl)
+    /**
+     * Rebuild the per-category subscription switch groups under the
+     * preference screen. Rows come from the Rust store in seed order;
+     * grouping preserves the catalog's category ordering with custom
+     * lists last.
+     */
+    private fun rebuildSubscriptionPreferences() {
+        val screen = preferenceScreen
+        subscriptionCategories.forEach { screen.removePreference(it) }
+        subscriptionCategories.clear()
+
+        blocklistLoader.allSubscriptions()
+            .groupBy { it.category }
+            .forEach { (category, subscriptions) ->
+                val categoryPreference = PreferenceCategory(requireContext()).apply {
+                    title = category
+                }
+                screen.addPreference(categoryPreference)
+                subscriptionCategories += categoryPreference
+                subscriptions.forEach { sub ->
+                    categoryPreference.addPreference(
+                        SwitchPreference(requireContext()).apply {
+                            title = sub.name
+                            summary = subscriptionSummary(sub)
+                            isChecked = sub.enabled
+                            setOnPreferenceChangeListener { _, newValue ->
+                                blocklistLoader.setSubscriptionEnabled(sub.id, newValue as Boolean)
+                                true
+                            }
+                        }
+                    )
+                }
+            }
     }
 
-    private fun showHostsSourceChooser(summaryUpdater: SummaryUpdater) {
+    private fun subscriptionSummary(sub: StoreAdblockSubscription): String =
+        if (sub.hostCount > 0uL) {
+            getString(
+                R.string.block_subscription_summary,
+                sub.hostCount.toLong(),
+                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(sub.lastUpdated.toLong()))
+            )
+        } else {
+            getString(R.string.block_subscription_never)
+        }
+
+    private fun showAddSubscriptionChooser() {
         BrowserDialog.showListChoices(
-                activity as Activity,
-            R.string.block_ad_source,
+            activity as Activity,
+            R.string.block_add_subscription,
             DialogItem(
-                title = R.string.block_source_default,
-                isConditionMet = userPreferences.selectedHostsSource() == HostsSourceType.Default,
-                onClick = {
-                    userPreferences.hostsSource = HostsSourceType.Default.toPreferenceIndex()
-                    summaryUpdater.updateSummary(userPreferences.selectedHostsSource().toSummary())
-                    updateForNewHostsSource()
-                }
+                title = R.string.block_add_subscription_url,
+                onClick = { showUrlChooser() }
             ),
             DialogItem(
-                title = R.string.block_source_local,
-                isConditionMet = userPreferences.selectedHostsSource() is HostsSourceType.Local,
-                onClick = {
-                    showFileChooser(summaryUpdater)
-                }
-            ),
-            DialogItem(
-                title = R.string.block_source_remote,
-                isConditionMet = userPreferences.selectedHostsSource() is HostsSourceType.Remote,
-                onClick = {
-                    showUrlChooser(summaryUpdater)
-                }
+                title = R.string.block_add_subscription_file,
+                onClick = { showFileChooser() }
             )
         )
     }
 
-    private fun showFileChooser(summaryUpdater: SummaryUpdater) {
-        this.recentSummaryUpdater = summaryUpdater
+    private fun showFileChooser() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = TEXT_MIME_TYPE
@@ -144,20 +176,18 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
         startActivityForResult(intent, FILE_REQUEST_CODE)
     }
 
-    private fun showUrlChooser(summaryUpdater: SummaryUpdater) {
+    private fun showUrlChooser() {
         BrowserDialog.showEditText(
-                activity as Activity,
-            title = R.string.block_source_remote,
+            activity as Activity,
+            title = R.string.block_add_subscription_url,
             hint = R.string.hint_url,
-            currentText = userPreferences.hostsRemoteFile,
+            currentText = null,
             action = R.string.action_ok,
             textInputListener = {
                 val url = HttpUrl.parse(it)
+                    ?.takeIf { url -> url.isHttps || url.scheme() == "http" }
                     ?: return@showEditText run { activity?.toast(R.string.problem_download) }
-                userPreferences.hostsSource = HostsSourceType.Remote(url).toPreferenceIndex()
-                userPreferences.hostsRemoteFile = it
-                summaryUpdater.updateSummary(it)
-                updateForNewHostsSource()
+                blocklistLoader.addCustomSubscription(url.host(), url.toString())
             }
         )
     }
@@ -166,16 +196,16 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
         if (requestCode == FILE_REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 data?.data?.also { uri ->
-                    compositeDisposable += readTextFromUri(uri)
+                    compositeDisposable += copyToCustomListFile(uri)
                         .subscribeOn(diskScheduler)
                         .observeOn(mainScheduler)
                         .subscribeBy(
                             onComplete = { activity?.toast(R.string.action_message_canceled) },
-                            onSuccess = { file ->
-                                userPreferences.hostsSource = HostsSourceType.Local(file).toPreferenceIndex()
-                                userPreferences.hostsLocalFile = file.path
-                                recentSummaryUpdater?.updateSummary(userPreferences.selectedHostsSource().toSummary())
-                                updateForNewHostsSource()
+                            onSuccess = { (file, displayName) ->
+                                blocklistLoader.addCustomSubscription(
+                                    displayName,
+                                    "file://${file.absolutePath}"
+                                )
                             }
                         )
                 }
@@ -186,24 +216,28 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    private fun updateForNewHostsSource() {
-        bloomFilterAdBlocker.populateAdBlockerFromDataSource(forceRefresh = true)
-        updateRefreshHostsEnabledStatus()
-    }
-
-    private fun readTextFromUri(uri: Uri): Maybe<File> = Maybe.create {
+    /**
+     * Copy the picked document into app storage as a new custom list
+     * file; emits the output file and the document's display name.
+     */
+    private fun copyToCustomListFile(uri: Uri): Maybe<Pair<File, String>> = Maybe.create {
         val externalFilesDir = activity?.getExternalFilesDir("")
             ?: return@create it.onComplete()
         val inputStream = activity?.contentResolver?.openInputStream(uri)
             ?: return@create it.onComplete()
+        val displayName = activity?.contentResolver
+            ?.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            ?: uri.lastPathSegment
+            ?: CUSTOM_HOSTS_FILE
 
         try {
-            val outputFile = File(externalFilesDir, AD_HOSTS_FILE)
+            val outputFile = File(externalFilesDir, "${System.currentTimeMillis()}_$CUSTOM_HOSTS_FILE")
 
             val input = inputStream.source()
             val output = outputFile.sink().buffer()
             output.writeAll(input)
-            return@create it.onSuccess(outputFile)
+            return@create it.onSuccess(outputFile to displayName)
         } catch (exception: IOException) {
             return@create it.onComplete()
         }
@@ -211,7 +245,7 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
 
     companion object {
         private const val FILE_REQUEST_CODE = 100
-        private const val AD_HOSTS_FILE = "local_hosts.txt"
+        private const val CUSTOM_HOSTS_FILE = "custom_hosts.txt"
         private const val TEXT_MIME_TYPE = "text/*"
     }
 }

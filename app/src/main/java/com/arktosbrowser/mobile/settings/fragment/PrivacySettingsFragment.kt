@@ -22,6 +22,7 @@ import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.WebUtils
 import com.arktosbrowser.mobile.view.SmartCookieView
 import io.reactivex.Completable
@@ -138,6 +139,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
+                preference = SETTINGS_BLOCK_LAN,
+                isChecked = userPreferences.blockLanRequestsEnabled,
+                onCheckChange = { userPreferences.blockLanRequestsEnabled = it }
+        )
+
+        switchPreference(
             preference = SETTINGS_IDENTIFYINGHEADERS,
             isChecked = userPreferences.removeIdentifyingHeadersEnabled,
             summary = (if(userPreferences.popupsEnabled) {
@@ -210,19 +217,17 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         val v = activity.layoutInflater.inflate(R.layout.password, null)
         val passwordText = v.findViewById<TextView>(R.id.password)
 
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
-        val maxCharacters = Integer.MAX_VALUE.toString().length
-
-        passwordText.text = userPreferences.passwordTextLock
-
+        // PORT02 — the stored value is an argon2id hash now, so the
+        // field can't be prefilled; an empty submission keeps the
+        // existing password.
         BrowserDialog.showCustomDialog(activity) {
             setTitle(R.string.enter_password)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
                 val passwordCode = passwordText.text.toString()
-                userPreferences.passwordTextLock = passwordCode
+                if (passwordCode.isNotEmpty()) {
+                    userPreferences.passwordTextLock = ArktosCore.hashPassword(passwordCode)
+                }
             }
         }
     }
@@ -362,6 +367,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_IDENTIFYINGHEADERS = "remove_identifying_headers"
         private const val SETTINGS_FORCEHTTPS = "force_https"
         private const val SETTINGS_PREFERHTTPS = "prefer_https"
+        private const val SETTINGS_BLOCK_LAN = "block_lan_requests"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"

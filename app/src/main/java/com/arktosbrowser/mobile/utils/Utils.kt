@@ -19,10 +19,8 @@ import android.os.Build
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
-import android.webkit.URLUtil
 import androidx.annotation.StringRes
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.constant.HTTPS
 import com.arktosbrowser.mobile.database.HistoryEntry
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.extensions.snackbar
@@ -30,13 +28,15 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
-import java.net.URI
-import java.net.URISyntaxException
 import java.text.SimpleDateFormat
 import java.util.*
 
 object Utils {
     private const val TAG = "Utils"
+
+    // PORT02 — getDomainName, isColorTooDark, mixTwoColors,
+    // buildErrorPage, buildBlockPage and guessFileExtension moved to
+    // the Rust core; call sites go through `ArktosCore`.
 
     /**
      * Creates a new intent that can launch the email
@@ -91,38 +91,6 @@ object Utils {
         return (dp * metrics.density + 0.5f).toInt()
     }
 
-    /**
-     * Extracts the domain name from a URL.
-     * NOTE: Should be used for display only.
-     *
-     * @param url the URL to extract the domain from.
-     * @return the domain name, or the URL if the domain
-     * could not be extracted. The domain name may include
-     * HTTPS if the URL is an SSL supported URL.
-     */
-    fun getDomainName(url: String?): String {
-        var url = url
-        if (url == null || url.isEmpty()) return ""
-        val ssl = URLUtil.isHttpsUrl(url)
-        val index = url.indexOf('/', 8)
-        if (index != -1) {
-            url = url.substring(0, index)
-        }
-        val uri: URI
-        var domain: String?
-        try {
-            uri = URI(url)
-            domain = uri.host
-        } catch (e: URISyntaxException) {
-            Log.e(TAG, "Unable to parse URI", e)
-            domain = null
-        }
-        if (domain == null || domain.isEmpty()) {
-            return url
-        }
-        return if (ssl) HTTPS + domain else if (domain.startsWith("www.")) domain.substring(4) else domain
-    }
-
     @JvmStatic
     fun trimCache(context: Context) {
         try {
@@ -146,93 +114,6 @@ object Utils {
         }
         // The directory is now empty so delete it
         return dir != null && dir.delete()
-    }
-
-    fun isColorTooDark(color: Int): Boolean {
-        val RED_CHANNEL: Byte = 16
-        val GREEN_CHANNEL: Byte = 8
-        //final byte BLUE_CHANNEL = 0;
-        val r = ((color shr RED_CHANNEL.toInt() and 0xff).toFloat() * 0.3f).toInt() and 0xff
-        val g = ((color shr GREEN_CHANNEL.toInt() and 0xff).toFloat() * 0.59).toInt() and 0xff
-        val b = ((color /* >> BLUE_CHANNEL */ and 0xff).toFloat() * 0.11).toInt() and 0xff
-        val gr = r + g + b and 0xff
-        val gray = gr /* << BLUE_CHANNEL */ + (gr shl GREEN_CHANNEL.toInt()) + (gr shl RED_CHANNEL.toInt())
-        return gray < 0x727272
-    }
-
-    fun mixTwoColors(color1: Int, color2: Int, amount: Float): Int {
-        val ALPHA_CHANNEL: Byte = 24
-        val RED_CHANNEL: Byte = 16
-        val GREEN_CHANNEL: Byte = 8
-        //final byte BLUE_CHANNEL = 0;
-        val inverseAmount = 1.0f - amount
-        val r = ((color1 shr RED_CHANNEL.toInt() and 0xff).toFloat() * amount + (color2 shr RED_CHANNEL.toInt() and 0xff).toFloat() * inverseAmount).toInt() and 0xff
-        val g = ((color1 shr GREEN_CHANNEL.toInt() and 0xff).toFloat() * amount + (color2 shr GREEN_CHANNEL.toInt() and 0xff).toFloat() * inverseAmount).toInt() and 0xff
-        val b = ((color1 and 0xff).toFloat() * amount + (color2 and 0xff).toFloat() * inverseAmount).toInt() and 0xff
-        return 0xff shl ALPHA_CHANNEL.toInt() or (r shl RED_CHANNEL.toInt()) or (g shl GREEN_CHANNEL.toInt()) or b
-    }
-
-    fun buildErrorPage(color: String?, title: String?, error: String?, reload: String?, showButton: Boolean, reloadCode: String = "window.history.back();"): String {
-        var reloadButtonCode = "<button onclick=\"reload();\" id=\"reload-button\" class=\"blue-button text-button reload\">$reload</button>"
-        when(showButton){
-            false -> reloadButtonCode = ""
-            else -> {}
-        }
-
-        return "<html>" +
-                "<head>" +
-                "<script language=\"javascript\"> " +
-                "function reload(){setTimeout(function(){$reloadCode}, 500);" +
-                "};</script>" +
-                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
-                "<style>html{-webkit-text-size-adjust: 100%;font-size: 125%;}body{background-color:#ffffff; color: #646464; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"; font-size: 75%;}div{display:block;}h1{margin-top: 0; color: #333; font-size: 1.6em; font-weight: normal; line-height: 1.25em; margin-bottom: 16px;}button{border: solid 1px; border-radius: 4px; border-color: #000000FF; padding: 0 16px; min-width: 64px; line-height: 34px; background-color: transparent; -webkit-user-select: none; text-transform: uppercase; color: rgb(76, 142, 250); box-sizing: border-box; cursor: pointer; font-size: .875em; margin: 0; font-weight: 500;}button:hover{box-shadow: 0 1px 2px rgba(1, 1, 1, 0.5);}.error-code{color: #777; display: inline; font-size: .86667em; margin-top: 15px; opacity: .5; text-transform: uppercase;}.interstitial-wrapper{box-sizing: border-box;font-size: 1em;margin: 100px auto 0;max-width: 600px;width: 100%;}.offline .interstitial-wrapper{color: #2b2b2b;font-size: 1em;line-height: 1.55;margin: 0 auto;max-width: 600px;padding-top: 100px;width: 100%;}.hidden{display: none;}.nav-wrapper{margin-top: 51px; display:inline-block;}#buttons::after{clear: both; content: ''; display: block; width: 100%;}.nav-wrapper::after{clear: both; content: ''; display: table; width: 100%;}.small-link{color: #696969; font-size: .875em;}@media (max-width: 640px), (max-height: 640px){h1{margin: 0 0 15px;}button{width: 100%;}}" +
-                "</style>" +
-                "</head>" +
-                "<center>" +
-                "<body class=\"offline\">" +
-                "<div class=\"interstitial-wrapper\">" +
-                "<div id=\"main-content\">" +
-                "<img src=\"file:///android_asset/warning.webp\" height=\"52\" width=\"52\"><br><br>" +
-                "<div class=\"icon icon-offline\"></div>" +
-                "<div id=\"main-message\">" +
-                "<h1>$title</h1>" +
-                "</h1><p></p><div class=\"error-code\">$error" +
-                "</div></div></div><div id=\"buttons\" class=\"nav-wrapper\"><div id=\"control-buttons\">$reloadButtonCode" +
-                "</div></div></div></body></center></html>" +
-                color
-    }
-
-    fun buildBlockPage(activity: Activity, color: String?, title: String?, error: String?, blockedURL: String, showProceedButton: Boolean): String {
-        val proceedString = activity.resources.getString(R.string.proceed)
-        val goBackString = activity.resources.getString(R.string.go_back)
-
-        var proceedButton = "<button onclick=\"location.href = '$blockedURL';\" id=\"reload-button\" class=\"blue-button text-button reload\">$proceedString</button>"
-        val goBackButton = "<button onclick=\"window.history.back();\" id=\"reload-button\" class=\"blue-button text-button reload\">$goBackString</button>"
-        when(showProceedButton){
-            false -> proceedButton = ""
-            else -> {}
-        }
-
-        return "<html>" +
-                "<head>" +
-                "<script language=\"javascript\"> " +
-                "function reload(){setTimeout(function(){$!!!}, 500);" +
-                "};</script>" +
-                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
-                "<style>html{-webkit-text-size-adjust: 100%;font-size: 125%;}body{background-color:#ffffff; color: #646464; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\"; font-size: 75%;}div{display:block;}h1{margin-top: 0; color: #333; font-size: 1.6em; font-weight: normal; line-height: 1.25em; margin-bottom: 16px;}button{border: solid 1px; border-radius: 4px; border-color: #000000FF; padding: 0 16px; min-width: 64px; line-height: 34px; background-color: transparent; -webkit-user-select: none; text-transform: uppercase; color: rgb(76, 142, 250); box-sizing: border-box; cursor: pointer; font-size: .875em; margin: 0; font-weight: 500;}button:hover{box-shadow: 0 1px 2px rgba(1, 1, 1, 0.5);}.error-code{color: #777; display: inline; font-size: .86667em; margin-top: 15px; opacity: .5; text-transform: uppercase;}.interstitial-wrapper{box-sizing: border-box;font-size: 1em;margin: 100px auto 0;max-width: 600px;width: 100%;}.offline .interstitial-wrapper{color: #2b2b2b;font-size: 1em;line-height: 1.55;margin: 0 auto;max-width: 600px;padding-top: 100px;width: 100%;}.hidden{display: none;}.nav-wrapper{margin-top: 51px; display:inline-block;}#buttons::after{clear: both; content: ''; display: block; width: 100%;}.nav-wrapper::after{clear: both; content: ''; display: table; width: 100%;}.small-link{color: #696969; font-size: .875em;}@media (max-width: 640px), (max-height: 640px){h1{margin: 0 0 15px;}button{width: 100%;}}" +
-                "</style>" +
-                "</head>" +
-                "<center>" +
-                "<body class=\"offline\">" +
-                "<div class=\"interstitial-wrapper\">" +
-                "<div id=\"main-content\">" +
-                "<div class=\"icon icon-offline\"></div>" +
-                "<div id=\"main-message\">" +
-                "<h1>$title</h1>" +
-                "</h1><p></p><div class=\"error-code\">$error" +
-                "</div></div></div><div id=\"buttons\" class=\"nav-wrapper\"><div id=\"control-buttons\">$proceedButton <br /><br /> $goBackButton" +
-                "</div></div></div></body></center></html>" +
-                color
     }
 
     @SuppressLint("SimpleDateFormat")
@@ -326,13 +207,5 @@ object Utils {
             }
         }
         return inSampleSize
-    }
-
-    @JvmStatic
-    fun guessFileExtension(filename: String): String? {
-        val lastIndex = filename.lastIndexOf('.') + 1
-        return if (lastIndex > 0 && filename.length > lastIndex) {
-            filename.substring(lastIndex)
-        } else null
     }
 }

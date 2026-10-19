@@ -1,11 +1,16 @@
 package com.arktosbrowser.mobile.adblock
 
-import com.arktosbrowser.mobile.adblock.parser.HostsFileParser
-import com.arktosbrowser.mobile.database.adblock.Host
-import com.arktosbrowser.mobile.log.NoOpLogger
+import com.arktosbrowser.mobile.rust.ArktosCore
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.InputStreamReader
 
+/**
+ * PORT02 — the hosts-file parser moved to the Rust core
+ * (`blocklist.rs`); the Kotlin `HostsFileParser` and `Host` wrapper
+ * were deleted. This test keeps the same fixture and expectation,
+ * now asserting through the `ArktosCore.parseHostsDomains` seam.
+ */
 class HostsFileParserTest {
 
     @Test
@@ -26,21 +31,21 @@ class HostsFileParserTest {
             0.0.0.0 close.comment.com#comment
             """
 
-        val inputStreamReader = InputStreamReader(testInput.trimIndent().byteInputStream())
-        val hostsFileParser = HostsFileParser(NoOpLogger())
-        val mutableList = hostsFileParser.parseInput(inputStreamReader)
+        val domains = ArktosCore.parseHostsDomains(testInput.trimIndent())
 
-        assert(mutableList.size == 7)
-        assert(mutableList.containsAll(
+        assertEquals(7, domains.size)
+        assertTrue(
+            domains.containsAll(
                 listOf(
-                Host("fake.domain1.com"),
-                Host("fake.domain2.com"),
-                Host("fake.domain3.com"),
-                Host("example.com"),
-                Host("multi1.com"),
-                Host("multi2.com"),
-                Host("close.comment.com")
+                    "fake.domain1.com",
+                    "fake.domain2.com",
+                    "fake.domain3.com",
+                    "example.com",
+                    "multi1.com",
+                    "multi2.com",
+                    "close.comment.com"
                 )
-        ))
+            )
+        )
     }
 }

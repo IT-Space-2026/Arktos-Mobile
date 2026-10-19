@@ -14,7 +14,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -25,13 +24,13 @@ import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.adblock.AdBlocker
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
+import com.arktosbrowser.mobile.adblock.RankListLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.JavaScriptChoice
-import com.arktosbrowser.mobile.browser.SiteBlockChoice
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.controller.UIController
-import com.arktosbrowser.mobile.database.javascript.JavaScriptDatabase
+import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
@@ -40,14 +39,16 @@ import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.SslWarningGate
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
+import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.utils.ERROR_PAGE_ORIGIN
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.rust.ArktosCore.buildErrorPage
 import com.arktosbrowser.mobile.utils.Utils
-import com.arktosbrowser.mobile.utils.Utils.buildErrorPage
 import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -60,9 +61,7 @@ import java.io.*
 import java.net.URISyntaxException
 import java.net.URL
 import java.util.*
-import java.util.regex.Matcher
 import java.util.regex.Pattern
-import java.util.regex.PatternSyntaxException
 import javax.inject.Inject
 import javax.net.ssl.HttpsURLConnection
 import kotlin.math.abs
@@ -108,7 +107,8 @@ class SmartCookieWebClient(
     @Inject internal lateinit var setWidenView: SetWidenViewport
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
-    private var adBlock: AdBlocker
+    @Inject internal lateinit var blocklistLoader: BlocklistLoader
+    @Inject internal lateinit var rankListLoader: RankListLoader
 
     @Volatile private var isRunning = false
     private var zoomScale = 0.0f
@@ -145,118 +145,111 @@ class SmartCookieWebClient(
     init {
         activity.injector.inject(this)
         uiController = activity as UIController
-        adBlock = chooseAdBlocker()
+        blocklistLoader.ensureInitialized()
+        rankListLoader.ensureInitialized()
     }
 
     fun sslStateObservable(): Observable<SslState> = sslStateSubject.hide()
 
     fun updatePreferences() {
-        adBlock = chooseAdBlocker()
+        blocklistLoader.syncPrefs()
     }
 
     fun setWhitelist(a: Boolean){
         whitelistIntent = a
     }
 
-    private fun chooseAdBlocker(): AdBlocker = if (userPreferences.adBlockEnabled) {
-        activity.injector.provideBloomFilterAdBlocker()
-    } else {
-        activity.injector.provideNoOpAdBlocker()
+    /**
+     * The color passed to generated block/error pages — cleared on the
+     * light theme, matching the previous behavior.
+     */
+    private fun blockPageColor(): String {
+        if (userPreferences.useTheme == AppTheme.LIGHT) {
+            color = ""
+        }
+        return color
     }
 
-    private fun shouldRequestBeBlocked(pageUrl: String, requestUrl: String) =
-        !whitelistModel.isUrlAllowedAds(pageUrl) && adBlock.isAd(requestUrl)
+    private fun blockedPageResponse(html: String): WebResourceResponse =
+        WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(html.toByteArray()))
 
+    private fun emptyResponse(): WebResourceResponse =
+        WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(emptyResponseByteArray))
+
+    private fun adBlockResponse(request: WebResourceRequest, requestUrl: String): WebResourceResponse? {
+        if (request.isForMainFrame && request.url.host.toString() != lastBlockedDomain) {
+            lastBlockedDomain = request.url.host.toString()
+            return blockedPageResponse(ArktosCore.buildBlockPage(blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, activity.resources.getString(R.string.proceed), activity.resources.getString(R.string.go_back), true))
+        } else if (request.isForMainFrame) {
+            return null
+        }
+
+        return emptyResponse()
+    }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-        if (shouldRequestBeBlocked(currentUrl, request.url.toString())) {
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            if(request.isForMainFrame && request.url.host.toString() != lastBlockedDomain){
-                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
-                    color = ""
+        val requestUrl = request.url.toString()
+        return when (ArktosCore.requestVerdict(requestUrl, currentUrl, request.isForMainFrame)) {
+            RequestVerdict.ALLOW -> super.shouldInterceptRequest(view, request)
+            RequestVerdict.BLOCK_ADS ->
+                if (whitelistModel.isUrlAllowedAds(currentUrl)) {
+                    super.shouldInterceptRequest(view, request)
+                } else {
+                    adBlockResponse(request, requestUrl)
                 }
-                lastBlockedDomain = request.url.host.toString()
-                return WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(Utils.buildBlockPage(activity, color, activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), request.url.toString(), true).toByteArray()))
-            }
-            else if(request.isForMainFrame){
-                return null
-            }
-
-            return WebResourceResponse("text/plain", "utf-8", empty)
+            RequestVerdict.BLOCK_SITE -> blockedPageResponse(
+                ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false))
+            RequestVerdict.BLOCK_MALWARE -> blockedPageResponse(
+                ArktosCore.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), reloadBlocked, false))
+            RequestVerdict.BLOCK_LOCAL_NETWORK ->
+                if (request.isForMainFrame) {
+                    blockedPageResponse(ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), reloadBlocked, false))
+                } else {
+                    emptyResponse()
+                }
         }
-        return super.shouldInterceptRequest(view, request)
     }
 
     @Suppress("OverridingDeprecatedMember")
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
     override fun shouldInterceptRequest(view: WebView, url: String): WebResourceResponse? {
-        if (shouldRequestBeBlocked(currentUrl, url)) {
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            return WebResourceResponse("text/plain", "utf-8", empty)
+        // No main-frame signal on this legacy overload — page-level
+        // verdicts (malware/site block) can't fire here anyway.
+        val verdict = ArktosCore.requestVerdict(url, currentUrl, false)
+        if (verdict == RequestVerdict.BLOCK_LOCAL_NETWORK ||
+            (verdict == RequestVerdict.BLOCK_ADS && !whitelistModel.isUrlAllowedAds(currentUrl))) {
+            return emptyResponse()
         }
         if(url.contains("detectPopBlock.js")){
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            return WebResourceResponse("text/plain", "utf-8", empty)
+            return emptyResponse()
         }
         return null
     }
 
-    var name: String? = null
-    var version: String? = null
-    var author: String? = null
-    var description: String? = null
-    var requirements = ArrayList<String>(0)
-    val include = ArrayList<Pattern>(0)
-
+    /**
+     * PORT01 — userscript parsing lives in the Rust core
+     * (`ArktosCore.parseUserScript`); this installs the result. Include
+     * patterns come back as Java-regex strings and are compile-checked
+     * here, matching upstream's `Pattern.compile` try/catch drop of
+     * malformed patterns.
+     */
     private fun installExtension(text: String){
-        val tx = text.replace("""\"""", """"""")
-                .replace("\\n", System.lineSeparator())
-                .replace("\\t", "")
-                .replace("\\u003C", "<")
-                .replace("""/"""", """"""")
-                .replace("""//"""", """/"""")
-                .replace("""\\'""", """\'""")
-                .replace("""\\""""", """\""""")
-
-        val headerRegex = Pattern.compile("\\s*//\\s*==UserScript==\\s*", Pattern.CASE_INSENSITIVE)
-        val headerEndRegex = Pattern.compile("\\s*//\\s*==/UserScript==\\s*", Pattern.CASE_INSENSITIVE)
-        val mainRegex = Pattern.compile("\\s*//\\s*@(\\S+)(?:\\s+(.*))?", Pattern.CASE_INSENSITIVE)
-
-        val reader = BufferedReader(StringReader(tx))
-
-        if (reader.readLine()?.let { headerRegex.matcher(it).matches() } != true) {
+        val meta = ArktosCore.parseUserScript(text)
+        if (!meta.hasMetadataHeader) {
             Log.d(TAG, "Header (start) parser error")
         }
-
-        reader.forEachLine { line ->
-            val matcher = mainRegex.matcher(line)
-            if (!matcher.matches()) {
-                if (headerEndRegex.matcher(line).matches()) {
-                    return@forEachLine
-                }
-            } else {
-                val field = matcher.group(1)
-                val value = matcher.group(2)
-                if(field != null){
-                    parseLine(field, value)
-                }
-            }
+        val name = meta.name
+        if (name == null) {
+            logger.log(TAG, "userscript without a @name — not installing")
+            return
         }
+        val inc = meta.includes
+            .filter { pattern -> runCatching { Pattern.compile(pattern) }.isSuccess }
+            .joinToString(",")
+        val reqs = meta.requires.joinToString(",")
 
-        val metadataRegex: Pattern = Pattern.compile("==UserScript==(.*?)==/UserScript==", Pattern.DOTALL)
-
-        val metadataMatcher: Matcher = metadataRegex.matcher(text)
-        var code = ""
-
-        if (metadataMatcher.find()) {
-            code = text.replace(metadataMatcher.group(0), "")
-        }
-
-        val inc = TextUtils.join(",", include)
-        val reqs = TextUtils.join(",", requirements)
-
-        javascriptRepository.addJavaScriptIfNotExists(JavaScriptDatabase.JavaScriptEntry(name!!, "", version, author, inc, "", "", "", code, reqs))
+        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, "", meta.version, meta.author, inc, "", "", "", meta.code, reqs))
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {
@@ -265,72 +258,6 @@ class SmartCookieWebClient(
                 }
     }
 
-    private fun parseLine(field: String?, value: String?) {
-        if ("name".equals(field, ignoreCase = true)) {
-            name = value
-        } else if ("version".equals(field, ignoreCase = true)) {
-            version = value
-        } else if ("author".equals(field, ignoreCase = true)) {
-            author = value
-        } else if ("description".equals(field, ignoreCase = true)) {
-            description = value
-        } else if ("require".equals(field, ignoreCase = true)) {
-            if (value != null) {
-                requirements.add(value)
-            }
-        } else if ("include".equals(field, ignoreCase = true)) {
-            urlToPattern(value)?.let {
-                include.add(it)
-            }
-        } else if ("match".equals(field, ignoreCase = true) && value != null) {
-            val urlPattern = "^" + value.replace("?", "\\?").replace(".", "\\.")
-                    .replace("*", ".*").replace("+", ".+")
-                    .replace("://.*\\.", "://((?![\\./]).)*\\.").replace("^\\.\\*://".toRegex(), "https?://")
-            urlToParsedPattern(urlPattern)?.let {
-                include.add(it)
-            }
-        }
-    }
-
-    val TLD_REGEX = "^([^:]+://[^/]+)\\\\.tld(/.*)?\$".toRegex()
-    val schemeContainsPattern: Pattern = Pattern.compile("^\\w+:", Pattern.CASE_INSENSITIVE)
-
-    private fun urlToPattern(patternUrl: String?): Pattern? {
-        if (patternUrl == null) return null
-        try {
-            val builder = StringBuilder(patternUrl)
-            builder.toString().replace("?", "\\?").replace(".", "\\.").replace("*", ".*?").replace("+", ".+?")
-            var converted = builder.toString()
-
-            if (converted.contains(".tld", true)) {
-                converted = TLD_REGEX.replaceFirst(converted, "$1(.[a-z]{1,6}){1,3}$2")
-            }
-
-            return if (schemeContainsPattern.matcher(converted).find())
-                Pattern.compile("^$converted")
-            else
-                Pattern.compile("^\\w+://$converted")
-        } catch (e: PatternSyntaxException) {
-            Log.d(TAG, "Error: " + e)
-        }
-
-        return null
-    }
-
-    private fun urlToParsedPattern(patternUrl: String): Pattern? {
-        try {
-            val converted = if (patternUrl.contains(".tld", true)) {
-                TLD_REGEX.replaceFirst(patternUrl, "$1(.[a-z]{1,6}){1,3}$2")
-            } else {
-                patternUrl
-            }
-            return Pattern.compile(converted)
-        } catch (e: PatternSyntaxException) {
-            Log.d(TAG, "Error: " + e)
-        }
-
-        return null
-    }
 
     override fun onPageFinished(view: WebView, url: String) {
         if(url.contains(BuildConfig.APPLICATION_ID + "/files/homepage.html")  || url.contains(BuildConfig.APPLICATION_ID + "/files/incognito.html")) {
@@ -392,78 +319,6 @@ class SmartCookieWebClient(
             view.evaluateJavascript(darkMode.provideJs(activity), null)
         }
 
-        if (userPreferences.blockMalwareEnabled) {
-            val inputStream: InputStream = activity.assets.open("malware.txt")
-            val inputString = inputStream.bufferedReader().use { it.readText() }
-            val lines =  inputString.split(",").toTypedArray()
-            if (stringContainsItemFromList(url, lines)) {
-                view.settings.javaScriptEnabled = true
-                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
-                    color = ""
-                }
-                val title = activity.getString(R.string.malware_title)
-                val reload = activity.getString(R.string.error_reload)
-                val error = activity.getString(R.string.malware_message)
-
-                errorPageOriginalUrl = url
-                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
-                view.invalidate()
-                view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-            }
-
-
-            if (userPreferences.siteBlockChoice === SiteBlockChoice.WHITELIST) run {
-                if (userPreferences.siteBlockNames !== "") {
-                    val arrayOfURLs = userPreferences.siteBlockNames
-                    val strgs: Array<String>
-                    if (arrayOfURLs.contains(", ")) {
-                        strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    } else if (arrayOfURLs.contains("," + System.getProperty("line.separator").toString())){
-                        strgs = arrayOfURLs.split("," + System.getProperty("line.separator").toString().toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }  else{
-                        strgs = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }
-                    if (stringContainsItemFromList(url, strgs)) {
-                        if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                            return
-                        } else {
-                            if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
-                                color = ""
-                            }
-                            view.settings.javaScriptEnabled = true
-                            errorPageOriginalUrl = url
-                            view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN,  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
-                            view.invalidate()
-                            view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-                        }
-                    }
-                }
-            }
-            else if (userPreferences.siteBlockChoice === SiteBlockChoice.BLACKLIST) {
-                if (userPreferences.siteBlockNames !== "") {
-                    val arrayOfURLs = userPreferences.siteBlockNames
-                    var strgs: Array<String> = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    if (arrayOfURLs.contains(", ")) {
-                        strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }
-                    if (!stringContainsItemFromList(url, strgs)) {
-                        if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                            return
-                        } else {
-                            if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT){
-                                color = ""
-                            }
-                            view.settings.javaScriptEnabled = true
-                            errorPageOriginalUrl = url
-                            view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
-                            view.invalidate()
-                            view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-                        }
-                    }
-                }
-                uiController.tabChanged(smartCookieView)
-            }
-        }
         if(userPreferences.cookieBlockEnabled){
             view.evaluateJavascript(cookieBlock.provideJs(activity), null)
         }
@@ -483,7 +338,7 @@ class SmartCookieWebClient(
         }
 
     override fun onPageCommitVisible(view: WebView?, url: String?) {
-        var jsList = emptyList<JavaScriptDatabase.JavaScriptEntry>()
+        var jsList = emptyList<JavaScriptEntry>()
         javascriptRepository.lastHundredVisitedJavaScriptEntries()
             .subscribe { list ->
                 jsList = list
@@ -996,7 +851,7 @@ class SmartCookieWebClient(
             val file = File(url.replace(FILE, ""))
 
             if (file.exists()) {
-                val newMimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(Utils.guessFileExtension(file.toString()))
+                val newMimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ArktosCore.fileExtension(file.toString()))
 
                 val intent = Intent(Intent.ACTION_VIEW)
                 intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION

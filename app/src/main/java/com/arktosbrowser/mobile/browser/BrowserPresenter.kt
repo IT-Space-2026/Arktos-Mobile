@@ -12,6 +12,7 @@ import com.arktosbrowser.mobile.html.homepage.HomePageFactory
 import com.arktosbrowser.mobile.html.incognito.IncognitoPageFactory
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.view.BundleInitializer
 import com.arktosbrowser.mobile.view.SmartCookieView
@@ -363,10 +364,10 @@ class BrowserPresenter(
 
     companion object {
         private const val TAG = "BrowserPresenter"
-        private val INTENT_URL_SCHEMES = setOf("http", "https", "file", "about", "inline", "content")
 
+        // Scheme allowlist lives in the Rust core (PORT02).
         internal fun isIntentUrlAllowed(url: String): Boolean =
-            url.substringBefore(':', "").lowercase() in INTENT_URL_SCHEMES
+            ArktosCore.isIntentUrlAllowed(url)
     }
 
 }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget frame for ListRowPreference (PREFS01): a per-row refresh
+     button next to the enable switch — the mobile rendering of the
+     desktop AdBlockDialog's per-subscription "Update" action. The
+     switch id must stay `switchWidget` so SwitchPreference binds it. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageButton
+        android:id="@+id/list_row_refresh"
+        android:layout_width="@dimen/material_grid_touch_medium"
+        android:layout_height="@dimen/material_grid_touch_medium"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/list_row_refresh"
+        android:src="@drawable/ic_action_refresh" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchWidget"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@null"
+        android:clickable="false"
+        android:focusable="false" />
+</LinearLayout>

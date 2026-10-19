@@ -4,9 +4,6 @@ import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -19,8 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.arktosbrowser.mobile.R;
+import com.arktosbrowser.mobile.bookmark.StoreBookmarkMappingKt;
 import com.arktosbrowser.mobile.database.Bookmark;
-import com.arktosbrowser.mobile.database.WebPageKt;
+import com.arktosbrowser.mobile.rust.ArktosCore;
+import com.arktosbrowser.mobile.uniffi.StoreBookmark;
 import com.arktosbrowser.mobile.utils.Preconditions;
 import com.arktosbrowser.mobile.utils.Utils;
 import androidx.annotation.NonNull;
@@ -30,11 +29,6 @@ import io.reactivex.Completable;
 public final class BookmarkExporter {
 
     private static final String TAG = "BookmarkExporter";
-
-    private static final String KEY_URL = "url";
-    private static final String KEY_TITLE = "title";
-    private static final String KEY_FOLDER = "folder";
-    private static final String KEY_ORDER = "order";
 
     private BookmarkExporter() {}
 
@@ -47,37 +41,26 @@ public final class BookmarkExporter {
      */
     @NonNull
     public static List<Bookmark.Entry> importBookmarksFromAssets(@NonNull Context context) {
-        List<Bookmark.Entry> bookmarks = new ArrayList<>();
-        BufferedReader bookmarksReader = null;
         InputStream inputStream = null;
         try {
             inputStream = context.getResources().openRawResource(R.raw.default_bookmarks);
             //noinspection IOResourceOpenedButNotSafelyClosed
-            bookmarksReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            while ((line = bookmarksReader.readLine()) != null) {
-                try {
-                    JSONObject object = new JSONObject(line);
-                    final String folderTitle = object.getString(KEY_FOLDER);
-                    bookmarks.add(
-                            new Bookmark.Entry(
-                                    object.getString(KEY_URL),
-                                    object.getString(KEY_TITLE),
-                                    object.getInt(KEY_ORDER),
-                                    WebPageKt.asFolder(folderTitle)
-                            )
-                    );
-                } catch (JSONException e) {
-                    Log.e(TAG, "Can't parse line " + line, e);
-                }
+            final String text = new BufferedReader(new InputStreamReader(inputStream))
+                    .lines().collect(java.util.stream.Collectors.joining("\n"));
+            // PORT01 — lenient JSON-lines parse lives in the Rust core
+            // (bad lines are skipped, like the per-line JSONException
+            // catch did upstream).
+            List<Bookmark.Entry> bookmarks = new ArrayList<>();
+            for (StoreBookmark row : ArktosCore.INSTANCE.parseDefaultBookmarks(text)) {
+                bookmarks.add(StoreBookmarkMappingKt.toBookmarkEntry(row));
             }
-        } catch (IOException e) {
+            return bookmarks;
+        } catch (RuntimeException e) {
             Log.e(TAG, "Error reading the bookmarks file", e);
+            return new ArrayList<>();
         } finally {
-            Utils.close(bookmarksReader);
             Utils.close(inputStream);
         }
-        return bookmarks;
     }
 
     /**
@@ -99,54 +82,13 @@ public final class BookmarkExporter {
                 //noinspection IOResourceOpenedButNotSafelyClosed
                 bookmarkWriter = new BufferedWriter(new OutputStreamWriter(aStream));
 
-                JSONObject object = new JSONObject();
-                for (Bookmark.Entry item : bookmarkList) {
-                    object.put(KEY_TITLE, item.getTitle());
-                    object.put(KEY_URL, item.getUrl());
-                    object.put(KEY_FOLDER, item.getFolder().getTitle());
-                    object.put(KEY_ORDER, item.getPosition());
-                    bookmarkWriter.write(object.toString());
-                    bookmarkWriter.newLine();
-                }
+                // PORT02 — the JSON-lines payload (field order and
+                // org.json escaping) is produced by the Rust core.
+                bookmarkWriter.write(StoreBookmarkMappingKt.legacyExportJson(bookmarkList));
             } finally {
                 Utils.close(bookmarkWriter);
             }
         });
-    }
-
-    /**
-     * Attempts to import bookmarks from the
-     * given file. If the file is not in a
-     * supported format, it will fail.
-     *
-     * @param inputStream The stream to import from.
-     * @return A list of bookmarks, or throws an exception if the bookmarks cannot be imported.
-     */
-    @NonNull
-    public static List<Bookmark.Entry> importBookmarksFromFileStream(@NonNull InputStream inputStream) throws Exception {
-        BufferedReader bookmarksReader = null;
-        try {
-            //noinspection IOResourceOpenedButNotSafelyClosed
-            bookmarksReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-
-            List<Bookmark.Entry> bookmarks = new ArrayList<>();
-            while ((line = bookmarksReader.readLine()) != null) {
-                JSONObject object = new JSONObject(line);
-                final String folderName = object.getString(KEY_FOLDER);
-                final Bookmark.Entry entry = new Bookmark.Entry(
-                        object.getString(KEY_URL),
-                        object.getString(KEY_TITLE),
-                        object.getInt(KEY_ORDER),
-                        WebPageKt.asFolder(folderName)
-                );
-                bookmarks.add(entry);
-            }
-
-            return bookmarks;
-        } finally {
-            Utils.close(bookmarksReader);
-        }
     }
 
     /**
