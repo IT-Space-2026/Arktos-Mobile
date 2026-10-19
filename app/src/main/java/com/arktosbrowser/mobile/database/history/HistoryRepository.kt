@@ -1,8 +1,8 @@
 package com.arktosbrowser.mobile.database.history
 
 import com.arktosbrowser.mobile.database.HistoryEntry
-import io.reactivex.Completable
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Single
 
 /**
  * An interface that should be used to communicate with the history database.

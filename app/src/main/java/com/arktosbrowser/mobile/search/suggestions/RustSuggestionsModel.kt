@@ -8,7 +8,7 @@ import com.arktosbrowser.mobile.extensions.preferredLocale
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient

@@ -47,10 +47,10 @@ import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.find.FindResults
-import io.reactivex.Observable
-import io.reactivex.Scheduler
-import io.reactivex.Single
-import io.reactivex.disposables.Disposable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.disposables.Disposable
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 

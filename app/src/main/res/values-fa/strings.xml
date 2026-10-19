@@ -367,7 +367,7 @@
     <string name="site_not_secure">The connection to this site is not secure.</string>
     <string name="language_not_supported">زبان پشتیبانی نمی‌شود</string>
     <string name="language_not_supported_text">Unfortunately, the extensions store is not available in your language yet. Use the button below to continue in English anyway.</string>
-    <string name="extensions">افزونه‌ها</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">فعال کردن افزونه‌ها</string>
     <string name="extensions_settings">تنظیمات افزونه‌ها</string>
     <string name="extensions_description">بارگیری افزونه‌ها...</string>

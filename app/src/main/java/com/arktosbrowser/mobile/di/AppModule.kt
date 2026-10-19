@@ -33,10 +33,10 @@ import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.uniffi.ArktosStore
 import dagger.Module
 import dagger.Provides
-import io.reactivex.Scheduler
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.schedulers.Schedulers
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
 import okhttp3.*
 import java.io.File

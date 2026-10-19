@@ -1,6 +1,6 @@
 package com.arktosbrowser.mobile.adblock.source
 
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 /**
  * A data source that contains hosts.

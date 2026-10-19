@@ -28,7 +28,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.view.webrtc.WebRtcPermissionsModel
 import com.arktosbrowser.mobile.view.webrtc.WebRtcPermissionsView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.Scheduler
+import io.reactivex.rxjava3.core.Scheduler
 import javax.inject.Inject
 
 class ArktosCookieChromeClient(

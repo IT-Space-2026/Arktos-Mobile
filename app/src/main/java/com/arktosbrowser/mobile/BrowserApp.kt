@@ -21,10 +21,10 @@ import com.arktosbrowser.mobile.utils.MemoryLeakUtils
 import com.arktosbrowser.mobile.utils.installMultiDex
 import android.os.StrictMode
 import com.google.android.material.color.DynamicColors
-import io.reactivex.Scheduler
+import io.reactivex.rxjava3.core.Scheduler
 import okhttp3.OkHttp
-import io.reactivex.Single
-import io.reactivex.plugins.RxJavaPlugins
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.plugins.RxJavaPlugins
 import javax.inject.Inject
 import kotlin.system.exitProcess
 

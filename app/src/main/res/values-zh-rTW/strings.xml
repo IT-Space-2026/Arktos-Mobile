@@ -393,7 +393,7 @@
     <string name="site_not_secure">該網站不使用HTTPS</string>
     <string name="language_not_supported">不支援的語言</string>
     <string name="language_not_supported_text">不幸的是，擴展商店還無法使用您的語言。無論如何，請使用下面的按鈕繼續使用英語。</string>
-    <string name="extensions">附加组件</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_description">下载附件...</string>
     <string name="extensions_store">附加商店</string>
     <string name="uninstall_extension">卸载附加组件</string>

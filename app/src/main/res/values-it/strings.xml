@@ -376,7 +376,7 @@
     <string name="site_not_secure">La connessione a questo sito non è sicura.</string>
     <string name="language_not_supported">Lingua non supportata</string>
     <string name="language_not_supported_text">Sfortunatamente, il negozio estensioni non è ancora disponibile nella tua lingua. Usa il pulsante sottostante per continuare comunque in inglese.</string>
-    <string name="extensions">Estensioni</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Abilita estensioni</string>
     <string name="extensions_settings">Impostazioni estensioni</string>
     <string name="extensions_description">Scarica estensioni&#8230;</string>

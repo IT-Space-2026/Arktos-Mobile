@@ -1,7 +1,7 @@
 package com.arktosbrowser.mobile.search.suggestions
 
 import com.arktosbrowser.mobile.database.SearchSuggestion
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 /**
  * A search suggestions repository that doesn't fetch any results.

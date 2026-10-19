@@ -21,8 +21,8 @@ class ExtensionsSettingsFragment : AbstractSettingsFragment() {
     @Inject lateinit var userPreferences: UserPreferences
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
 
-    @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: io.reactivex.Scheduler
-    @Inject @field:MainScheduler internal lateinit var mainScheduler: io.reactivex.Scheduler
+    @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: io.reactivex.rxjava3.core.Scheduler
+    @Inject @field:MainScheduler internal lateinit var mainScheduler: io.reactivex.rxjava3.core.Scheduler
 
 
     private lateinit var proxyChoices: Array<String>

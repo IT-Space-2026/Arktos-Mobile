@@ -368,7 +368,7 @@
     <string name="site_not_secure">Ова веб локација не користи ХТТПС</string>
     <string name="language_not_supported">Језик није подржан</string>
     <string name="language_not_supported_text">Нажалост, продавница додатака још није доступна на вашем језику. Употријебите доњи гумб како бисте наставили на енглеском језику ионако.</string>
-    <string name="extensions">Додаци</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Enable extensions</string>
     <string name="extensions_settings">Extensions settings</string>
     <string name="extensions_description">Преузимање додатака ...</string>

@@ -5,7 +5,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.preference.userAgent
 import android.app.Application
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import okhttp3.*
 import java.io.IOException
 

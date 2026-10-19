@@ -2,7 +2,7 @@ package com.arktosbrowser.mobile.adblock.source
 
 import com.arktosbrowser.mobile.log.Logger
 import android.content.res.AssetManager
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 
 /**
  * A [HostsDataSource] that reads from the hosts list in assets.

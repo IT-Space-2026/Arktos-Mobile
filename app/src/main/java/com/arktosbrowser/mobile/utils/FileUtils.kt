@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Parcel
 import android.util.Log
-import io.reactivex.Completable
+import io.reactivex.rxjava3.core.Completable
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException

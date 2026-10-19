@@ -2,7 +2,7 @@ package com.arktosbrowser.mobile.rx
 
 import android.content.BroadcastReceiver
 import android.content.Context
-import io.reactivex.disposables.Disposable
+import io.reactivex.rxjava3.disposables.Disposable
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

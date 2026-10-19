@@ -35,10 +35,10 @@ import com.arktosbrowser.mobile.favicon.FaviconModel
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.utils.isSpecialUrl
-import io.reactivex.Scheduler
-import io.reactivex.Single
-import io.reactivex.disposables.Disposable
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.disposables.Disposable
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject

@@ -395,7 +395,7 @@
     <string name="site_not_secure">אתר זה אינו משתמש ב- HTTPS</string>
     <string name="language_not_supported">שפה לא נתמכת</string>
     <string name="language_not_supported_text">למרבה הצער, חנות התוספים עדיין לא זמינה בשפה שלך. השתמש בכפתור למטה כדי להמשיך באנגלית בכל מקרה.</string>
-    <string name="extensions">תוספות</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_description">הורד תוספות ...</string>
     <string name="extensions_store">חנות תוספות</string>
     <string name="uninstall_extension">הסר את ההתקנה של התוסף</string>

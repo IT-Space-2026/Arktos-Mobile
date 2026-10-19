@@ -380,7 +380,7 @@
     <string name="site_not_secure">Připojení k této stránce není bezpečné.</string>
     <string name="language_not_supported">Jazyk není podporován</string>
     <string name="language_not_supported_text">Bohužel, obchod s rozšířeními zatím není k dispozici ve vašem jazyce. Pro pokračování v angličtině použijte tlačítko níže.</string>
-    <string name="extensions">Rozšíření</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Povolit rozšíření</string>
     <string name="extensions_settings">Nastavení rozšíření</string>
     <string name="extensions_description">Stáhnout rozšíření...</string>

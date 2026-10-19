@@ -2,7 +2,7 @@ package com.arktosbrowser.mobile.view
 
 import android.os.Message
 import android.webkit.WebView
-import com.nhaarman.mockito_kotlin.mock
+import org.mockito.kotlin.mock
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

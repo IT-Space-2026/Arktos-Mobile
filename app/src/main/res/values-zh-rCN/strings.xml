@@ -377,7 +377,7 @@
     <string name="site_not_secure">与该站点的连接不安全。</string>
     <string name="language_not_supported">不支持的语言</string>
     <string name="language_not_supported_text">遗憾的是，扩展商店还没有可用您的语言。请使用下面的按钮继续使用英文。</string>
-    <string name="extensions">附加组件</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">启用扩展</string>
     <string name="extensions_settings">扩展设置</string>
     <string name="extensions_description">下载附加组件...</string>

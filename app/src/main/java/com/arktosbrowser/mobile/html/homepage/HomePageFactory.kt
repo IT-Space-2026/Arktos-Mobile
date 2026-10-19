@@ -20,7 +20,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.utils.DrawableUtils
 import dagger.Reusable
-import io.reactivex.Single
+import io.reactivex.rxjava3.core.Single
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileWriter

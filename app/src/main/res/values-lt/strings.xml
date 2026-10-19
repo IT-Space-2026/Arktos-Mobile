@@ -372,7 +372,7 @@
     <string name="site_not_secure">Šioje svetainėje nenaudojamas HTTPS</string>
     <string name="language_not_supported">Kalba nepalaikoma</string>
     <string name="language_not_supported_text">Deja, plėtinių parduotuvė jūsų kalba dar nepasiekiama. Norėdami toliau tęsti anglų kalba, naudokite žemiau esantį mygtuką.</string>
-    <string name="extensions">Priedai</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Leisti plėtinius/priedus</string>
     <string name="extensions_settings">Priedų/Plėtinių nustatymai</string>
     <string name="extensions_description">Atsisiųsti priedus ...</string>

@@ -367,7 +367,7 @@
     <string name="site_not_secure">Este sitio no usa HTTPS</string>
     <string name="language_not_supported">Idioma no admitido</string>
     <string name="language_not_supported_text">Lamentablemente, la tienda de extensiones aún no está disponible en su idioma. Use el botón de abajo para continuar en inglés de todos modos.</string>
-    <string name="extensions">Add-ons</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">Habilitar extensiones</string>
     <string name="extensions_settings">Ajustes de extensiones</string>
     <string name="extensions_description">Descargar Add-ons ...</string>

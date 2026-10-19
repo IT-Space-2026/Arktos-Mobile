@@ -382,7 +382,7 @@
     <string name="site_not_secure">الاتصال بهذا الموقع ليس آمناً.</string>
     <string name="language_not_supported">اللغة غير مدعومة</string>
     <string name="language_not_supported_text">لسوء الحظ ، لا يتوفر متجر الملحقات بلغتك حتى الآن. استخدم الزر أدناه للمتابعة باللغة الإنجليزية على أي حال.</string>
-    <string name="extensions">الإضافات</string>
+    <string name="extensions">Greasemonkey</string>
     <string name="extensions_enable">تمكين الإضافات</string>
     <string name="extensions_settings">إعدادات الإضافات</string>
     <string name="extensions_description">تحميل الإضافات...</string>

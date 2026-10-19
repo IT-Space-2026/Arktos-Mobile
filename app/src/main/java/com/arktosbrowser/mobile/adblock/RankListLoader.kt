@@ -10,11 +10,11 @@ import com.arktosbrowser.mobile.preference.userAgent
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.uniffi.RankListSource
 import com.arktosbrowser.mobile.uniffi.RankListSourceKind
-import io.reactivex.Scheduler
-import io.reactivex.Single
-import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.rxkotlin.plusAssign
-import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.kotlin.plusAssign
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import java.io.File
 import java.io.IOException
 import java.net.InetAddress

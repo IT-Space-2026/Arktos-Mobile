@@ -8,7 +8,7 @@ import android.webkit.WebView
 import android.webkit.WebViewDatabase
 import androidx.annotation.RequiresApi
 import com.arktosbrowser.mobile.database.history.HistoryRepository
-import io.reactivex.Scheduler
+import io.reactivex.rxjava3.core.Scheduler
 import java.io.File
 
 /**
