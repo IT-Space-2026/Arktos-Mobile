@@ -25,7 +25,24 @@ jobs:
     - name: Install cargo-ndk
       run: cargo install cargo-ndk --version 4.1.2 --locked
     - name: Install Android NDK
-      run: sdkmanager --install "ndk;28.2.13676358"
+      run: |
+        # The build resolves the newest side-by-side NDK under the SDK —
+        # runners ship one already, so only install when none exists.
+        # sdkmanager is not on PATH on ubuntu-26.04; it lives under
+        # $ANDROID_HOME/cmdline-tools/latest/bin.
+        if [ -d "$ANDROID_HOME/ndk" ] && ls "$ANDROID_HOME/ndk" | grep -q .; then
+          echo "Using preinstalled NDK: $(ls "$ANDROID_HOME/ndk" | sort | tail -1)"
+          exit 0
+        fi
+        SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        if [ ! -x "$SDKMANAGER" ]; then
+          SDKMANAGER="$(command -v sdkmanager || true)"
+        fi
+        if [ -z "$SDKMANAGER" ]; then
+          echo "sdkmanager not found under $ANDROID_HOME or PATH" >&2
+          exit 1
+        fi
+        "$SDKMANAGER" --install "ndk;28.2.13676358"
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build scMain debug APK
