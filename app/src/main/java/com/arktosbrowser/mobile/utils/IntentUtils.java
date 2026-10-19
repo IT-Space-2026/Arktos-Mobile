@@ -12,6 +12,7 @@ import android.util.Log;
 import android.webkit.WebView;
 
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,6 +31,10 @@ public class IntentUtils {
         "(?:http|https|file)://" + "|(?:inline|data|about|javascript):" + "|(?:.*:.*@)"
         + ')' + "(.*)");
 
+    // Extra placed by sites in intent:// URIs naming a page to load when
+    // the pinned app is not installed (S.browser_fallback_url=...).
+    private static final String EXTRA_BROWSER_FALLBACK_URL = "browser_fallback_url";
+
     public IntentUtils(@NonNull Activity activity) {
         mActivity = activity;
     }
@@ -47,17 +52,50 @@ public class IntentUtils {
         intent.setComponent(null);
         intent.setSelector(null);
 
-        if (mActivity.getPackageManager().resolveActivity(intent, 0) == null) {
-            String packagename = intent.getPackage();
-            if (packagename != null) {
-                intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=pname:"
-                    + packagename));
-                intent.addCategory(Intent.CATEGORY_BROWSABLE);
-                mActivity.startActivity(intent);
+        PackageManager packageManager = mActivity.getPackageManager();
+        boolean pinnedResolvable = packageManager.resolveActivity(intent, 0) != null;
+        Intent unpinned = null;
+        boolean otherHandlerInstalled = false;
+        if (!pinnedResolvable) {
+            // The app the link pinned via package= is not installed. Before
+            // sending the user to the store, check whether any other
+            // installed app specifically handles this link — e.g. a
+            // third-party client registered for the site's URLs (upstream
+            // issue #316).
+            unpinned = new Intent(intent);
+            unpinned.setPackage(null);
+            otherHandlerInstalled = hasInstalledSpecializedHandler(unpinned);
+        }
+        // The fallback URL can only be honoured when we have a tab to load
+        // it into.
+        String fallbackUrl = tab != null
+            ? intent.getStringExtra(EXTRA_BROWSER_FALLBACK_URL) : null;
+
+        switch (ExternalAppLaunchPolicy.decide(pinnedResolvable,
+            otherHandlerInstalled, fallbackUrl, intent.getPackage())) {
+            case LAUNCH:
+                if (!pinnedResolvable) {
+                    // Let the other installed handler claim the link.
+                    intent = unpinned;
+                }
+                break;
+            case LOAD_FALLBACK:
+                tab.loadUrl(fallbackUrl);
                 return true;
-            } else {
+            case OPEN_MARKET:
+                Intent market = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("market://search?q=pname:" + intent.getPackage()));
+                market.addCategory(Intent.CATEGORY_BROWSABLE);
+                try {
+                    mActivity.startActivity(market);
+                } catch (Exception ignored) {
+                    // No store app on this device either — stay in browser.
+                    return false;
+                }
+                return true;
+            case STAY_IN_BROWSER:
+            default:
                 return false;
-            }
         }
         if (tab != null) {
             intent.putExtra(Constants.INTENT_ORIGIN, tab.hashCode());
@@ -74,6 +112,57 @@ public class IntentUtils {
         } catch (Exception exception) {
             exception.printStackTrace();
             // TODO: 6/5/17 fix case where this could throw a FileUriExposedException due to file:// urls
+        }
+        return false;
+    }
+
+    /**
+     * Whether an installed app — other than the package the link pinned —
+     * specifically handles this intent's target. For web URLs that means a
+     * filter whose data authorities cover the URL's host: a generic browser
+     * declaring bare http/https schemes doesn't count, which also stops the
+     * link looping back into this browser. For non-web targets any matched
+     * handler counts.
+     */
+    private boolean hasInstalledSpecializedHandler(@NonNull Intent intent) {
+        List<ResolveInfo> handlers = mActivity.getPackageManager()
+            .queryIntentActivities(intent, PackageManager.GET_RESOLVED_FILTER);
+        if (handlers == null || handlers.isEmpty()) {
+            return false;
+        }
+        Uri data = intent.getData();
+        if (data == null) {
+            // Action-only intent — browsers can't match those, so anything
+            // that resolved is a real handler.
+            return true;
+        }
+        String scheme = data.getScheme();
+        boolean webScheme = "http".equalsIgnoreCase(scheme)
+            || "https".equalsIgnoreCase(scheme);
+        for (ResolveInfo resolveInfo : handlers) {
+            IntentFilter filter = resolveInfo.filter;
+            if (filter == null) {
+                continue;
+            }
+            if (webScheme) {
+                List<String> authorities =
+                    new ArrayList<>(filter.countDataAuthorities());
+                for (int i = 0; i < filter.countDataAuthorities(); i++) {
+                    IntentFilter.AuthorityEntry entry = filter.getDataAuthority(i);
+                    if (entry != null && entry.getHost() != null) {
+                        authorities.add(entry.getHost());
+                    }
+                }
+                if (ExternalAppLaunchPolicy.authorityMatchesHost(authorities,
+                    data.getHost())) {
+                    return true;
+                }
+            } else if (filter.countDataAuthorities() > 0
+                || (filter.countDataSchemes() > 0
+                    && !filter.hasDataScheme("http")
+                    && !filter.hasDataScheme("https"))) {
+                return true;
+            }
         }
         return false;
     }
