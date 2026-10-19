@@ -61,6 +61,12 @@
             android:key="block_malicious_sites"
             android:title="@string/block_malware"/>
         <SwitchPreference
+            android:defaultValue="true"
+            android:singleLineTitle="false"
+            android:key="block_lan_requests"
+            android:summary="@string/block_lan_requests_summary"
+            android:title="@string/block_lan_requests"/>
+        <SwitchPreference
             android:defaultValue="false"
             android:key="clear_cache_exit"
             android:singleLineTitle="false"

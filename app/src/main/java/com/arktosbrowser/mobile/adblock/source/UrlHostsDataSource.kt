@@ -1,6 +1,5 @@
 package com.arktosbrowser.mobile.adblock.source
 
-import com.arktosbrowser.mobile.adblock.parser.HostsFileParser
 import com.arktosbrowser.mobile.extensions.onIOExceptionResumeNext
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -9,7 +8,6 @@ import android.app.Application
 import io.reactivex.Single
 import okhttp3.*
 import java.io.IOException
-import java.io.InputStreamReader
 
 /**
  * A [HostsDataSource] that loads hosts from an [HttpUrl].
@@ -39,15 +37,11 @@ class UrlHostsDataSource(
                     override fun onResponse(call: Call, response: Response) {
                         val successfulResponse = response.takeIf(Response::isSuccessful)
                             ?: return emitter.onError(IOException("Error reading remote file"))
-                        val input = successfulResponse.body()?.byteStream()?.let(::InputStreamReader)
+                        val content = successfulResponse.body()?.string()
                             ?: return emitter.onError(IOException("Empty response"))
 
-                        val hostsFileParser = HostsFileParser(logger)
-
-                        val domains = hostsFileParser.parseInput(input)
-
-                        logger.log(TAG, "Loaded ${domains.size} domains")
-                        emitter.onSuccess(HostsResult.Success(domains))
+                        logger.log(TAG, "Loaded hosts file (${content.length} chars)")
+                        emitter.onSuccess(HostsResult.Success(content))
                     }
                 })
             }.onIOExceptionResumeNext { HostsResult.Failure(it) }

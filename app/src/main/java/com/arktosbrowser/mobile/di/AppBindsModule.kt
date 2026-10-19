@@ -6,8 +6,6 @@ import com.arktosbrowser.mobile.adblock.source.AssetsHostsDataSource
 import com.arktosbrowser.mobile.adblock.source.HostsDataSource
 import com.arktosbrowser.mobile.adblock.source.HostsDataSourceProvider
 import com.arktosbrowser.mobile.adblock.source.PreferencesHostsDataSourceProvider
-import com.arktosbrowser.mobile.database.adblock.HostsDatabase
-import com.arktosbrowser.mobile.database.adblock.HostsRepository
 import com.arktosbrowser.mobile.database.allowlist.AdBlockAllowListDatabase
 import com.arktosbrowser.mobile.database.allowlist.AdBlockAllowListRepository
 import com.arktosbrowser.mobile.database.bookmark.BookmarkDatabase
@@ -52,9 +50,6 @@ abstract class AppBindsModule {
 
     @Binds
     abstract fun providesHostsDataSource(assetsHostsDataSource: AssetsHostsDataSource): HostsDataSource
-
-    @Binds
-    abstract fun providesHostsRepository(hostsDatabase: HostsDatabase): HostsRepository
 
     @Binds
     abstract fun providesHostsDataSourceProvider(preferencesHostsDataSourceProvider: PreferencesHostsDataSourceProvider): HostsDataSourceProvider

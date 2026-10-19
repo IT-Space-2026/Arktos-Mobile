@@ -1,11 +1,9 @@
 package com.arktosbrowser.mobile.adblock.source
 
 import com.arktosbrowser.mobile.BuildConfig
-import com.arktosbrowser.mobile.adblock.parser.HostsFileParser
 import com.arktosbrowser.mobile.log.Logger
 import android.content.res.AssetManager
 import io.reactivex.Single
-import java.io.InputStreamReader
 
 /**
  * A [HostsDataSource] that reads from the hosts list in assets.
@@ -19,21 +17,19 @@ class AssetsHostsDataSource constructor(
 ) : HostsDataSource {
 
     /**
-     * A [Single] that reads through a hosts file and extracts the domains that should be redirected
-     * to localhost (a.k.a. IP address 127.0.0.1). It can handle files that simply have a list of
-     * host names to block, or it can handle a full blown hosts file. It will strip out comments,
-     * references to the base IP address and just extract the domains to be used.
+     * A [Single] that reads the raw hosts file content. It can handle files that simply have a list
+     * of host names to block, or it can handle a full blown hosts file — comment stripping and
+     * domain extraction happen in the Rust core.
      *
      * @see HostsDataSource.loadHosts
      */
     override fun loadHosts(): Single<HostsResult> = Single.create { emitter ->
-        val reader = InputStreamReader(assetManager.open(BLOCKED_DOMAINS_LIST_FILE_NAME))
-        val hostsFileParser = HostsFileParser(logger)
+        val content = assetManager.open(BLOCKED_DOMAINS_LIST_FILE_NAME)
+            .bufferedReader()
+            .use { it.readText() }
 
-        val domains = hostsFileParser.parseInput(reader)
-
-        logger.log(TAG, "Loaded ${domains.size} domains")
-        emitter.onSuccess(HostsResult.Success(domains))
+        logger.log(TAG, "Loaded hosts file (${content.length} chars)")
+        emitter.onSuccess(HostsResult.Success(content))
     }
 
     override fun identifier(): String = "assets:${BuildConfig.VERSION_CODE}"

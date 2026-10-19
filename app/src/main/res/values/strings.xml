@@ -380,6 +380,8 @@
     <string name="privacy_info">Read the Arktos Mobile privacy policy</string>
     <string name="url_project" translatable="false">https://github.com/IT-Space-2026/Arktos-Mobile</string>
     <string name="block_malware">Block malicious sites</string>
+    <string name="block_lan_requests">Block local network requests</string>
+    <string name="block_lan_requests_summary">Stop websites from accessing devices on your local network</string>
     <string name="block_sites">Custom site block</string>
     <string name="block_sites_title">Custom site block (separate sites with a comma)</string>
     <string name="none">None</string>
@@ -615,6 +617,7 @@
     <string name="page_blocked">Page blocked</string>
     <string name="page_blocked_adblocker">BLOCKED_BY_ADBLOCKER</string>
     <string name="page_blocked_parental">BLOCKED_BY_PARENTAL_CONTROLS</string>
+    <string name="page_blocked_lan">NET::BLOCKED_LOCAL_NETWORK</string>
     <string name="go_back">Go back</string>
     <string name="proceed">Proceed anyway</string>
 

@@ -261,6 +261,9 @@ tasks.register('generateUniffiBindings', Exec) {
             '--language', 'kotlin', '--no-format',
             '--out-dir', uniffiGenDir
     inputs.file "${rustDir}/arktos-core/uniffi.toml"
+    // Track the built library too — bindings must regenerate when the
+    // exported UniFFI surface changes, not just when uniffi.toml does.
+    inputs.file rustHostLib
     outputs.dir uniffiGenDir
 }
 

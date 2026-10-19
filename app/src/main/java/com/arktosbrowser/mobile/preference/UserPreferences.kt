@@ -45,6 +45,13 @@ class UserPreferences @Inject constructor(
 
     var blockMalwareEnabled by preferences.booleanPreference(BLOCK_MALWARE, true)
 
+    /**
+     * True if requests from public pages to private-IP/localhost hosts
+     * should be blocked (upstream #244). Enforced by the Rust
+     * blocklist engine at the `shouldInterceptRequest` seam.
+     */
+    var blockLanRequestsEnabled by preferences.booleanPreference(BLOCK_LAN_REQUESTS, true)
+
     var startPageThemeEnabled by preferences.booleanPreference(START_THEME, true)
 
     var tabsToForegroundEnabled by preferences.booleanPreference(FOREGROUND, true)
@@ -456,6 +463,7 @@ private const val USE_PASSWORD = "usePassword"
 private const val USE_PASSWORD_LOCK = "usePasswordLock"
 private const val PASSWORD_LOCK = "passwordLock"
 private const val BLOCK_MALWARE = "blockMalware"
+private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val START_THEME = "startPageTheme"
 private const val FOREGROUND = "tabsToForeground"

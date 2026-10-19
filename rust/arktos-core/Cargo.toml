@@ -24,3 +24,4 @@ cli = ["uniffi/cli"]
 
 [dependencies]
 uniffi = "=0.32.2"
+aho-corasick = "=1.1.3"

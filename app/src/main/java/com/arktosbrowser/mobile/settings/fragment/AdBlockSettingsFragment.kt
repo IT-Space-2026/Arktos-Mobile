@@ -6,7 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.preference.Preference
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.adblock.BloomFilterAdBlocker
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.source.HostsSourceType
 import com.arktosbrowser.mobile.adblock.source.selectedHostsSource
 import com.arktosbrowser.mobile.adblock.source.toPreferenceIndex
@@ -38,7 +38,7 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
     @Inject internal lateinit var userPreferences: UserPreferences
     @Inject @field:MainScheduler internal lateinit var mainScheduler: Scheduler
     @Inject @field:DiskScheduler internal lateinit var diskScheduler: Scheduler
-    @Inject internal lateinit var bloomFilterAdBlocker: BloomFilterAdBlocker
+    @Inject internal lateinit var blocklistLoader: BlocklistLoader
 
     private var recentSummaryUpdater: SummaryUpdater? = null
     private val compositeDisposable = CompositeDisposable()
@@ -78,7 +78,7 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
             preference = "preference_hosts_refresh_force",
             isEnabled = isRefreshHostsEnabled(),
             onClick = {
-                bloomFilterAdBlocker.populateAdBlockerFromDataSource(forceRefresh = true)
+                blocklistLoader.refreshHosts(forceRefresh = true)
             }
         )
     }
@@ -187,7 +187,7 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun updateForNewHostsSource() {
-        bloomFilterAdBlocker.populateAdBlockerFromDataSource(forceRefresh = true)
+        blocklistLoader.refreshHosts(forceRefresh = true)
         updateRefreshHostsEnabledStatus()
     }
 
