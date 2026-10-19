@@ -2,15 +2,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:bind="http://schemas.android.com/apk/res-auto"
     android:gravity="center_horizontal"
     android:orientation="vertical">
 
-    <com.github.ahmadaghazadeh.editor.widget.CodeEditor
+    <io.github.rosemoe.sora.widget.CodeEditor
         android:id="@+id/dialog_multi_line"
-        bind:lang="html"
-        bind:isReadOnly="false"
-        bind:isShowExtendedKeyboard="false"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 
