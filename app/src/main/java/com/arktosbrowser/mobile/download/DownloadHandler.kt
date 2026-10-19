@@ -10,21 +10,18 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
 import android.webkit.CookieManager
-import android.webkit.URLUtil
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
-import com.arktosbrowser.mobile.download.ContentDispositionFileNameParser
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import io.reactivex.Scheduler
 import java.io.File
 import java.io.IOException
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -82,7 +79,7 @@ class DownloadHandler @Inject constructor(
         if (manager.useThirdPartyDownloaderApps) {
             // Show dialog listing third party downloaders
         } else {
-            val filename = sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
+            val filename = sanitizeFileName(ArktosCore.guessFileName(url, contentDisposition, mimeType))
             downloadManager.enqueue(
                 DownloadManager.Request(Uri.parse(url))
                     .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
@@ -102,27 +99,11 @@ class DownloadHandler @Inject constructor(
         private const val COOKIE_REQUEST_HEADER = "Cookie"
 
         fun getFileNameFromURL(url: String?, contentDisposition: String?, mimeType: String?): String {
-            return if (contentDisposition?.contains("filename=") == true) {
-                var fileName: String? = ContentDispositionFileNameParser.parse(contentDisposition)
-                fileName = URLDecoder.decode(fileName, StandardCharsets.ISO_8859_1.toString())
-                sanitizeFileName(fileName)
-            } else {
-                var substring: String? = url!!.substring(url.lastIndexOf('/') + 1).split("\\?")[0].split("#")[0]
-                if (substring?.contains(".") == true) {
-                    sanitizeFileName(substring)
-                } else {
-                    sanitizeFileName(URLUtil.guessFileName(url, contentDisposition, mimeType))
-                }
-            }
+            return ArktosCore.downloadFileName(url.orEmpty(), contentDisposition, mimeType)
         }
 
         internal fun sanitizeFileName(name: String?): String {
-            val cleaned = name.orEmpty()
-                .substringAfterLast('/')
-                .substringAfterLast('\\')
-                .replace("..", "")
-                .trim()
-            return cleaned.ifBlank { "download" }
+            return ArktosCore.sanitizeFileName(name)
         }
 
         private fun isWriteAccessAvailable(fileUri: Uri): Boolean {

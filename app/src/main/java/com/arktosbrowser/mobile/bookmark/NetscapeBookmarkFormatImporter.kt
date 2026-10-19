@@ -2,9 +2,7 @@ package com.arktosbrowser.mobile.bookmark
 
 import com.arktosbrowser.mobile.constant.UTF8
 import com.arktosbrowser.mobile.database.Bookmark
-import com.arktosbrowser.mobile.database.asFolder
 import com.arktosbrowser.mobile.rust.ArktosCore
-import com.arktosbrowser.mobile.uniffi.StoreBookmark
 import java.io.InputStream
 import javax.inject.Inject
 
@@ -23,11 +21,4 @@ class NetscapeBookmarkFormatImporter @Inject constructor() : BookmarkImporter {
         val html = inputStream.bufferedReader(charset(UTF8)).readText()
         return ArktosCore.importNetscapeBookmarks(html).map { it.toBookmarkEntry() }
     }
-
-    private fun StoreBookmark.toBookmarkEntry() = Bookmark.Entry(
-        url = url,
-        title = title,
-        position = position.toInt(),
-        folder = folder.asFolder()
-    )
 }

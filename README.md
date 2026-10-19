@@ -47,6 +47,10 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   userscripts persist through a single Rust `ArktosStore` (SQLite via
   bundled rusqlite) behind the existing repository interfaces;
   Netscape bookmark imports are parsed in Rust too
+- Search suggestions (Google, DuckDuckGo, Baidu, Naver), userscript
+  metadata parsing, download filename/MIME resolution, legacy
+  bookmark imports and reading-mode article extraction
+  (`dom_smoothie`) all run in the Rust core
 
 ---
 

@@ -6,13 +6,12 @@ package com.arktosbrowser.mobile.download;
 import android.app.DownloadManager;
 import android.os.Environment;
 import android.util.Log;
-import android.webkit.MimeTypeMap;
-import android.webkit.URLUtil;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import com.arktosbrowser.mobile.rust.ArktosCore;
 import com.arktosbrowser.mobile.utils.Utils;
 import androidx.annotation.NonNull;
 import io.reactivex.Single;
@@ -90,13 +89,14 @@ class FetchUrlMimeType {
             if (mimeType != null) {
                 if (mimeType.equalsIgnoreCase("text/plain")
                     || mimeType.equalsIgnoreCase("application/octet-stream")) {
-                    String newMimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                        Utils.guessFileExtension(mUri));
+                    String extension = Utils.guessFileExtension(mUri);
+                    String newMimeType = extension == null ? null
+                        : ArktosCore.INSTANCE.mimeTypeForExtension(extension);
                     if (newMimeType != null) {
                         mRequest.setMimeType(newMimeType);
                     }
                 }
-                final String filename = URLUtil.guessFileName(mUri, contentDisposition, mimeType);
+                final String filename = ArktosCore.INSTANCE.guessFileName(mUri, contentDisposition, mimeType);
                 mRequest.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
             }
 

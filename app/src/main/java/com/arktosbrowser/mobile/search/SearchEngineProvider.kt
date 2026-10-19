@@ -6,6 +6,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.engine.*
 import com.arktosbrowser.mobile.search.suggestions.*
+import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import dagger.Reusable
 import io.reactivex.Single
 import okhttp3.OkHttpClient
@@ -29,12 +30,12 @@ class  SearchEngineProvider @Inject constructor(
      */
     fun provideSearchSuggestions(): SuggestionsRepository =
         when (userPreferences.searchSuggestionChoice) {
-            0 -> GoogleSuggestionsModel(okHttpClient, requestFactory, application, logger)
-            1 -> DuckSuggestionsModel(okHttpClient, requestFactory, application, logger)
-            2 -> BaiduSuggestionsModel(okHttpClient, requestFactory, application, logger)
-            3 -> NaverSuggestionsModel(okHttpClient, requestFactory, application, logger)
+            0 -> RustSuggestionsModel(SuggestionProvider.GOOGLE, okHttpClient, requestFactory, application, logger)
+            1 -> RustSuggestionsModel(SuggestionProvider.DUCK, okHttpClient, requestFactory, application, logger)
+            2 -> RustSuggestionsModel(SuggestionProvider.BAIDU, okHttpClient, requestFactory, application, logger)
+            3 -> RustSuggestionsModel(SuggestionProvider.NAVER, okHttpClient, requestFactory, application, logger)
             5 -> NoOpSuggestionsRepository()
-            else -> GoogleSuggestionsModel(okHttpClient, requestFactory, application, logger)
+            else -> RustSuggestionsModel(SuggestionProvider.GOOGLE, okHttpClient, requestFactory, application, logger)
         }
 
     /**

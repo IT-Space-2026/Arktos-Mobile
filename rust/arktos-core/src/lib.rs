@@ -7,8 +7,13 @@
 //! from Gradle build to Kotlin call.
 
 mod blocklist;
+mod bookmarks;
+mod download;
 mod netscape;
+mod readability;
 mod storage;
+mod suggestions;
+mod userscript;
 
 uniffi::setup_scaffolding!();
 
