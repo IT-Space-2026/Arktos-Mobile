@@ -294,7 +294,7 @@
     <string name="action_message_canceled">Acción cancelada</string>
     <!-- permissions request -->
     <string name="title_permission_request">Solicitud de permiso</string>
-    <string name="message_permission_request">%1$s \ n \ n desea utilizar: \ n \ n% 2 $ s</string>
+    <string name="message_permission_request">%1$s\n\ndesea utilizar:\n\n%2$s</string>
     <!-- Ad block -->
     <string name="block_ad_source">Origen del archivo de hosts</string>
     <string name="block_ad_remote_refresh_frequency_description">Para el archivo de hosts remotos</string>

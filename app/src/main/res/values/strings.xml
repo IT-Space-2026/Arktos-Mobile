@@ -635,7 +635,7 @@
     <string name="stack_items_reverse">Stack items from bottom of drawer</string>
 
     <string name="forgot_password">Forgot password</string>
-    <string name="recover_app_lock">Clear the app's data in the system settings, or reinstall the app, to reset your app lock password.</string>
+    <string name="recover_app_lock">Clear the app\'s data in the system settings, or reinstall the app, to reset your app lock password.</string>
 
     <string name="webview_devtools">WebView DevTools</string>
 

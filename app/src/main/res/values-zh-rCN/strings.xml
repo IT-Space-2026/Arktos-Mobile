@@ -522,6 +522,6 @@
     <string name="example_item">示例项目</string>
     <string name="stack_items_reverse">把抽屉底部项目堆叠起来</string>
     <string name="forgot_password">忘记密码</string>
-    <string name="recover_app_lock">Clear the app's data in the system settings, or reinstall the app, to reset your app lock password.</string>
+    <string name="recover_app_lock">Clear the app\'s data in the system settings, or reinstall the app, to reset your app lock password.</string>
     <!-- finish pages -->
 </resources>
