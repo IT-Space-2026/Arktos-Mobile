@@ -966,7 +966,14 @@ class SmartCookieWebClient(
             activity.startActivity(intent)
             return true
         }
-        else if (url.startsWith("intent://") || url.startsWith("gh4b://") || url.contains("://oauth")) {
+        else if (url.startsWith("intent://")) {
+            // Route through IntentUtils so resolution prefers installed
+            // handlers: the pinned app first, then any other installed app
+            // that handles the link, then browser_fallback_url, then the
+            // store (upstream #316).
+            return intentUtils.startActivityForUrl(view, url)
+        }
+        else if (url.startsWith("gh4b://") || url.contains("://oauth")) {
             val intent = try {
                 Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
             } catch (ignored: URISyntaxException) {
