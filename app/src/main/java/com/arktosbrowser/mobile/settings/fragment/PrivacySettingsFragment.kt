@@ -138,6 +138,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
+                preference = SETTINGS_BLOCK_LAN,
+                isChecked = userPreferences.blockLanRequestsEnabled,
+                onCheckChange = { userPreferences.blockLanRequestsEnabled = it }
+        )
+
+        switchPreference(
             preference = SETTINGS_IDENTIFYINGHEADERS,
             isChecked = userPreferences.removeIdentifyingHeadersEnabled,
             summary = (if(userPreferences.popupsEnabled) {
@@ -362,6 +368,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_IDENTIFYINGHEADERS = "remove_identifying_headers"
         private const val SETTINGS_FORCEHTTPS = "force_https"
         private const val SETTINGS_PREFERHTTPS = "prefer_https"
+        private const val SETTINGS_BLOCK_LAN = "block_lan_requests"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"

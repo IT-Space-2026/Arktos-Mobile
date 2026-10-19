@@ -40,7 +40,9 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Modern, clean UI
 - < 5MB download
 - Tons of settings
-- Blocks ads and trackers
+- Blocks ads and trackers — unified in the Rust `BlocklistEngine`
+  (`libarktos.so`): ad hosts, malware list, custom site block, and
+  public→local-network request blocking all share one per-request verdict
 
 ---
 

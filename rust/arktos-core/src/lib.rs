@@ -2,9 +2,11 @@
 //!
 //! Foundation crate for the incremental Rust port — the blocklist
 //! engine, storage core, and suggestions/userscript/download logic
-//! all land here behind UniFFI-generated Kotlin bindings. No feature
-//! code yet; `core_version`/`core_ping` exist to prove the JNI seam
-//! end-to-end from Gradle build to Kotlin call.
+//! all land here behind UniFFI-generated Kotlin bindings.
+//! `core_version`/`core_ping` exist to prove the JNI seam end-to-end
+//! from Gradle build to Kotlin call.
+
+mod blocklist;
 
 uniffi::setup_scaffolding!();
 

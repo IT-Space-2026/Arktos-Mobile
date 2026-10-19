@@ -1,8 +1,6 @@
 package com.arktosbrowser.mobile.di
 
 import com.arktosbrowser.mobile.BrowserApp
-import com.arktosbrowser.mobile.adblock.BloomFilterAdBlocker
-import com.arktosbrowser.mobile.adblock.NoOpAdBlocker
 import com.arktosbrowser.mobile.browser.SearchBoxModel
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
 import com.arktosbrowser.mobile.browser.activity.ThemableBrowserActivity
@@ -99,10 +97,6 @@ interface AppComponent {
     fun inject(parentalSettingsFragment: ParentalControlSettingsFragment)
 
     fun inject(bookmarksView: BookmarksDrawerView)
-
-    fun provideBloomFilterAdBlocker(): BloomFilterAdBlocker
-
-    fun provideNoOpAdBlocker(): NoOpAdBlocker
 
     fun inject(popUpClass: PopUpClass)
 }

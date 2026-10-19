@@ -24,10 +24,9 @@ import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.adblock.AdBlocker
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.JavaScriptChoice
-import com.arktosbrowser.mobile.browser.SiteBlockChoice
 import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.javascript.JavaScriptDatabase
@@ -39,8 +38,10 @@ import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
+import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.arktosbrowser.mobile.utils.Utils
@@ -105,7 +106,7 @@ class SmartCookieWebClient(
     @Inject internal lateinit var setWidenView: SetWidenViewport
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
-    private var adBlock: AdBlocker
+    @Inject internal lateinit var blocklistLoader: BlocklistLoader
 
     @Volatile private var isRunning = false
     private var zoomScale = 0.0f
@@ -125,59 +126,83 @@ class SmartCookieWebClient(
     init {
         activity.injector.inject(this)
         uiController = activity as UIController
-        adBlock = chooseAdBlocker()
+        blocklistLoader.ensureInitialized()
     }
 
     fun sslStateObservable(): Observable<SslState> = sslStateSubject.hide()
 
     fun updatePreferences() {
-        adBlock = chooseAdBlocker()
+        blocklistLoader.syncPrefs()
     }
 
     fun setWhitelist(a: Boolean){
         whitelistIntent = a
     }
 
-    private fun chooseAdBlocker(): AdBlocker = if (userPreferences.adBlockEnabled) {
-        activity.injector.provideBloomFilterAdBlocker()
-    } else {
-        activity.injector.provideNoOpAdBlocker()
+    /**
+     * The color passed to generated block/error pages — cleared on the
+     * light theme, matching the previous behavior.
+     */
+    private fun blockPageColor(): String {
+        if (userPreferences.useTheme == AppTheme.LIGHT) {
+            color = ""
+        }
+        return color
     }
 
-    private fun shouldRequestBeBlocked(pageUrl: String, requestUrl: String) =
-        !whitelistModel.isUrlAllowedAds(pageUrl) && adBlock.isAd(requestUrl)
+    private fun blockedPageResponse(html: String): WebResourceResponse =
+        WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(html.toByteArray()))
 
+    private fun emptyResponse(): WebResourceResponse =
+        WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(emptyResponseByteArray))
+
+    private fun adBlockResponse(request: WebResourceRequest, requestUrl: String): WebResourceResponse? {
+        if (request.isForMainFrame && request.url.host.toString() != lastBlockedDomain) {
+            lastBlockedDomain = request.url.host.toString()
+            return blockedPageResponse(Utils.buildBlockPage(activity, blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, true))
+        } else if (request.isForMainFrame) {
+            return null
+        }
+
+        return emptyResponse()
+    }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-        if (shouldRequestBeBlocked(currentUrl, request.url.toString())) {
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            if(request.isForMainFrame && request.url.host.toString() != lastBlockedDomain){
-                if(userPreferences.useTheme == AppTheme.LIGHT){
-                    color = ""
+        val requestUrl = request.url.toString()
+        return when (ArktosCore.requestVerdict(requestUrl, currentUrl, request.isForMainFrame)) {
+            RequestVerdict.ALLOW -> super.shouldInterceptRequest(view, request)
+            RequestVerdict.BLOCK_ADS ->
+                if (whitelistModel.isUrlAllowedAds(currentUrl)) {
+                    super.shouldInterceptRequest(view, request)
+                } else {
+                    adBlockResponse(request, requestUrl)
                 }
-                lastBlockedDomain = request.url.host.toString()
-                return WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(Utils.buildBlockPage(activity, color, activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), request.url.toString(), true).toByteArray()))
-            }
-            else if(request.isForMainFrame){
-                return null
-            }
-
-            return WebResourceResponse("text/plain", "utf-8", empty)
+            RequestVerdict.BLOCK_SITE -> blockedPageResponse(
+                Utils.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false))
+            RequestVerdict.BLOCK_MALWARE -> blockedPageResponse(
+                Utils.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), reloadBlocked, false))
+            RequestVerdict.BLOCK_LOCAL_NETWORK ->
+                if (request.isForMainFrame) {
+                    blockedPageResponse(Utils.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), reloadBlocked, false))
+                } else {
+                    emptyResponse()
+                }
         }
-        return super.shouldInterceptRequest(view, request)
     }
 
     @Suppress("OverridingDeprecatedMember")
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
     override fun shouldInterceptRequest(view: WebView, url: String): WebResourceResponse? {
-        if (shouldRequestBeBlocked(currentUrl, url)) {
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            return WebResourceResponse("text/plain", "utf-8", empty)
+        // No main-frame signal on this legacy overload — page-level
+        // verdicts (malware/site block) can't fire here anyway.
+        val verdict = ArktosCore.requestVerdict(url, currentUrl, false)
+        if (verdict == RequestVerdict.BLOCK_LOCAL_NETWORK ||
+            (verdict == RequestVerdict.BLOCK_ADS && !whitelistModel.isUrlAllowedAds(currentUrl))) {
+            return emptyResponse()
         }
         if(url.contains("detectPopBlock.js")){
-            val empty = ByteArrayInputStream(emptyResponseByteArray)
-            return WebResourceResponse("text/plain", "utf-8", empty)
+            return emptyResponse()
         }
         return null
     }
@@ -372,75 +397,6 @@ class SmartCookieWebClient(
             view.evaluateJavascript(darkMode.provideJs(activity), null)
         }
 
-        if (userPreferences.blockMalwareEnabled) {
-            val inputStream: InputStream = activity.assets.open("malware.txt")
-            val inputString = inputStream.bufferedReader().use { it.readText() }
-            val lines =  inputString.split(",").toTypedArray()
-            if (stringContainsItemFromList(url, lines)) {
-                view.settings.javaScriptEnabled = true
-                if(userPreferences.useTheme == AppTheme.LIGHT){
-                    color = ""
-                }
-                val title = activity.getString(R.string.malware_title)
-                val reload = activity.getString(R.string.error_reload)
-                val error = activity.getString(R.string.malware_message)
-
-                view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
-                view.invalidate()
-                view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-            }
-
-
-            if (userPreferences.siteBlockChoice === SiteBlockChoice.WHITELIST) run {
-                if (userPreferences.siteBlockNames !== "") {
-                    val arrayOfURLs = userPreferences.siteBlockNames
-                    val strgs: Array<String>
-                    if (arrayOfURLs.contains(", ")) {
-                        strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    } else if (arrayOfURLs.contains("," + System.getProperty("line.separator").toString())){
-                        strgs = arrayOfURLs.split("," + System.getProperty("line.separator").toString().toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }  else{
-                        strgs = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }
-                    if (stringContainsItemFromList(url, strgs)) {
-                        if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                            return
-                        } else {
-                            if(userPreferences.useTheme == AppTheme.LIGHT){
-                                color = ""
-                            }
-                            view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL("https://arktos-error.local",  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
-                            view.invalidate()
-                            view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-                        }
-                    }
-                }
-            }
-            else if (userPreferences.siteBlockChoice === SiteBlockChoice.BLACKLIST) {
-                if (userPreferences.siteBlockNames !== "") {
-                    val arrayOfURLs = userPreferences.siteBlockNames
-                    var strgs: Array<String> = arrayOfURLs.split(",".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    if (arrayOfURLs.contains(", ")) {
-                        strgs = arrayOfURLs.split(", ".toRegex()).dropLastWhile({ it.isEmpty() }).toTypedArray()
-                    }
-                    if (!stringContainsItemFromList(url, strgs)) {
-                        if (url.contains("file:///android_asset") or url.contains("about:blank")) {
-                            return
-                        } else {
-                            if(userPreferences.useTheme == AppTheme.LIGHT){
-                                color = ""
-                            }
-                            view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
-                            view.invalidate()
-                            view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
-                        }
-                    }
-                }
-                uiController.tabChanged(smartCookieView)
-            }
-        }
         if(userPreferences.cookieBlockEnabled){
             view.evaluateJavascript(cookieBlock.provideJs(activity), null)
         }

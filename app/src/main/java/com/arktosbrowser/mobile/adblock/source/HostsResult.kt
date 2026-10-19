@@ -1,18 +1,18 @@
 package com.arktosbrowser.mobile.adblock.source
 
-import com.arktosbrowser.mobile.database.adblock.Host
-
 /**
- * The result of a request for the hosts to block.
+ * The result of a request for the hosts file content.
  */
 sealed class HostsResult {
 
     /**
      * A successful request.
      *
-     * @param hosts The hosts to block.
+     * @param hostsFileContent The raw hosts file content. Parsing into
+     * blocklist entries happens in the Rust core — see
+     * `BlocklistLoader`/`parse_hosts_file`.
      */
-    data class Success(val hosts: List<Host>) : HostsResult()
+    data class Success(val hostsFileContent: String) : HostsResult()
 
     /**
      * An unsuccessful request.
