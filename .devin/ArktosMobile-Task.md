@@ -60,7 +60,7 @@ NO SUDO — everything user-local.
 | FIXB09 | Per-site JS/cookie toolbar toggles (upstream #305) — details below | pending | 0 | needs:tool:java |
 | FIXB10 | 'No internet connection' message (upstream #323) — details below | pending | 0 | needs:tool:java |
 | FIXB11 | Forced SafeSearch for parental controls (upstream #327) — details below | pending | 0 | needs:tool:java |
-| FIXB12 | Replace translation provider (upstream #300) — details below | pending | 0 | needs:tool:java — endpoint emptied during rebrand; pick a working public/self-host option or remove the menu entry |
+| FIXB12 | Replace translation provider (upstream #300) — details below | done | 0 | LibreTranslate-compatible default (libretranslate.de, pref-configurable); in-page translation via Rust wire format + TranslateBridge JS interface (added on-demand only) + TranslatePage.js DOM walker; ReadingActivity selected-text path rewired to same Rust builders — cargo 7/7, TranslateBridgeTest 6/6 |
 | DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | pending | 0 | mostly closed/answered items; decide Arktos-side equivalents |
 | UI01 | Error/interstitial pages styled like Arktos desktop — details below | pending | 0 | needs:tool:java — port desktop src/htmls/notfound.html+certerror.html look into Utils.buildErrorPage/buildBlockPage |

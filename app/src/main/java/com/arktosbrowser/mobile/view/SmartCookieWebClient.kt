@@ -100,10 +100,9 @@ class SmartCookieWebClient(
     @Inject internal lateinit var textReflowJs: TextReflow
     @Inject internal lateinit var invertPageJs: InvertPage
     @Inject internal lateinit var darkMode: DarkMode
-    @Inject internal lateinit var translate: Translate
+    @Inject internal lateinit var translatePage: TranslatePage
     @Inject internal lateinit var noAMP: BlockAMP
     @Inject internal lateinit var cookieBlock: CookieBlock
-    @Inject internal lateinit var blockAds: BlockAds
     @Inject internal lateinit var setWidenView: SetWidenViewport
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
@@ -263,8 +262,8 @@ class SmartCookieWebClient(
         if(url.contains(BuildConfig.APPLICATION_ID + "/files/homepage.html")  || url.contains(BuildConfig.APPLICATION_ID + "/files/incognito.html")) {
             val preferenceArray = arrayListOf(userPreferences.link1, userPreferences.link2, userPreferences.link3, userPreferences.link4)
             for(i in 1..4){
-                view.evaluateJavascript("javascript:(function() {"
-                        + "link" + i + "var = '" + preferenceArray[i - 1] + "';"
+                view.evaluateJavascript("(function() {"
+                        + "window.link" + i + "var = " + org.json.JSONObject.quote(preferenceArray[i - 1]) + ";"
                         + "})();", null)
             }
         }
@@ -659,11 +658,15 @@ class SmartCookieWebClient(
                     zoomScale = newScale
 
                     val textScale = (newScale / initScale)
-                    view.evaluateJavascript(textReflowJs.provideJs(activity) + textScale.toString() + " + 'px'; }());") { isRunning = false }
+                    view.evaluateJavascript(
+                        textReflowJs.provideJs(activity).replace(REFLOW_RATIO_TOKEN, textScale.toString())
+                    ) { isRunning = false }
                 }, 100)
             }
             else{
-                view.evaluateJavascript(textReflowJs.provideJs(activity) + "window.document.documentElement.clientWidth + 'px'; }());") { isRunning = false }
+                view.evaluateJavascript(
+                    textReflowJs.provideJs(activity).replace(REFLOW_RATIO_TOKEN, "window.document.documentElement.clientWidth")
+                ) { isRunning = false }
             }
         }
     }
@@ -900,6 +903,7 @@ class SmartCookieWebClient(
     companion object {
 
         private const val TAG = "SmartCookieWebClient"
+        private const val REFLOW_RATIO_TOKEN = "%%RATIO%%"
 
     }
 }

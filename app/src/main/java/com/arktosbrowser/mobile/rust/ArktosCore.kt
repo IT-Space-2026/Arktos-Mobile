@@ -20,6 +20,7 @@ import com.arktosbrowser.mobile.uniffi.ReadableArticle
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.uniffi.SiteBlockMode
 import com.arktosbrowser.mobile.uniffi.StoreBookmark
+import com.arktosbrowser.mobile.uniffi.TranslateRequest
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import com.arktosbrowser.mobile.uniffi.UserScriptMeta
 import com.arktosbrowser.mobile.uniffi.PasswordCheck
@@ -56,6 +57,10 @@ import com.arktosbrowser.mobile.uniffi.parseNetscapeBookmarks
 import com.arktosbrowser.mobile.uniffi.parseSuggestions as uniffiParseSuggestions
 import com.arktosbrowser.mobile.uniffi.parseUserscript
 import com.arktosbrowser.mobile.uniffi.sanitizeFileName as uniffiSanitizeFileName
+import com.arktosbrowser.mobile.uniffi.translateUrl as uniffiTranslateUrl
+import com.arktosbrowser.mobile.uniffi.translateRequestBody as uniffiTranslateRequestBody
+import com.arktosbrowser.mobile.uniffi.translateParseRequest as uniffiTranslateParseRequest
+import com.arktosbrowser.mobile.uniffi.parseTranslateResponse as uniffiParseTranslateResponse
 import com.arktosbrowser.mobile.uniffi.siteRank as uniffiSiteRank
 import com.arktosbrowser.mobile.uniffi.siteRankEntryCount as uniffiSiteRankEntryCount
 import com.arktosbrowser.mobile.uniffi.siteRankFileEntries as uniffiSiteRankFileEntries
@@ -350,6 +355,25 @@ object ArktosCore {
      */
     fun exportLegacyBookmarks(bookmarks: List<StoreBookmark>): String =
         uniffiExportLegacyBookmarks(bookmarks)
+
+    /** Endpoint base → LibreTranslate `…/translate` route (page translation). */
+    fun translateUrl(endpoint: String): String = uniffiTranslateUrl(endpoint)
+
+    /** `{"q":[…],"source","target","format":"text"}` request body. */
+    fun translateRequestBody(texts: List<String>, source: String, target: String): String =
+        uniffiTranslateRequestBody(texts, source, target)
+
+    /**
+     * Parses `{"translatedText": …}` — string or array; the legacy
+     * `{"text": …}` shape is accepted for the ReadingActivity caller.
+     */
+    fun parseTranslateResponse(body: String): List<String> = uniffiParseTranslateResponse(body)
+
+    /**
+     * Validates a `{"texts":[…],"target":"xx"}` walker request; `null`
+     * for malformed or empty payloads and non-BCP-47 targets.
+     */
+    fun translateParseRequest(body: String): TranslateRequest? = uniffiTranslateParseRequest(body)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {

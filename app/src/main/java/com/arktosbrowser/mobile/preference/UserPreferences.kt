@@ -412,7 +412,7 @@ class UserPreferences @Inject constructor(
     var link4 by preferences.stringPreference(LINK4, "https://fast.com")
 
     // API endpoints
-    var translationEndpoint by preferences.stringPreference(TRANSLATION_ENDPOINT, "")
+    var translationEndpoint by preferences.stringPreference(TRANSLATION_ENDPOINT, "https://libretranslate.de")
     var newsEndpoint by preferences.stringPreference(NEWS_ENDPOINT, "")
 
     var useThirdPartyDownloaderApps by preferences.booleanPreference(USE_THIRD_PARTY_DOWNLOADER_APPS, false)
