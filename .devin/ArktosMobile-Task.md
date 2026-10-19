@@ -61,7 +61,7 @@ NO SUDO — everything user-local.
 | FIXB10 | 'No internet connection' message (upstream #323) — details below | pending | 0 | needs:tool:java |
 | FIXB11 | Forced SafeSearch for parental controls (upstream #327) — details below | pending | 0 | needs:tool:java |
 | FIXB12 | Replace translation provider (upstream #300) — details below | pending | 0 | needs:tool:java — endpoint emptied during rebrand; pick a working public/self-host option or remove the menu entry |
-| DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | pending | 0 | no build needed — #310/#301 WebRTC (no WebView API), #313 timezone, #105 background play, #318 gitlab loop; write limitations section + replies |
+| DOCS01 | Platform-limit issues: document honestly + partial mitigations — details below | done | 0 | landed LIMITATIONS.md (4 platform-limit entries + copy-ready upstream replies) + README Known-limitations section; verified androidx.webkit 1.17.x has no WebRTC IP-handling API; engine-audit PASS; no build needed |
 | HOUSE01 | Upstream housekeeping: #168 icon vote, #314 f-droid beta, #315 userscript keyword, #325 proxy-apk question — details below | pending | 0 | mostly closed/answered items; decide Arktos-side equivalents |
 
 ## Task details

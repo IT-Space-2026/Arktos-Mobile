@@ -57,6 +57,12 @@ Arktos Mobile can optionally use online services to improve the browser. Informa
 
 ---
 
+## Known limitations
+
+Arktos Mobile is built on Android WebView, so a few reported issues are platform limits we can't fix in app code — including WebRTC's ability to reveal your real IP, per-site timezone spoofing, and background media playback. See [LIMITATIONS.md](LIMITATIONS.md) for details and workarounds.
+
+---
+
 ## Acknowledgements
 
 Arktos Mobile is a fork of [SmartCookieWeb](https://github.com/CookieJarApps/SmartCookieWeb), which is itself a fork of Lightning Browser. Changes since the fork include rebranding, removal of third-party hosted services, and updated dependencies.
