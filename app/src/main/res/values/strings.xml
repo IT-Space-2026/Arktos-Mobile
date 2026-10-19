@@ -308,8 +308,6 @@
     <string name="description">Learn about Arktos Mobile</string>
     <string name="url_contact" translatable="false">github.com/IT-Space-2026/Arktos-Mobile</string>
 
-    <string name="faq">FAQ</string>
-    <string name="faq_description">Frequently asked questions...</string>
 
     <string name="block_source_default">Default hosts</string>
     <string name="block_source_local">Local hosts file</string>

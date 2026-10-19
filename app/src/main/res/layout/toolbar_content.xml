@@ -163,12 +163,12 @@
         android:gravity="center">
 
         <ImageView
-        app:srcCompat="@drawable/ic_baseline_more_vert"
+        app:srcCompat="@mipmap/ic_launcher_foreground"
         android:id="@+id/overflow_image_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:layout_gravity="center"
-        app:tint="?attr/iconColor" />
+        android:scaleType="fitCenter" />
     </FrameLayout>
 
 </LinearLayout>
