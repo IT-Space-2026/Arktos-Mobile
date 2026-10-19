@@ -54,3 +54,8 @@ out
 # https://gitlab.com/fdroid/fdroidclient/raw/master/.gitignore
 
 *.iml
+
+# taskloop runtime artifacts
+.devin/taskloop*.log
+.devin/taskloop*.lock
+.devin/STOP_TASKLOOP
