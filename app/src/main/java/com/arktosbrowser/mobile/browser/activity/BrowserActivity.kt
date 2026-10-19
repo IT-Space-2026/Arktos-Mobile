@@ -48,6 +48,7 @@ import androidx.core.view.GravityCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginRight
 import androidx.core.view.marginTop
+import androidx.core.widget.doOnTextChanged
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
 import butterknife.ButterKnife
@@ -149,6 +150,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var cameraPhotoPath: String? = null
 
     private var findResult: FindResults? = null
+
+    private val appLockGate = AppLockGate()
 
     private var prefs: SharedPreferences? = null
 
@@ -583,33 +586,47 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         if(userPreferences.passwordChoiceLock == PasswordChoice.CUSTOM){
-            val builder: AlertDialog.Builder = AlertDialog.Builder(this)
-
             val customLayoutBinding = DialogAppLockBinding.inflate(layoutInflater)
-            builder.setView(customLayoutBinding.root)
-            builder.setCancelable(false)
 
-            builder.setPositiveButton(resources.getString(R.string.action_ok)) { dialog, _ ->
-                // PORT02 — stored value is an `arktos:v1:` argon2id
-                // hash; a legacy plaintext match upgrades in place.
-                val check = ArktosCore.verifyPassword(
-                    userPreferences.passwordTextLock,
-                    customLayoutBinding.textFieldText.text.toString()
-                )
-                if (check.matched) {
-                    check.upgradedHash?.let { userPreferences.passwordTextLock = it }
-                    dialog.cancel()
-                }
-                else{
+            // FIXB07 (upstream #302): a mistyped password used to kill
+            // the app with no feedback, which read as a crash. The
+            // prompt now stays open with an inline error and retries;
+            // Cancel remains the explicit way out.
+            val dialog: AlertDialog = AlertDialog.Builder(this)
+                .setView(customLayoutBinding.root)
+                .setCancelable(false)
+                .setPositiveButton(resources.getString(R.string.action_ok), null)
+                .setNegativeButton(resources.getString(R.string.action_cancel)) { _, _ ->
                     this.finishAffinity()
                 }
-            }
-            builder.setNegativeButton(resources.getString(R.string.action_cancel)) { _, _ ->
-                this.finishAffinity()
+                .create()
+
+            customLayoutBinding.textFieldText.doOnTextChanged { _, _, _, _ ->
+                customLayoutBinding.textField.error = null
             }
 
-            val dialog: AlertDialog = builder.create()
             dialog.show()
+
+            // Overriding after show() stops the button auto-dismissing
+            // the dialog on a failed attempt.
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                // PORT02 — stored value is an `arktos:v1:` argon2id
+                // hash; a legacy plaintext match upgrades in place.
+                when (val result = appLockGate.check(
+                    userPreferences.passwordTextLock,
+                    customLayoutBinding.textFieldText.text.toString()
+                )) {
+                    is AppLockGate.Result.Unlocked -> {
+                        result.upgradedHash?.let { userPreferences.passwordTextLock = it }
+                        dialog.dismiss()
+                    }
+                    AppLockGate.Result.Retry -> {
+                        customLayoutBinding.textField.error =
+                            resources.getString(R.string.wrong_password)
+                        customLayoutBinding.textFieldText.text?.clear()
+                    }
+                }
+            }
         }
     }
 
