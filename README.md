@@ -103,7 +103,7 @@ Arktos Mobile is a fork of [SmartCookieWeb](https://github.com/CookieJarApps/Sma
 
 Upstream feature highlights inherited from SmartCookieWeb:
 
-- Parental controls
+- Parental controls (site blocking, settings password, forced SafeSearch)
 - Malware blocker
 - Bottom navbar
 - Custom navbar colour

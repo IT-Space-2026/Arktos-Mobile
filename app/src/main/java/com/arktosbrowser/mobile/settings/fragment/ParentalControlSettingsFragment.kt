@@ -57,6 +57,11 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
                 summary = fullName,
                 onClick = ::showSiteBlockPicker
         )
+        switchPreference(
+                preference = SETTINGS_SAFE_SEARCH,
+                isChecked = userPreferences.safeSearchForced,
+                onCheckChange = { userPreferences.safeSearchForced = it }
+        )
         clickableDynamicPreference(
                 preference = SETTINGS_PASSWORD,
                 summary = userPreferences.passwordChoice.toSummary(),
@@ -243,6 +248,7 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
 
     companion object {
         private const val SETTINGS_SITE_BLOCK = "siteblock"
+        private const val SETTINGS_SAFE_SEARCH = "safe_search"
         private const val SETTINGS_PASSWORD = "password"
     }
 }
