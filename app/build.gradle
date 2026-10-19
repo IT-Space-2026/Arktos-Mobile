@@ -1,0 +1,205 @@
+plugins {
+    id 'com.google.devtools.ksp'
+    id 'com.android.application'
+    id 'jacoco'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+android {
+    namespace 'com.arktosbrowser.mobile'
+    compileSdk 37
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    defaultConfig {
+        minSdkVersion project.minSdkVersion
+        targetSdkVersion project.targetSdkVersion
+        versionName "17.0"
+        versionCode 153
+        vectorDrawables.useSupportLibrary = true
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildTypes {
+        debug {
+            multiDexEnabled true
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles 'proguard-project.txt'
+            testCoverageEnabled true
+        }
+
+        release {
+            multiDexEnabled false
+            minifyEnabled true
+            shrinkResources false
+            proguardFiles 'proguard-project.txt'
+            testCoverageEnabled false
+
+            ndk {
+                abiFilters "arm64-v8a", "armeabi-v7a", "armeabi", "mips"
+            }
+        }
+    }
+
+    testOptions {
+        unitTests.all {
+            jacoco {
+                // This option needs to be included for robolectric tests
+                includeNoLocationClasses = true
+                excludes = ['jdk.internal.*']
+            }
+        }
+    }
+
+    flavorDimensions "capabilities"
+
+    productFlavors {
+        scMain {
+            dimension "capabilities"
+            applicationId "com.arktosbrowser.mobile"
+            resValue "string", "app_name", "Arktos Mobile"
+        }
+        stable {
+            dimension "capabilities"
+            applicationId "com.arktosbrowser.mobile"
+            resValue "string", "app_name", "Arktos Mobile"
+        }
+        beta {
+            dimension 'capabilities'
+            applicationId 'com.arktosbrowser.mobile.beta'
+            resValue "string", "app_name", "Arktos Mobile beta"
+            versionCode 16
+            versionName "17.0-beta4"
+        }
+    }
+
+    lintOptions {
+        abortOnError true
+    }
+
+    packagingOptions {
+        exclude '.readme'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        viewBinding = true
+        compose = true
+        buildConfig = true
+        resValues = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.6"
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.23.0'
+    testImplementation 'com.nhaarman:mockito-kotlin:1.6.0', {
+        exclude group: 'org.jetbrains.kotlin'
+    }
+
+    // support libraries
+    implementation "androidx.palette:palette-ktx:1.0.0"
+    implementation "androidx.annotation:annotation:1.10.0"
+    implementation "androidx.appcompat:appcompat:1.7.1"
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation "androidx.recyclerview:recyclerview:1.4.0"
+    implementation "androidx.core:core-ktx:1.16.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.2.1"
+    implementation "androidx.drawerlayout:drawerlayout:1.2.0"
+    implementation "androidx.preference:preference-ktx:1.2.1"
+
+    // html parsing for reading mode
+    implementation 'org.jsoup:jsoup:1.22.2'
+
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-contrib:3.7.0'
+
+    // downloads
+    implementation "org.mozilla.components:concept-fetch:131.0.3"
+    implementation "org.mozilla.components:lib-fetch-httpurlconnection:131.0.3"
+
+    // proxy support
+    implementation "info.guardianproject.netcipher:netcipher-webkit:2.1.0"
+
+    // dependency injection
+    final def daggerVersion = '2.60'
+    implementation "com.google.dagger:dagger:$daggerVersion"
+    ksp "com.google.dagger:dagger-compiler:$daggerVersion"
+    compileOnly 'javax.annotation:jsr250-api:1.0'
+
+    final def butterKnifeVersion = '10.2.3'
+    implementation "com.jakewharton:butterknife:$butterKnifeVersion"
+    ksp "com.jakewharton:butterknife-compiler:$butterKnifeVersion"
+
+    // permissions
+    implementation 'com.guolindev.permissionx:permissionx:1.8.1'
+
+    // proxy support
+    implementation 'net.i2p.android:helper:0.9.5'
+
+    //TODO: drop android 4.4 support - no TLS1.2 support on OKhttp3
+    implementation ("com.squareup.okhttp3:okhttp"){
+        version{
+            strictly "3.12.12"
+        }
+    }
+    implementation 'com.squareup.okio:okio:3.17.0'
+
+    // rx
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.21'
+    implementation 'io.reactivex.rxjava2:rxkotlin:2.4.0'
+
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+
+    // kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+
+    // color picker
+    implementation 'com.github.QuadFlask:colorpicker:0.0.15'
+
+    // reading mode
+    implementation 'net.dankito.readability4j:readability4j:1.0.8'
+
+    // webview tools
+    implementation 'androidx.webkit:webkit:1.12.1'
+
+    // onboarding
+    implementation 'com.github.AppIntro:AppIntro:6.2.0'
+
+    // memory leak analysis
+    final def leakCanaryVersion = '2.13'
+    debugImplementation "com.squareup.leakcanary:leakcanary-android:$leakCanaryVersion"
+
+    // code editor
+    implementation 'com.github.ahmadaghazadeh:CodeEditor:1.0.17'
+
+    // compose
+    implementation 'androidx.compose.ui:ui:1.8.3'
+    implementation 'androidx.compose.material:material:1.8.3'
+    implementation 'androidx.compose.ui:ui-tooling:1.8.3'
+    implementation 'androidx.compose.runtime:runtime:1.8.3'
+    implementation 'androidx.compose.foundation:foundation:1.8.3'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
+}

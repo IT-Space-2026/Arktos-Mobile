@@ -1,0 +1,9 @@
+A web browser with privacy on by default. Forked from SmartCookieWeb (Lightning Browser).
+
+Features:
+- Open source
+- Modern UI
+- Tracking and ad blocker
+- Customizable
+
+https://github.com/IT-Space-2026/Arktos-Mobile

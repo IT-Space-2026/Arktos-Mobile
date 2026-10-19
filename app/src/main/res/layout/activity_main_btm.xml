@@ -1,0 +1,200 @@
+<!-- Copyright 2020 CookieJarApps - Modified from code Copyright 2014 ACR Development -->
+<RelativeLayout android:id="@+id/relative_layout"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".browser.activity.BrowserActivity"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    android:id="@+id/coordinator_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".browser.activity.BrowserActivity">
+
+        <androidx.drawerlayout.widget.DrawerLayout
+            android:id="@+id/drawer_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fitsSystemWindows="true">
+
+            <LinearLayout
+                android:id="@+id/ui_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <FrameLayout
+                    android:id="@+id/content_frame"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:background="@color/primary_color"
+                    android:clipChildren="true"/>
+
+                <RelativeLayout
+                    android:id="@+id/search_bar"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/drawerBackground"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:elevation="4dp">
+
+                    <LinearLayout
+                        android:id="@+id/row1"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top"
+                        android:background="?attr/drawerBackground"
+                        android:orientation="horizontal">
+
+                        <EditText
+                            android:id="@+id/search_query"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:gravity="center_vertical"
+                            android:paddingLeft="@dimen/material_grid_margin"
+                            android:singleLine="true"
+                            android:textAppearance="?android:attr/textAppearanceListItem"
+                            android:textSize="22sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/row2"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@+id/row1"
+                        android:background="?attr/drawerBackground"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <ImageButton
+                            android:id="@+id/button_search"
+                            style="?android:attr/buttonBarButtonStyle"
+                            android:layout_width="86dp"
+                            android:layout_height="match_parent"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@null"
+                            app:tint="?attr/iconColor"
+                            app:srcCompat="@drawable/ic_search" />
+
+                        <ImageButton
+                            android:id="@+id/button_back"
+                            style="?android:attr/buttonBarButtonStyle"
+                            android:layout_width="86dp"
+                            android:layout_height="match_parent"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@null"
+                            app:tint="?attr/iconColor"
+                            app:srcCompat="@drawable/ic_action_collapse" />
+
+                        <ImageButton
+                            android:id="@+id/button_next"
+                            style="?android:attr/buttonBarButtonStyle"
+                            android:layout_width="86dp"
+                            android:layout_height="match_parent"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@null"
+                            app:tint="?attr/iconColor"
+                            app:srcCompat="@drawable/ic_action_expand" />
+
+                        <ImageButton
+                            android:id="@+id/button_quit"
+                            style="?android:attr/buttonBarButtonStyle"
+                            android:layout_width="86dp"
+                            android:layout_height="match_parent"
+                            android:background="?selectableItemBackgroundBorderless"
+                            android:contentDescription="@null"
+                            app:tint="?attr/iconColor"
+                            app:srcCompat="@drawable/ic_action_delete" />
+                    </LinearLayout>
+                </RelativeLayout>
+
+                <LinearLayout
+                    android:id="@+id/toolbar_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/colorPrimary"
+                    android:elevation="2dp"
+                    android:fitsSystemWindows="true"
+                    android:orientation="vertical"
+                    >
+
+                    <FrameLayout
+                        android:id="@+id/tabs_toolbar_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="30dp"/>
+
+                    <androidx.appcompat.widget.Toolbar
+                        android:id="@+id/toolbar"
+                        android:layout_width="match_parent"
+                        android:layout_height="?attr/actionBarSize"
+                        android:layout_marginBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingTop="2dp"
+                        app:contentInsetEnd="0dp"
+                        app:contentInsetStart="0dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/progressBackgroundColor">
+
+                        <com.arktosbrowser.mobile.browser.progress.AnimatedProgressBar
+                            android:id="@+id/progress_view"
+                            android:layout_width="match_parent"
+                            android:layout_height="@dimen/progress_bar_height"
+                            android:background="@color/transparent"
+                            app:bidirectionalAnimate="false"
+                            app:layout_constraintBottom_toBottomOf="@id/toolbar"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:progressColor="?attr/colorAccent" />
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/left_drawer"
+                android:layout_width="@dimen/navigation_drawer_max_width"
+                android:layout_height="match_parent"
+                android:layout_gravity="start"
+                android:background="?attr/drawerBackground"
+                android:fitsSystemWindows="true"
+                android:weightSum="1"/>
+
+            <FrameLayout
+                android:id="@+id/right_drawer"
+                android:layout_width="@dimen/navigation_drawer_max_width"
+                android:layout_height="match_parent"
+                android:layout_gravity="end"
+                android:background="?attr/drawerBackground"
+                android:fitsSystemWindows="true"
+                android:weightSum="1"/>
+
+        </androidx.drawerlayout.widget.DrawerLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:itemIconTint="@drawable/toolbar_color"
+        app:itemTextColor="?attr/iconColor"
+        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom"
+        android:background="@color/white"
+        android:elevation="3dp"
+        app:labelVisibilityMode="unlabeled"
+        app:menu="@menu/bottom_menu"
+        />
+
+
+
+</RelativeLayout>
+
