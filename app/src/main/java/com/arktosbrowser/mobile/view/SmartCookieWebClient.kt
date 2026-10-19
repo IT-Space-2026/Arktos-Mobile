@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
-import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -57,9 +56,7 @@ import java.io.*
 import java.net.URISyntaxException
 import java.net.URL
 import java.util.*
-import java.util.regex.Matcher
 import java.util.regex.Pattern
-import java.util.regex.PatternSyntaxException
 import javax.inject.Inject
 import javax.net.ssl.HttpsURLConnection
 import kotlin.math.abs
@@ -207,61 +204,29 @@ class SmartCookieWebClient(
         return null
     }
 
-    var name: String? = null
-    var version: String? = null
-    var author: String? = null
-    var description: String? = null
-    var requirements = ArrayList<String>(0)
-    val include = ArrayList<Pattern>(0)
-
+    /**
+     * PORT01 — userscript parsing lives in the Rust core
+     * (`ArktosCore.parseUserScript`); this installs the result. Include
+     * patterns come back as Java-regex strings and are compile-checked
+     * here, matching upstream's `Pattern.compile` try/catch drop of
+     * malformed patterns.
+     */
     private fun installExtension(text: String){
-        val tx = text.replace("""\"""", """"""")
-                .replace("\\n", System.lineSeparator())
-                .replace("\\t", "")
-                .replace("\\u003C", "<")
-                .replace("""/"""", """"""")
-                .replace("""//"""", """/"""")
-                .replace("""\\'""", """\'""")
-                .replace("""\\""""", """\""""")
-
-        val headerRegex = Pattern.compile("\\s*//\\s*==UserScript==\\s*", Pattern.CASE_INSENSITIVE)
-        val headerEndRegex = Pattern.compile("\\s*//\\s*==/UserScript==\\s*", Pattern.CASE_INSENSITIVE)
-        val mainRegex = Pattern.compile("\\s*//\\s*@(\\S+)(?:\\s+(.*))?", Pattern.CASE_INSENSITIVE)
-
-        val reader = BufferedReader(StringReader(tx))
-
-        if (reader.readLine()?.let { headerRegex.matcher(it).matches() } != true) {
+        val meta = ArktosCore.parseUserScript(text)
+        if (!meta.hasMetadataHeader) {
             Log.d(TAG, "Header (start) parser error")
         }
-
-        reader.forEachLine { line ->
-            val matcher = mainRegex.matcher(line)
-            if (!matcher.matches()) {
-                if (headerEndRegex.matcher(line).matches()) {
-                    return@forEachLine
-                }
-            } else {
-                val field = matcher.group(1)
-                val value = matcher.group(2)
-                if(field != null){
-                    parseLine(field, value)
-                }
-            }
+        val name = meta.name
+        if (name == null) {
+            logger.log(TAG, "userscript without a @name — not installing")
+            return
         }
+        val inc = meta.includes
+            .filter { pattern -> runCatching { Pattern.compile(pattern) }.isSuccess }
+            .joinToString(",")
+        val reqs = meta.requires.joinToString(",")
 
-        val metadataRegex: Pattern = Pattern.compile("==UserScript==(.*?)==/UserScript==", Pattern.DOTALL)
-
-        val metadataMatcher: Matcher = metadataRegex.matcher(text)
-        var code = ""
-
-        if (metadataMatcher.find()) {
-            code = text.replace(metadataMatcher.group(0), "")
-        }
-
-        val inc = TextUtils.join(",", include)
-        val reqs = TextUtils.join(",", requirements)
-
-        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name!!, "", version, author, inc, "", "", "", code, reqs))
+        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, "", meta.version, meta.author, inc, "", "", "", meta.code, reqs))
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {
@@ -270,72 +235,6 @@ class SmartCookieWebClient(
                 }
     }
 
-    private fun parseLine(field: String?, value: String?) {
-        if ("name".equals(field, ignoreCase = true)) {
-            name = value
-        } else if ("version".equals(field, ignoreCase = true)) {
-            version = value
-        } else if ("author".equals(field, ignoreCase = true)) {
-            author = value
-        } else if ("description".equals(field, ignoreCase = true)) {
-            description = value
-        } else if ("require".equals(field, ignoreCase = true)) {
-            if (value != null) {
-                requirements.add(value)
-            }
-        } else if ("include".equals(field, ignoreCase = true)) {
-            urlToPattern(value)?.let {
-                include.add(it)
-            }
-        } else if ("match".equals(field, ignoreCase = true) && value != null) {
-            val urlPattern = "^" + value.replace("?", "\\?").replace(".", "\\.")
-                    .replace("*", ".*").replace("+", ".+")
-                    .replace("://.*\\.", "://((?![\\./]).)*\\.").replace("^\\.\\*://".toRegex(), "https?://")
-            urlToParsedPattern(urlPattern)?.let {
-                include.add(it)
-            }
-        }
-    }
-
-    val TLD_REGEX = "^([^:]+://[^/]+)\\\\.tld(/.*)?\$".toRegex()
-    val schemeContainsPattern: Pattern = Pattern.compile("^\\w+:", Pattern.CASE_INSENSITIVE)
-
-    private fun urlToPattern(patternUrl: String?): Pattern? {
-        if (patternUrl == null) return null
-        try {
-            val builder = StringBuilder(patternUrl)
-            builder.toString().replace("?", "\\?").replace(".", "\\.").replace("*", ".*?").replace("+", ".+?")
-            var converted = builder.toString()
-
-            if (converted.contains(".tld", true)) {
-                converted = TLD_REGEX.replaceFirst(converted, "$1(.[a-z]{1,6}){1,3}$2")
-            }
-
-            return if (schemeContainsPattern.matcher(converted).find())
-                Pattern.compile("^$converted")
-            else
-                Pattern.compile("^\\w+://$converted")
-        } catch (e: PatternSyntaxException) {
-            Log.d(TAG, "Error: " + e)
-        }
-
-        return null
-    }
-
-    private fun urlToParsedPattern(patternUrl: String): Pattern? {
-        try {
-            val converted = if (patternUrl.contains(".tld", true)) {
-                TLD_REGEX.replaceFirst(patternUrl, "$1(.[a-z]{1,6}){1,3}$2")
-            } else {
-                patternUrl
-            }
-            return Pattern.compile(converted)
-        } catch (e: PatternSyntaxException) {
-            Log.d(TAG, "Error: " + e)
-        }
-
-        return null
-    }
 
     override fun onPageFinished(view: WebView, url: String) {
         if(url.contains(BuildConfig.APPLICATION_ID + "/files/homepage.html")  || url.contains(BuildConfig.APPLICATION_ID + "/files/incognito.html")) {

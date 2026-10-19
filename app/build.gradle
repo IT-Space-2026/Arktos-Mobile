@@ -49,6 +49,10 @@ android {
 
     testOptions {
         unitTests.all {
+            // Let JNA find the host-built libarktos.so so unit tests
+            // exercise the real Rust core (PORT01) instead of only
+            // asserting linkage failures.
+            jvmArgs "-Djna.library.path=${rootDir}/rust/target/debug"
             jacoco {
                 // This option needs to be included for robolectric tests
                 includeNoLocationClasses = true
@@ -111,6 +115,10 @@ dependencies {
     testImplementation 'com.nhaarman:mockito-kotlin:1.6.0', {
         exclude group: 'org.jetbrains.kotlin'
     }
+
+    // The @aar JNA artifact only ships Android natives; unit tests run
+    // on the host JVM and need the desktop jar's libjnidispatch.
+    testImplementation 'net.java.dev.jna:jna:5.19.1'
 
     // support libraries
     implementation "androidx.palette:palette-ktx:1.0.0"
@@ -176,8 +184,8 @@ dependencies {
     // color picker
     implementation 'com.github.QuadFlask:colorpicker:0.0.15'
 
-    // reading mode
-    implementation 'net.dankito.readability4j:readability4j:1.0.8'
+    // reading mode — extraction ported to the Rust core (dom_smoothie,
+    // PORT01); readability4j is no longer needed.
 
     // webview tools
     implementation 'androidx.webkit:webkit:1.12.1'
