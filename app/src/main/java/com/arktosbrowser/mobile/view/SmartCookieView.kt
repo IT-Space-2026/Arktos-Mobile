@@ -241,10 +241,6 @@ class SmartCookieView(
         networkDisposable = networkConnectivityModel.connectivity()
             .observeOn(mainScheduler)
             .subscribe(::setNetworkAvailable)
-
-        if(WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK) && userPreferences.darkModeExtension) {
-            WebSettingsCompat.setForceDark(webView!!.getSettings(), WebSettingsCompat.FORCE_DARK_ON)
-        }
     }
 
     fun setWhitelistIntent(a: Boolean) {
@@ -369,6 +365,15 @@ class SmartCookieView(
         settings.useWideViewPort = userPreferences.useWideViewPortEnabled
         settings.loadWithOverviewMode = userPreferences.overviewModeEnabled
         settings.textZoom = TextZoom.zoomPercent(userPreferences.textSize)
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+            WebSettingsCompat.setForceDark(settings,
+                if (userPreferences.darkWebAddonEnabled(activity)) {
+                    WebSettingsCompat.FORCE_DARK_ON
+                } else {
+                    WebSettingsCompat.FORCE_DARK_OFF
+                })
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             CookieManager.getInstance().setAcceptThirdPartyCookies(webView,

@@ -120,10 +120,10 @@ class HomePageFactory @Inject constructor(
         .map { content -> Pair(createHomePage(), content) }
         .doOnSuccess { (page, content) ->
             FileWriter(page, false).use {
-                if(userPreferences.startPageThemeEnabled && userPreferences.useTheme == AppTheme.LIGHT){
+                if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.LIGHT){
                     it.write(content)
                 }
-                else if(userPreferences.startPageThemeEnabled && userPreferences.useTheme == AppTheme.BLACK){
+                else if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.BLACK){
                     it.write(content + "<style>body {\n" +
                             "    background-color: #000000;\n" +
                             "} .text, .edit{" +
@@ -131,7 +131,7 @@ class HomePageFactory @Inject constructor(
                             "fill: #ffffff;" +
                             "}</style>")
                 }
-                else if(userPreferences.startPageThemeEnabled && userPreferences.useTheme == AppTheme.DARK){
+                else if(userPreferences.startPageThemeEnabled && userPreferences.resolvedTheme(application) == AppTheme.DARK){
                     it.write(content + "<style>body {\n" +
                             "    background-color: #2a2a2a;\n" +
                             "} .text, .edit{" +

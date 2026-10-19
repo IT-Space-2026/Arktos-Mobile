@@ -3,6 +3,7 @@
 package com.arktosbrowser.mobile.extensions
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.view.LayoutInflater
@@ -50,3 +51,10 @@ val Context.preferredLocale: Locale
         @Suppress("DEPRECATION")
         resources.configuration.locale
     }
+
+/**
+ * True while the device is in night mode (system dark theme enabled).
+ */
+inline val Context.isNightMode: Boolean
+    get() = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+        Configuration.UI_MODE_NIGHT_YES

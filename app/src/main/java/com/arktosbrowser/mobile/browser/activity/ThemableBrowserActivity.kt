@@ -1,6 +1,7 @@
 package com.arktosbrowser.mobile.browser.activity
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import androidx.core.view.iterator
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.extensions.isNightMode
 import com.arktosbrowser.mobile.preference.UserPreferences
 import javax.inject.Inject
 
@@ -33,7 +35,7 @@ abstract class ThemableBrowserActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         injector.inject(this)
-        themeId = userPreferences.useTheme
+        themeId = userPreferences.resolvedTheme(this)
         showTabsInDrawer = userPreferences.showTabsInDrawer
 
         // set the theme
@@ -41,6 +43,7 @@ abstract class ThemableBrowserActivity : AppCompatActivity() {
             AppTheme.LIGHT -> R.style.Theme_LightTheme
             AppTheme.DARK -> R.style.Theme_DarkTheme
             AppTheme.BLACK -> R.style.Theme_BlackTheme
+            AppTheme.SYSTEM -> if (isNightMode) R.style.Theme_DarkTheme else R.style.Theme_LightTheme
         })
         super.onCreate(savedInstanceState)
 
@@ -87,7 +90,17 @@ abstract class ThemableBrowserActivity : AppCompatActivity() {
         resetPreferences()
         shouldRunOnResumeActions = true
         val drawerTabs = userPreferences.showTabsInDrawer
-        if (themeId != userPreferences.useTheme || showTabsInDrawer != drawerTabs) {
+        if (themeId != userPreferences.resolvedTheme(this) || showTabsInDrawer != drawerTabs) {
+            restart()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // The manifest lists uiMode in configChanges, so a system dark-mode
+        // flip lands here instead of recreating the activity. Restart when the
+        // resolved theme changed so the new theme (and web dark mode) applies.
+        if (themeId != userPreferences.resolvedTheme(this)) {
             restart()
         }
     }
