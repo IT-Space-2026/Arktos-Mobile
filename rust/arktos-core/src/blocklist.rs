@@ -1,7 +1,7 @@
 //! Unified blocklist engine (BLOCK01).
 //!
 //! One engine behind UniFFI replacing the three parallel Kotlin
-//! blocklists that used to live in `SmartCookieWebClient`:
+//! blocklists that used to live in `ArktosCookieWebClient`:
 //!
 //! * ads — hosts-file domains (`hosts.txt` et al.), exact-match on the
 //!   request domain, parity with `HostsFileParser` /

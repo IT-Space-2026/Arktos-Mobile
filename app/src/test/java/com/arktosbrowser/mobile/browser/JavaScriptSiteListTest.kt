@@ -7,7 +7,7 @@ import org.junit.Test
 /**
  * FIXB09 — parity tests for [JavaScriptSiteList], the folded form of
  * the inline BLACKLIST/WHITELIST logic that lived in
- * `SmartCookieWebClient.onPageStarted`. The enum names are inverted
+ * `ArktosCookieWebClient.onPageStarted`. The enum names are inverted
  * upstream: BLACKLIST is "only allow listed", WHITELIST is "block
  * listed" (matching the `listed_javascript`/`unlisted_javascript`
  * settings strings).

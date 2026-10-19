@@ -1,6 +1,6 @@
 //! Userscript metadata parsing + injection prep (PORT01).
 //!
-//! Port of `SmartCookieWebClient.installExtension` / `parseLine` /
+//! Port of `ArktosCookieWebClient.installExtension` / `parseLine` /
 //! `urlToPattern` / `urlToParsedPattern`: given the raw script text
 //! (as pulled out of `document.body.innerText` via
 //! `evaluateJavascript`), extract the `==UserScript==` metadata block,

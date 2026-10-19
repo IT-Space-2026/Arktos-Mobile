@@ -1,6 +1,6 @@
 package com.arktosbrowser.mobile.browser.tabs
 
-import com.arktosbrowser.mobile.view.SmartCookieView
+import com.arktosbrowser.mobile.view.ArktosCookieView
 import android.graphics.Bitmap
 
 /**
@@ -17,9 +17,9 @@ data class TabViewState(
 )
 
 /**
- * Converts a [SmartCookieView] to a [TabViewState].
+ * Converts a [ArktosCookieView] to a [TabViewState].
  */
-fun SmartCookieView.asTabViewState() = TabViewState(
+fun ArktosCookieView.asTabViewState() = TabViewState(
     id = id,
     title = title,
     favicon = favicon,

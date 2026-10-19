@@ -4,7 +4,7 @@ package com.arktosbrowser.mobile.database.javascript
  * A userscript entry. Was `JavaScriptDatabase.JavaScriptEntry` — moved
  * to top level when the SQLiteOpenHelper database was replaced by the
  * Rust storage core (STORE01). Field order is unchanged because
- * `SmartCookieWebClient` constructs it positionally.
+ * `ArktosCookieWebClient` constructs it positionally.
  */
 data class JavaScriptEntry(
     val name: String,

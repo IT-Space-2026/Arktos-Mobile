@@ -11,7 +11,7 @@ import java.io.File
  * tapped link or entered URL was ignored and the current page reloaded
  * instead.
  *
- * Root cause: `SmartCookieWebClient.onPageStarted` rewrote the WebView's
+ * Root cause: `ArktosCookieWebClient.onPageStarted` rewrote the WebView's
  * `userAgentString` mid-navigation to strip the `; wv` marker, while
  * `initializePreferences` (run on every `onResume` via `resumeAll`) restored
  * the default user agent which contains `; wv`. Changing the user-agent while
@@ -73,8 +73,8 @@ class WebViewUserAgentTest {
     @Test
     fun `onPageStarted never mutates the user agent mid navigation`() {
         val source = loadSource(
-            "src/main/java/com/arktosbrowser/mobile/view/SmartCookieWebClient.kt",
-            "app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieWebClient.kt"
+            "src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt",
+            "app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt"
         )
         val onPageStarted = source.substringAfter("override fun onPageStarted")
             .substringBefore("override fun onReceivedHttpAuthRequest")

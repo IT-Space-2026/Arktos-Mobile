@@ -184,7 +184,7 @@ interface DownloadRequest {
 
 // ---- page ---------------------------------------------------------------
 
-// One tab's worth of engine surface.  Today SmartCookieView is this
+// One tab's worth of engine surface.  Today ArktosCookieView is this
 // object informally; an engine refactor would make it implement this
 // interface and add a Servo-backed sibling.
 interface Page {

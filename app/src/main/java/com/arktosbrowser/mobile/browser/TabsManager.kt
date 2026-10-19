@@ -21,7 +21,7 @@ import io.reactivex.Single
 import javax.inject.Inject
 
 /**
- * A manager singleton that holds all the [SmartCookieView] and tracks the current tab. It handles
+ * A manager singleton that holds all the [ArktosCookieView] and tracks the current tab. It handles
  * creation, deletion, restoration, state saving, and switching of tabs.
  */
 class TabsManager @Inject constructor(
@@ -39,14 +39,14 @@ class TabsManager @Inject constructor(
     private val userPreferences: UserPreferences
 ) {
 
-    private val tabList = arrayListOf<SmartCookieView>()
+    private val tabList = arrayListOf<ArktosCookieView>()
 
     /**
-     * Return the current [SmartCookieView] or null if no current tab has been set.
+     * Return the current [ArktosCookieView] or null if no current tab has been set.
      *
-     * @return a [SmartCookieView] or null if there is no current tab.
+     * @return a [ArktosCookieView] or null if there is no current tab.
      */
-    var currentTab: SmartCookieView? = null
+    var currentTab: ArktosCookieView? = null
         private set
 
     private var tabNumberListeners = emptySet<(Int) -> Unit>()
@@ -97,7 +97,7 @@ class TabsManager @Inject constructor(
      * new provided [intent] and emit the last tab that should be displayed. By default operates on
      * a background scheduler and emits on the foreground scheduler.
      */
-    fun initializeTabs(activity: Activity, intent: Intent?, incognito: Boolean): Single<SmartCookieView> =
+    fun initializeTabs(activity: Activity, intent: Intent?, incognito: Boolean): Single<ArktosCookieView> =
         Single
             .just(Option.fromNullable(
                 if (intent?.action == Intent.ACTION_WEB_SEARCH) {
@@ -198,7 +198,7 @@ class TabsManager @Inject constructor(
      */
     fun pauseAll() {
         currentTab?.pauseTimers()
-        tabList.forEach(SmartCookieView::onPause)
+        tabList.forEach(ArktosCookieView::onPause)
     }
 
     /**
@@ -206,16 +206,16 @@ class TabsManager @Inject constructor(
      * range.
      *
      * @param position the index in tabs list
-     * @return the corespondent [SmartCookieView], or null if the index is invalid
+     * @return the corespondent [ArktosCookieView], or null if the index is invalid
      */
-    fun getTabAtPosition(position: Int): SmartCookieView? =
+    fun getTabAtPosition(position: Int): ArktosCookieView? =
         if (position < 0 || position >= tabList.size) {
             null
         } else {
             tabList[position]
         }
 
-    val allTabs: List<SmartCookieView>
+    val allTabs: List<ArktosCookieView>
         get() = tabList
 
     /**
@@ -248,7 +248,7 @@ class TabsManager @Inject constructor(
      *
      * @return the last tab, or null if there are no tabs.
      */
-    fun lastTab(): SmartCookieView? = tabList.lastOrNull()
+    fun lastTab(): ArktosCookieView? = tabList.lastOrNull()
 
     /**
      * Create and return a new tab. The tab is automatically added to the tabs list.
@@ -262,9 +262,9 @@ class TabsManager @Inject constructor(
         activity: Activity,
         tabInitializer: TabInitializer,
         isIncognito: Boolean
-    ): SmartCookieView {
+    ): ArktosCookieView {
         logger.log(TAG, "New tab")
-        val tab = SmartCookieView(
+        val tab = ArktosCookieView(
             activity,
             tabInitializer,
             isIncognito,
@@ -293,9 +293,9 @@ class TabsManager @Inject constructor(
             tabInitializer: TabInitializer,
             isIncognito: Boolean,
             index: Int
-    ): SmartCookieView {
+    ): ArktosCookieView {
         logger.log(TAG, "New tab")
-        val tab = SmartCookieView(
+        val tab = ArktosCookieView(
                 activity,
                 tabInitializer,
                 isIncognito,
@@ -366,7 +366,7 @@ class TabsManager @Inject constructor(
      * @param tab the tab to look for.
      * @return the position of the tab or -1 if the tab is not in the list.
      */
-    fun positionOf(tab: SmartCookieView?): Int = tabList.indexOf(tab)
+    fun positionOf(tab: ArktosCookieView?): Int = tabList.indexOf(tab)
 
     /**
      * Saves the state of the current WebViews, to a bundle which is then stored in persistent
@@ -424,15 +424,15 @@ class TabsManager @Inject constructor(
      *
      * @return Return the index of the tab, or -1 if the tab isn't in the list.
      */
-    fun indexOfTab(tab: SmartCookieView): Int = tabList.indexOf(tab)
+    fun indexOfTab(tab: ArktosCookieView): Int = tabList.indexOf(tab)
 
     /**
-     * Returns the [SmartCookieView] with the provided hash, or null if there is no tab with the hash.
+     * Returns the [ArktosCookieView] with the provided hash, or null if there is no tab with the hash.
      *
      * @param hashCode the hashcode.
      * @return the tab with an identical hash, or null.
      */
-    fun getTabForHashCode(hashCode: Int): SmartCookieView? =
+    fun getTabForHashCode(hashCode: Int): ArktosCookieView? =
         tabList.firstOrNull { lightningView -> lightningView.webView?.let { it.hashCode() == hashCode } == true }
 
     /**
@@ -441,7 +441,7 @@ class TabsManager @Inject constructor(
      *
      * @return the selected tab or null if position is out of tabs range.
      */
-    fun switchToTab(position: Int): SmartCookieView? {
+    fun switchToTab(position: Int): ArktosCookieView? {
         logger.log(TAG, "switch to tab: $position")
         return if (position < 0 || position >= tabList.size) {
             logger.log(TAG, "Returning a null LightningView requested for position: $position")

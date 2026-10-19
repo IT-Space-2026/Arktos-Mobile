@@ -24,7 +24,7 @@ the project pins 1.12.1).
 Important detail: the in-app toggle **Settings → Privacy → "Allow
 WebRTC permission requests"** (`webrtc_support`, default on) only
 gates `WebChromeClient.onPermissionRequest`, i.e. camera/microphone
-grants — see `SmartCookieChromeClient.kt` /
+grants — see `ArktosCookieChromeClient.kt` /
 `view/webrtc/WebRtcPermissionsModel.kt`. ICE gathering requires **no
 permission**: a page can create an `RTCPeerConnection` and enumerate
 local/public candidate addresses without ever asking for camera or
@@ -106,7 +106,7 @@ typically one of:
    domains (gitlab.com ↔ customers portal / SSO providers). If
    *Settings → Privacy → Block third-party cookies* is on, the SSO
    leg loses its cookies and loops. Fix: turn the setting off.
-   (`setAcceptThirdPartyCookies` in `SmartCookieView.kt`.)
+   (`setAcceptThirdPartyCookies` in `ArktosCookieView.kt`.)
 2. **Cookies disabled entirely.** *Enable cookies* must be on.
 3. **Incognito mode on older devices.** Where full incognito isn't
    supported (`DeviceCapabilities.FULL_INCOGNITO`), the app disables

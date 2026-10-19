@@ -7,7 +7,7 @@ package com.arktosbrowser.mobile.search
  * is on, every navigation to a
  * known search engine's results endpoint must carry that engine's strict
  * filtering parameter. Enforcement happens at the load layer — in
- * `SmartCookieView.loadUrl`, `SmartCookieWebClient.shouldOverrideLoading`
+ * `ArktosCookieView.loadUrl`, `ArktosCookieWebClient.shouldOverrideLoading`
  * and as an `onPageStarted` backstop — so the parameter survives a user
  * editing or sharing the URL, not just searches composed by the URL bar.
  *

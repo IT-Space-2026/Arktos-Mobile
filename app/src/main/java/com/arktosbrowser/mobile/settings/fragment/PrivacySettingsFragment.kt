@@ -24,7 +24,7 @@ import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.WebUtils
-import com.arktosbrowser.mobile.view.SmartCookieView
+import com.arktosbrowser.mobile.view.ArktosCookieView
 import io.reactivex.Completable
 import io.reactivex.Scheduler
 import java.io.File
@@ -151,7 +151,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 resources.getString(R.string.crash_warning)
             }
             else{
-                "${SmartCookieView.HEADER_REQUESTED_WITH}, ${SmartCookieView.HEADER_WAP_PROFILE}"
+                "${ArktosCookieView.HEADER_REQUESTED_WITH}, ${ArktosCookieView.HEADER_WAP_PROFILE}"
             }).toString(),
             onCheckChange = { userPreferences.removeIdentifyingHeadersEnabled = it }
         )

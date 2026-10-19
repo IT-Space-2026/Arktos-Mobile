@@ -13,9 +13,9 @@ import com.arktosbrowser.mobile.search.SuggestionsAdapter
 import com.arktosbrowser.mobile.settings.activity.SettingsActivity
 import com.arktosbrowser.mobile.settings.activity.ThemableSettingsActivity
 import com.arktosbrowser.mobile.settings.fragment.*
-import com.arktosbrowser.mobile.view.SmartCookieChromeClient
-import com.arktosbrowser.mobile.view.SmartCookieView
-import com.arktosbrowser.mobile.view.SmartCookieWebClient
+import com.arktosbrowser.mobile.view.ArktosCookieChromeClient
+import com.arktosbrowser.mobile.view.ArktosCookieView
+import com.arktosbrowser.mobile.view.ArktosCookieWebClient
 import android.app.Application
 import com.arktosbrowser.mobile.download.DownloadActivity
 import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
@@ -51,7 +51,7 @@ interface AppComponent {
 
     fun inject(builder: LightningDialogBuilder)
 
-    fun inject(smartCookieView: SmartCookieView)
+    fun inject(arktosCookieView: ArktosCookieView)
 
     fun inject(activity: ThemableBrowserActivity)
 
@@ -61,7 +61,7 @@ interface AppComponent {
 
     fun inject(activity: ReadingActivity)
 
-    fun inject(webClient: SmartCookieWebClient)
+    fun inject(webClient: ArktosCookieWebClient)
 
     fun inject(activity: SettingsActivity)
 
@@ -79,7 +79,7 @@ interface AppComponent {
 
     fun inject(suggestionsAdapter: SuggestionsAdapter)
 
-    fun inject(chromeClient: SmartCookieChromeClient)
+    fun inject(chromeClient: ArktosCookieChromeClient)
 
     fun inject(searchBoxModel: SearchBoxModel)
 

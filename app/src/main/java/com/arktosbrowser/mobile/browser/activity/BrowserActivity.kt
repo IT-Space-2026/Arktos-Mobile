@@ -1179,7 +1179,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         drawable?.let { visibility = VISIBLE } ?: run { visibility = GONE }
     }
 
-    override fun tabChanged(tab: SmartCookieView) {
+    override fun tabChanged(tab: ArktosCookieView) {
         presenter?.tabChangeOccurred(tab)
     }
 
@@ -2077,14 +2077,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         presenter?.newTab(ResultMessageInitializer(resultMsg), true) == true
 
     /**
-     * Closes the specified [SmartCookieView]. This implements
+     * Closes the specified [ArktosCookieView]. This implements
      * the JavaScript callback that asks the tab to close itself and
      * is especially helpful when a page creates a redirect and does
      * not need the tab to stay open any longer.
      *
      * @param tab the LightningView to close, delete it.
      */
-    override fun onCloseWindow(tab: SmartCookieView) {
+    override fun onCloseWindow(tab: ArktosCookieView) {
         presenter?.deleteTab(tabsManager.positionOf(tab))
     }
 
