@@ -3,12 +3,13 @@
  */
 package com.arktosbrowser.mobile.settings.fragment
 
+import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AlertDialog
+import androidx.core.net.toUri
 import androidx.webkit.WebViewCompat
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.arktosbrowser.mobile.html.ChangelogPage
 
 
 class AboutSettingsFragment : AbstractSettingsFragment() {
@@ -26,9 +27,14 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
 
 
         clickablePreference(
+                preference = CHANGELOG,
+                onClick = ::openChangelog
+        )
+
+        clickablePreference(
                 preference = SETTINGS_VERSION,
                 summary = BuildConfig.VERSION_NAME,
-                onClick = { }
+                onClick = ::openChangelog
         )
 
         clickablePreference(
@@ -37,22 +43,17 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
                 onClick = { }
         )
 
-        val aboutPref: androidx.preference.Preference? = findPreference(SETTINGS_VERSION)
-        aboutPref!!.setOnPreferenceClickListener {
-            val builder = MaterialAlertDialogBuilder(requireContext())
-            builder.setTitle("SCW v" + BuildConfig.VERSION_NAME)
-            builder.setMessage("What's new:\n- New settings page")
+    }
 
-
-            builder.setPositiveButton(resources.getString(R.string.action_ok)){ dialogInterface, which ->
-
-            }
-            val alertDialog: AlertDialog = builder.create()
-            alertDialog.setCancelable(false)
-            alertDialog.show()
-            true
-        }
-
+    /**
+     * CHLOG01 — the changelog lives in the browser as the
+     * `arktos://changelog` chrome page: hand a VIEW intent back to this
+     * package so MainActivity opens it in a new tab.
+     */
+    private fun openChangelog() {
+        val intent = Intent(Intent.ACTION_VIEW, ChangelogPage.URL.toUri())
+        intent.setPackage(requireContext().packageName)
+        startActivity(intent)
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -60,6 +61,7 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
     }
 
     companion object {
+        private const val CHANGELOG = "pref_changelog"
         private const val SETTINGS_VERSION = "pref_version"
         private const val WEBVIEW_VERSION = "pref_webview"
     }

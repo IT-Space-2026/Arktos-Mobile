@@ -15,6 +15,10 @@
             </intent>
         </Preference>
         <Preference
+            android:key="pref_changelog"
+            android:summary="@string/changelog_summary"
+            android:title="@string/changelog" />
+        <Preference
             android:key="pref_version"
             android:title="@string/version" />
         <Preference

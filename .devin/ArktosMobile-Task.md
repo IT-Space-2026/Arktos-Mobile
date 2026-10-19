@@ -67,7 +67,7 @@ NO SUDO — everything user-local.
 | UI02 | Start page styled like Arktos desktop (no search bar) — details below | done | 0 | aurora hero+gradient ported into homepage.html/private.html (+4 svg assets), search box dropped, tile/modal/localStorage contract kept; arktos-dark class theming in both factories; fixed upstream incognito.html→private.html filename bugs (reader + onPageFinished) — StartPageTest 10/10 + assembleScMainDebug + engine-audit PASS |
 | J2K01 | Convert remaining .java files to Kotlin — details below | pending | 0 | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
 | RENAM01 | Rename residual SmartCookie* identifiers to Arktos* — details below | done | 0 | SmartCookieView/WebClient/ChromeClient/ViewTitle → ArktosCookie* (files, classes, fields, TAG/log strings, proguard keep rule); ENGINE.md + LIMITATIONS.md paths, rust provenance comments; upstream SmartCookieWeb citations + external smartcookieweb_ytdl id and legacy-domain probes kept — ArktosCookieRenameTest 4/4, 225 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
-| CHLOG01 | Changelog: repo file + in-app page — details below | pending | 0 | needs:tool:java — root ChangeLog (desktop format) + assets/changelog.html + Settings→About entry; optional arktos://changelog URL + open-once-on-upgrade |
+| CHLOG01 | Changelog: repo file + in-app page — details below | done | 0 | root ChangeLog (desktop format) + assets/changelog.html (aurora style, arktos-dark) + arktos://changelog chrome URL served from assets + Settings→About entry + one-shot on versionCode bump — cargo 122/122, ChangelogPageTest 7/7 (235 total 0 fail), assembleScMainDebug + engine-audit PASS |
 
 ## Task details
 
@@ -430,3 +430,43 @@ like the arktos desktop, available also in the app").
   once (store last-seen versionCode in prefs; never re-show).
 - Verify: `./gradlew assembleScMainDebug` + `testScMainDebugUnitTest`
   green, engine-audit PASS, changelog opens from Settings → About.
+
+Outcome / notes (2026-10-19):
+
+- Both nice-to-haves landed: `arktos://changelog` is the canonical
+  URL (no local-file warning dialog like a `file://` VIEW intent
+  would trigger) and the version-bump one-shot is wired.
+- Root `ChangeLog` in desktop format (`17.0 — Arktos Mobile: first
+  release`, grouped prose bullets seeded from WORKLOG); header notes
+  the two-file sync convention with the asset page.
+- `app/src/main/assets/changelog.html` mirrors the entries; aurora
+  hero + header card reused from homepage.html; artwork referenced as
+  `arktos://changelog/<asset>` so it resolves from any origin (the
+  page also renders via `file:///android_asset/changelog.html`).
+- Serving: `ArktosCookieWebClient.changelogResponse` intercepts
+  `arktos://changelog[/]` → assets/changelog.html with the
+  `arktos-dark` class baked at serve time via `ChangelogPage
+  .applyDarkTheme` (JS-free dark), and `arktos://changelog/<flat
+  name>` → bundled asset (mime via Rust `mime_type_for_extension`).
+  Legacy `shouldInterceptRequest` overload covered too.
+- Rust seams: `is_changelog_url` (arktos://changelog + file://*
+  changelog.html → both special), `changelog_asset_name` (flat
+  `[A-Za-z0-9._-]+` names only — rejects `/`, `\`, `.`/`..`,
+  %-escapes), `arktos` added to intent-scheme allowlist +
+  accepted-scheme prefixes (URL-bar input loads, doesn't search),
+  blocklist `is_internal_url` exempts `arktos://`.
+- Open paths: Settings → About → Changelog (and the version row —
+  replaces the stale "SCW v… New settings page" dialog) fires an
+  in-package ACTION_VIEW → `arktos` VIEW intent-filter added →
+  BrowserPresenter.onNewIntent opens a normal tab (back → settings).
+- One-shot: `ChangelogGate.shouldShow` +
+  `UserPreferences.lastChangelogVersionCode`, gated by the existing
+  `whatsNewEnabled` pref and regular-mode only (incognito process
+  must not race the pref write); foreground tab on plain launches,
+  background when the launch carried an external URL; skipped when a
+  restored session already holds the changelog tab.
+- Verified: cargo 122/122, ChangelogPageTest 7/7 (235 unit tests,
+  0 failures), assembleScMainDebug + testScMainDebugUnitTest green,
+  engine-audit PASS. Manual click-through not possible (no device);
+  intent→tab path follows the existing HistoryActivity
+  VIEW+setPackage pattern.

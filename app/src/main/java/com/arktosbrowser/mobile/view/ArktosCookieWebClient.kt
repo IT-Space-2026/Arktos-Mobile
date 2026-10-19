@@ -36,6 +36,7 @@ import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.snackbar
+import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.ConnectivityGate
@@ -201,6 +202,32 @@ class ArktosCookieWebClient(
     private fun emptyResponse(): WebResourceResponse =
         WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(emptyResponseByteArray))
 
+    /**
+     * CHLOG01 — serves the bundled changelog out of assets for the
+     * `arktos://changelog` chrome URL. `arktos://changelog[ / ]` returns
+     * the page itself with the arktos-dark class baked in on dark
+     * themes (same signal as the error pages, no JavaScript needed);
+     * `arktos://changelog/<asset>` returns bundled artwork referenced
+     * by the page. Null for every other request.
+     */
+    private fun changelogResponse(requestUrl: String): WebResourceResponse? {
+        if (requestUrl == ChangelogPage.URL || requestUrl == "${ChangelogPage.URL}/") {
+            val html = activity.assets.open("changelog.html").bufferedReader()
+                .use { it.readText() }
+                .let { ChangelogPage.applyDarkTheme(it, blockPageColor().isNotEmpty()) }
+            return WebResourceResponse("text/html", "UTF-8", ByteArrayInputStream(html.toByteArray()))
+        }
+        val asset = ArktosCore.changelogAssetName(requestUrl)
+        if (asset.isNotEmpty()) {
+            return try {
+                WebResourceResponse(ChangelogPage.mimeForAsset(asset), "UTF-8", activity.assets.open(asset))
+            } catch (e: IOException) {
+                emptyResponse()
+            }
+        }
+        return null
+    }
+
     private fun adBlockResponse(request: WebResourceRequest, requestUrl: String): WebResourceResponse? {
         if (request.isForMainFrame && request.url.host.toString() != lastBlockedDomain) {
             lastBlockedDomain = request.url.host.toString()
@@ -215,6 +242,9 @@ class ArktosCookieWebClient(
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val requestUrl = request.url.toString()
+        // arktos:// chrome pages are served before any verdict — the
+        // changelog must load even with every blocklist enabled.
+        changelogResponse(requestUrl)?.let { return it }
         return when (ArktosCore.requestVerdict(requestUrl, currentUrl, request.isForMainFrame)) {
             // No network route → answer the main-frame request with the
             // offline page right away instead of letting the load fail
@@ -249,6 +279,7 @@ class ArktosCookieWebClient(
     @Suppress("OverridingDeprecatedMember")
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
     override fun shouldInterceptRequest(view: WebView, url: String): WebResourceResponse? {
+        changelogResponse(url)?.let { return it }
         // No main-frame signal on this legacy overload — page-level
         // verdicts (malware/site block) can't fire here anyway.
         val verdict = ArktosCore.requestVerdict(url, currentUrl, false)

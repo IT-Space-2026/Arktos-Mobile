@@ -81,6 +81,10 @@ SmartCookieWeb#314).
   hosts-file parsing, intent-scheme checks, tab/reader color math and
   the app-lock + parental-control passwords (Argon2id with in-place
   upgrade from legacy plaintext) run in the Rust core too
+- In-app changelog — Settings → About → Changelog (or
+  `arktos://changelog` in the URL bar) renders the repo `ChangeLog`
+  styled like the other internal pages; after an update it opens once
+  in a new tab
 
 ---
 

@@ -18,6 +18,10 @@ const DOWNLOADS_PAGE: &str = "downloads.html";
 const HISTORY_PAGE: &str = "history.html";
 const HOME_PAGE: &str = "homepage.html";
 const INCOGNITO_PAGE: &str = "private.html";
+const CHANGELOG_PAGE: &str = "changelog.html";
+/// Canonical in-app URL of the bundled changelog (CHLOG01) — served
+/// out of assets by `ArktosCookieWebClient.shouldInterceptRequest`.
+const CHANGELOG_URL: &str = "arktos://changelog";
 
 /// Search-template token substituted with the encoded query —
 /// `UrlUtils.QUERY_PLACE_HOLDER` on the Kotlin side.
@@ -77,6 +81,7 @@ fn accepted_scheme_end(s: &str) -> Option<usize> {
         "data:",
         "about:",
         "javascript:",
+        "arktos:",
     ];
     for prefix in PREFIXES {
         if s
@@ -101,7 +106,7 @@ fn accepted_scheme_end(s: &str) -> Option<usize> {
 #[uniffi::export]
 pub fn is_intent_url_allowed(url: String) -> bool {
     const INTENT_URL_SCHEMES: &[&str] =
-        &["http", "https", "file", "about", "inline", "content"];
+        &["http", "https", "file", "about", "inline", "content", "arktos"];
     let scheme = url.split(':').next().unwrap_or_default().to_lowercase();
     INTENT_URL_SCHEMES.contains(&scheme.as_str())
 }
@@ -349,7 +354,43 @@ pub fn is_special_url(url: String) -> bool {
         HISTORY_PAGE,
         HOME_PAGE,
         INCOGNITO_PAGE,
-    ])
+        CHANGELOG_PAGE,
+    ]) || is_changelog_page(&url)
+}
+
+/// `String?.isChangelogUrl` — true for the canonical
+/// `arktos://changelog` URL and for the bundled asset path
+/// (`file://…/changelog.html`), e.g. when the page was opened
+/// through a file intent (CHLOG01).
+#[uniffi::export]
+pub fn is_changelog_url(url: String) -> bool {
+    is_changelog_page(&url) || is_internal_page(&url, &[CHANGELOG_PAGE])
+}
+
+fn is_changelog_page(url: &str) -> bool {
+    url == CHANGELOG_URL || url == "arktos://changelog/"
+}
+
+/// Asset name inside `arktos://changelog/<name>` — the bundled files
+/// the changelog page references (aurora wave, logo). Returns "" when
+/// the URL is not a changelog asset request; the name must be a single
+/// flat filename (`[A-Za-z0-9._-]+`, no separators, not `.`/`..`) so
+/// the interceptor can only ever serve bundled asset files.
+#[uniffi::export]
+pub fn changelog_asset_name(url: String) -> String {
+    match url.strip_prefix("arktos://changelog/") {
+        Some(name)
+            if name != "."
+                && name != ".."
+                && !name.is_empty()
+                && name.bytes().all(|b| {
+                    b.is_ascii_alphanumeric() || b == b'.' || b == b'_' || b == b'-'
+                }) =>
+        {
+            name.to_owned()
+        }
+        _ => String::new(),
+    }
 }
 
 /// `String?.isBookmarkUrl`.
@@ -556,5 +597,45 @@ mod tests {
         assert!(is_special_url("file:///x/private.html".into()));
         assert!(!is_special_url("https://a.com/bookmark.html".into()));
         assert!(!is_special_url("".into()));
+    }
+
+    #[test]
+    fn changelog_url_is_special() {
+        // CHLOG01 — the in-app changelog is an internal page in both
+        // URL forms: the arktos:// chrome URL and the bundled asset.
+        assert!(is_special_url("arktos://changelog".into()));
+        assert!(is_special_url("arktos://changelog/".into()));
+        assert!(is_special_url("file:///android_asset/changelog.html".into()));
+        assert!(is_changelog_url("arktos://changelog".into()));
+        assert!(is_changelog_url("file:///android_asset/changelog.html".into()));
+        assert!(!is_changelog_url("arktos://changelog/aurora-wave.svg".into()));
+        assert!(!is_changelog_url("https://a.com/changelog.html".into()));
+        assert!(!is_changelog_url("arktos://settings".into()));
+        assert!(!is_special_url("arktos://changelog/aurora-wave.svg".into()));
+    }
+
+    #[test]
+    fn changelog_assets_are_flat_names() {
+        assert_eq!(
+            changelog_asset_name("arktos://changelog/aurora-wave.svg".into()),
+            "aurora-wave.svg"
+        );
+        assert_eq!(
+            changelog_asset_name("arktos://changelog/arktos-plain.svg".into()),
+            "arktos-plain.svg"
+        );
+        for url in [
+            "arktos://changelog/",
+            "arktos://changelog/../secret",
+            "arktos://changelog/..",
+            "arktos://changelog/.",
+            "arktos://changelog/a/b.svg",
+            "arktos://changelog/a\\b.svg",
+            "arktos://changelog/%2e%2e/x",
+            "https://a.com/changelog/x.svg",
+            "arktos://changelog",
+        ] {
+            assert_eq!(changelog_asset_name(url.into()), "", "rejected: {url}");
+        }
     }
 }

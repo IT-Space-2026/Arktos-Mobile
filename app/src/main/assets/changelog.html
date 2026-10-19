@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta content="en-us" http-equiv="Content-Language" />
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog — Arktos Mobile</title>
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* The gradient lives on a viewport-height <html> so short content
+           leaves no banded tile seam at the bottom of the canvas. */
+        html {
+            min-height: 100%;
+            background:
+                radial-gradient(120% 55% at 50% -8%,
+                    rgba(63, 210, 240, 0.20) 0%,
+                    rgba(162, 78, 245, 0.10) 45%,
+                    rgba(162, 78, 245, 0) 75%),
+                linear-gradient(to bottom, #ccc 0%, #fff 50%, #fff 100%);
+        }
+
+        body {
+            margin: 0;
+            padding-bottom: 32px;
+            text-align: center;
+            color: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+
+        /* Aurora stage: a full-width wave band whose crest passes behind
+           the logo. Artwork is served through the arktos:// chrome
+           scheme so the page renders identically from any origin. */
+        #aurora {
+            position: relative;
+            height: 240px;
+            margin-top: 20px;
+            background: url("arktos://changelog/aurora-wave.svg") no-repeat center 0 / 1600px 300px;
+        }
+
+        #aurora img {
+            position: absolute;
+            left: 50%;
+            top: 18px;
+            width: 170px;
+            height: 170px;
+            margin-left: -85px;
+        }
+
+        #header, .entry {
+            width: 88%;
+            max-width: 640px;
+            margin: 12px auto;
+            border-radius: 0.8em;
+        }
+
+        #header {
+            background:
+                radial-gradient(130% 220% at 85% -40%,
+                    rgba(34, 245, 154, 0.28) 0%,
+                    rgba(63, 210, 240, 0.16) 40%,
+                    rgba(63, 210, 240, 0) 70%),
+                linear-gradient(to bottom, #228 0%, #66a 90%, #668 100%);
+            box-shadow: 0 2px 14px rgba(63, 210, 240, 0.35);
+            padding: 14px 25px;
+            text-align: center;
+        }
+
+        #header h1 {
+            display: inline;
+            font-size: 1.7em;
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 0 1px 6px rgba(34, 245, 154, 0.45);
+        }
+
+        /* One card per release, in the same rounded-card style as the
+           error/interstitial pages. */
+        .entry {
+            background: #fff;
+            box-shadow: 0 2px 14px rgba(20, 30, 60, 0.12);
+            border-top: 2px solid rgba(63, 210, 240, 0.65);
+            padding: 18px 22px;
+            text-align: left;
+        }
+
+        .entry h2 {
+            font-size: 1.3em;
+            color: #1a1a2e;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #d9e0ee;
+        }
+
+        .entry h3 {
+            font-size: 1em;
+            color: #454a66;
+            margin: 14px 0 4px 0;
+        }
+
+        .entry ul {
+            margin: 4px 0 0 20px;
+        }
+
+        .entry li {
+            font-size: 0.92em;
+            font-weight: 300;
+            line-height: 1.45;
+            margin: 3px 0;
+        }
+
+        /* Dark variant: the class is injected when the page is served
+           (or by the matchMedia fallback below for file:// loads). */
+        html.arktos-dark {
+            background:
+                radial-gradient(130% 60% at 50% -10%,
+                    rgba(34, 245, 154, 0.14) 0%,
+                    rgba(63, 210, 240, 0.12) 35%,
+                    rgba(162, 78, 245, 0.16) 60%,
+                    rgba(162, 78, 245, 0) 80%),
+                linear-gradient(to bottom, #151820 0%, #101218 55%, #0c0e13 100%);
+        }
+
+        html.arktos-dark body {
+            color: #e4e4e8;
+        }
+
+        html.arktos-dark #header {
+            background:
+                radial-gradient(130% 220% at 85% -40%,
+                    rgba(34, 245, 154, 0.30) 0%,
+                    rgba(63, 210, 240, 0.18) 40%,
+                    rgba(63, 210, 240, 0) 70%),
+                linear-gradient(to bottom, #1b2240 0%, #2c2a55 90%, #262441 100%);
+            box-shadow: 0 2px 18px rgba(63, 210, 240, 0.30),
+                        0 0 34px rgba(162, 78, 245, 0.18);
+        }
+
+        html.arktos-dark .entry {
+            background: #1c2130;
+            color: #e4e4e8;
+            box-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+        }
+
+        html.arktos-dark .entry h2 {
+            color: #e4e4e8;
+            border-bottom-color: #39405c;
+        }
+
+        html.arktos-dark .entry h3 {
+            color: #aab0cc;
+        }
+
+    </style>
+    <script type="text/javascript">
+        // Dark fallback for loads that bypass the serve-time class
+        // injection (e.g. file:///android_asset/changelog.html).
+        if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+            document.documentElement.classList.add("arktos-dark");
+        }
+    </script>
+</head>
+
+<body>
+    <div id="aurora">
+        <img src="arktos://changelog/arktos-plain.svg" alt="Arktos"/>
+    </div>
+    <div id="header">
+        <h1 class="text">Changelog</h1>
+    </div>
+
+    <div class="entry">
+        <h2>17.0 — Arktos Mobile: first release</h2>
+
+        <h3>Rebrand &amp; project</h3>
+        <ul>
+            <li>Rebranded from SmartCookieWeb to Arktos Mobile — new package, Arktos icon set in every density and flavor, neutral defaults replacing dead hosted services.</li>
+            <li>Engine-coupling audit groundwork for a possible future selectable-engine effort.</li>
+            <li>Known Android WebView platform limits documented honestly in LIMITATIONS.md.</li>
+        </ul>
+
+        <h3>Rust core</h3>
+        <ul>
+            <li>New Rust core (arktos-core via UniFFI): unified ad/malware/site-block/LAN request engine, one verdict per request.</li>
+            <li>Storage moved to a single Rust database (ArktosStore) replacing five separate databases.</li>
+            <li>Search suggestions, userscript parsing, download filename rules, bookmark import/export, reader mode and URL utilities run in Rust.</li>
+            <li>Multi-list adblock subscriptions with a desktop-style filter &amp; rank list manager under Privacy settings.</li>
+            <li>Tranco + Majestic site-rank lists, consent-gated, powering site-rank features.</li>
+            <li>App-lock and parental passwords hashed with argon2id, upgrading legacy entries in place.</li>
+        </ul>
+
+        <h3>Fixes carried over from upstream SmartCookieWeb issues</h3>
+        <ul>
+            <li>Error pages use a stable base URL (#328); StartPage search moved off retired endpoints (#326).</li>
+            <li>AMOLED theme: the active tab is now distinguishable in the drawer (#298).</li>
+            <li>Option to trim protocol/www in the URL bar (#278); certificate dialog fits at max font scale (#277); text zoom up to 400% (#275).</li>
+            <li>'Follow system' dark mode for browser theme and the dark-web addon (#251).</li>
+            <li>One-tap new tab in drawer mode (#299); option to swap tabs/bookmarks icons (#297).</li>
+            <li>Downloads verify integrity, retry truncated transfers, resolve real filenames instead of .bin, and warn when a page is served instead of a file (#270/#311/#303).</li>
+            <li>Error pages no longer overwrite the tab's real URL (#281); first tap after returning to the app navigates correctly (#309).</li>
+            <li>SSL warnings limited to one per page load (#296); links prefer installed apps over the store (#316); picture links no longer crash (#306).</li>
+            <li>App-lock prompt survives a mistyped password (#302); per-site JavaScript/cookie quick-toggles (#305).</li>
+            <li>Dedicated 'No internet connection' page when offline (#323); forced SafeSearch for parental controls (#327).</li>
+            <li>Translation rebuilt on a configurable LibreTranslate-compatible endpoint (#300).</li>
+        </ul>
+
+        <h3>Interface</h3>
+        <ul>
+            <li>Error, block, start and incognito pages restyled to the Arktos desktop look — aurora wave, card layout, dark variants.</li>
+            <li>This changelog — readable in-app here and maintained in the repo root ChangeLog file.</li>
+        </ul>
+    </div>
+
+</body>
+
+</html>

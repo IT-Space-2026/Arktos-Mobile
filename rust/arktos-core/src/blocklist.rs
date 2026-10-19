@@ -262,9 +262,13 @@ fn contains_any(url: &str, entries: &[String]) -> bool {
 }
 
 /// `file:///android_asset` and `about:blank` are exempt from site
-/// blocking — substring check, matching the Kotlin original.
+/// blocking — substring check, matching the Kotlin original. The
+/// `arktos://` chrome namespace (CHLOG01: the bundled changelog page)
+/// is exempt the same way.
 fn is_internal_url(url: &str) -> bool {
-    url.contains("file:///android_asset") || url.contains("about:blank")
+    url.contains("file:///android_asset")
+        || url.contains("about:blank")
+        || url.starts_with("arktos://")
 }
 
 /// Split the `siteBlockNames` preference the way the Kotlin code did:
@@ -674,6 +678,11 @@ mod tests {
         );
         assert_eq!(
             e.verdict("about:blank".into(), "".into(), true),
+            RequestVerdict::Allow
+        );
+        // arktos:// chrome namespace exempt too (CHLOG01).
+        assert_eq!(
+            e.verdict("arktos://changelog".into(), "".into(), true),
             RequestVerdict::Allow
         );
     }
