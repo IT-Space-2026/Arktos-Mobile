@@ -31,7 +31,7 @@ Toolchain: `cargo`/`rustup`, `cargo-ndk`, JDK (`needs:tool:java`).
 
 | ID | Task | Status | Attempts | Notes |
 |----|------|--------|----------|-------|
-| RCORE01 | Rust core foundation — workspace + UniFFI + Gradle/CI wiring — details below | pending | 0 | needs:tool:cargo needs:tool:java |
+| RCORE01 | Rust core foundation — workspace + UniFFI + Gradle/CI wiring — details below | done | 0 | rust/ workspace + arktos-core cdylib (uniffi =0.32.2), cargo-ndk→jniLibs + uniffi-bindgen→kotlin srcDir wired in Gradle; armeabi/mips dropped, x86_64 added; CI rustup+cargo-ndk+NDK steps; libarktos.so in APK @328–575KB stripped/ABI; cargo test + assembleScMainDebug + testScMainDebugUnitTest green (incl. ArktosCore seam tests) |
 | BLOCK01 | BlocklistEngine: unify ads/malware/site-block/LAN into Rust — details below | pending | 0 | needs:task:RCORE01 — closes upstream #244 at the shouldInterceptRequest seam |
 | STORE01 | Rust storage core: bookmarks/history/downloads (rusqlite) — details below | pending | 0 | needs:task:RCORE01 — closes upstream #156 + #308 |
 | PORT01 | Remaining logic ports: suggestions/userscripts/download core/importers — details below | pending | 0 | needs:task:BLOCK01 needs:task:STORE01 |
