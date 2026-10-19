@@ -44,6 +44,7 @@ WebView adapter:
 - `app/src/main/java/com/arktosbrowser/mobile/preference/UserPreferencesExtensions.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/HomepageSettingsFragment.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/PrivacySettingsFragment.kt` — settings→WebSettings apply.
 - `app/src/main/java/com/arktosbrowser/mobile/utils/IntentUtils.java`, `app/src/main/java/com/arktosbrowser/mobile/utils/UrlUtils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/Utils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/WebUtils.java` — URL/WebView helpers.
 - `js/` — injected-script loaders (DarkMode/AmpBlock/CookieBlock/TextReflow) — map to `UserScript`.
+- `app/src/main/java/com/arktosbrowser/mobile/translate/TranslateBridge.kt` — on-demand `addJavascriptInterface` bridge for in-page translation (`window.ArktosTranslate` exists only after the user triggers translate); maps to a `UserScript` + host-messaging pair on the engine interface.
 
 <!-- engine-audit-whitelist
 app/src/main/java/com/arktosbrowser/mobile/view/

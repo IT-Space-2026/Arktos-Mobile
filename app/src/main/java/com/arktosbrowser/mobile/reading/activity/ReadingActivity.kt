@@ -318,13 +318,15 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mProgressDialog!!.setMessage(getString(R.string.loading))
         mProgressDialog!!.show()
 
-        val formBody: RequestBody = FormBody.Builder()
-            .add("text", Html.toHtml(spanned).replace("\"", "\\\""))
-            .add("lang", lang)
-            .build()
-        val translateUrl = mUserPreferences?.translationEndpoint
+        val formBody: RequestBody = RequestBody.create(
+            MediaType.parse("application/json"),
+            ArktosCore.translateRequestBody(
+                listOf(Html.toHtml(spanned)), "auto", lang ?: "en"
+            )
+        )
+        val translateUrl = mUserPreferences?.translationEndpoint.orEmpty()
         val request = Request.Builder()
-                .url(translateUrl)
+                .url(ArktosCore.translateUrl(translateUrl))
                 .addHeader("Accept", "application/json")
                 .method("POST", formBody)
                 .build()
@@ -354,10 +356,10 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val values = response.body()!!.string()
                     runOnUiThread {
                         try {
-                            val jsonObject = JSONObject(values)
-                            mBody!!.text = Html.fromHtml(jsonObject.getString("text"))
+                            val translated = ArktosCore.parseTranslateResponse(values).first()
+                            mBody!!.text = Html.fromHtml(translated)
                             mProgressDialog!!.hide()
-                        } catch (ignored: JSONException) {
+                        } catch (ignored: Exception) {
                         }
                     }
                 }

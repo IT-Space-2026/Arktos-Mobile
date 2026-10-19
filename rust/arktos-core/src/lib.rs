@@ -18,6 +18,7 @@ mod readability;
 mod storage;
 mod subscriptions;
 mod suggestions;
+mod translate;
 mod urlutils;
 mod userscript;
 mod util;

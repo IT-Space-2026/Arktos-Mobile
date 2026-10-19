@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import com.arktosbrowser.mobile.translate.TranslateBridge
+import java.util.Locale
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
@@ -70,6 +72,9 @@ class PopUpClass {
 
     @Inject
     lateinit var allowListModel: AllowListModel
+
+    @Inject
+    lateinit var translateBridge: TranslateBridge
 
     //PopupWindow display method
     fun showPopupWindow(view: View, activity: BrowserActivity) {
@@ -340,7 +345,10 @@ class PopUpClass {
                                 builder.setView(dialogLayout)
                                 builder.setPositiveButton("OK") { _, _ ->
                                     editText.setText(editText.text?.toString()?.replace("\'", "\\\'"), 1);
-                                    currentTab.loadUrl("javascript:(function() { document.documentElement.innerHTML = '" + editText.text.toString() + "'; })()")
+                                    currentTab.webView?.evaluateJavascript(
+    "document.documentElement.innerHTML = " + org.json.JSONObject.quote(editText.text.toString()) + ";",
+    null
+)
                                 }
                                 builder.show()
                             }
@@ -397,8 +405,9 @@ class PopUpClass {
                     activity.finish()
                 }
                 "translate" -> {
-                    val locale = Resources.getSystem().configuration.locale
-                    currentView?.loadUrl("https://www.translatetheweb.com/?from=&to=$locale&dl=$locale&a=$currentUrl")
+                    val target = activity.resources.configuration.locales[0]?.language
+                        ?: Locale.getDefault().language
+                    currentView?.webView?.let { translateBridge.translatePage(it, target) }
                 }
                 "open_in_app" -> {
                     val components = arrayOf(ComponentName(activity, BrowserActivity::class.java))
