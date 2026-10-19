@@ -23,15 +23,29 @@ Every file importing `android.webkit.*` is engine-coupled by
 definition. A future refactor splits each into a neutral core + thin
 WebView adapter:
 
-- `view/SmartCookieView.kt` — tab object, WebView lifecycle, settings apply.
-- `view/SmartCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock seam), errors, downloads.
-- `view/SmartCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
-- `view/SmartCookieKT.kt` — error/interstitial pages via `loadDataWithBaseURL`.
-- `view/TabInitializer.kt` — per-tab init.
-- `browser/TabsManager.kt` — tab collection; would become the `Page` registry and engine selector.
-- `browser/activity/BrowserActivity.kt` + `settings/` — every `WebView`/`WebSettings` touchpoint (UA, zoom, text size, cookies, JS toggle, geolocation).
+- `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieView.kt` — tab object, WebView lifecycle, settings apply.
+- `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock seam), errors, downloads.
+- `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
+- `app/src/main/java/com/arktosbrowser/mobile/view/SmartCookieKT.kt` — error/interstitial pages via `loadDataWithBaseURL`.
+- `app/src/main/java/com/arktosbrowser/mobile/view/TabInitializer.kt` — per-tab init.
+- `app/src/main/java/com/arktosbrowser/mobile/view/webrtc/WebRtcPermissionsModel.kt` — WebRTC permission model.
+- `app/src/main/java/com/arktosbrowser/mobile/browser/TabsManager.kt` — tab collection; would become the `Page` registry and engine selector.
+- `app/src/main/java/com/arktosbrowser/mobile/browser/activity/BrowserActivity.kt` — WebView/WebSettings touchpoints (UA, zoom, text size, cookies, JS toggle, geolocation), `onPause`/`onResume` engine lifecycle.
+- `app/src/main/java/com/arktosbrowser/mobile/browser/BrowserPresenter.kt`, `app/src/main/java/com/arktosbrowser/mobile/browser/activity/` siblings — tab orchestration.
+- `app/src/main/java/com/arktosbrowser/mobile/BrowserApp.kt`, `app/src/main/java/com/arktosbrowser/mobile/MainActivity.kt`, `app/src/main/java/com/arktosbrowser/mobile/IncognitoActivity.kt` — app/entry wiring.
+- `app/src/main/java/com/arktosbrowser/mobile/controller/UIController.kt` — WebView-facing UI controller interface.
+- `app/src/main/java/com/arktosbrowser/mobile/dialog/LightningDialogBuilder.kt` — JS dialog builders.
+- `app/src/main/java/com/arktosbrowser/mobile/download/DownloadHandler.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/FetchUrlMimeType.java`, `app/src/main/java/com/arktosbrowser/mobile/download/LightningDownloadListener.kt` — DownloadListener seam.
+- `app/src/main/java/com/arktosbrowser/mobile/extensions/PermissionRequestExtensions.kt` — WebRTC/geolocation permission mapping.
+- `app/src/main/java/com/arktosbrowser/mobile/html/homepage/HomePageFactory.kt`, `app/src/main/java/com/arktosbrowser/mobile/html/incognito/IncognitoPageFactory.kt` — `WebView` content factories.
+- `app/src/main/java/com/arktosbrowser/mobile/popup/PopUpClass.kt` — popup/menu WebView handling.
+- `app/src/main/java/com/arktosbrowser/mobile/preference/UserPreferencesExtensions.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/HomepageSettingsFragment.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/PrivacySettingsFragment.kt` — settings→WebSettings apply.
+- `app/src/main/java/com/arktosbrowser/mobile/utils/IntentUtils.java`, `app/src/main/java/com/arktosbrowser/mobile/utils/UrlUtils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/Utils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/WebUtils.java` — URL/WebView helpers.
 - `js/` — injected-script loaders (DarkMode/AmpBlock/CookieBlock/TextReflow) — map to `UserScript`.
-- `network/NetworkConnectivityModel.kt`, proxy prefs — engine-adjacent policy.
+
+<!-- engine-audit-whitelist
+app/src/main/java/com/arktosbrowser/mobile/view/
+-->
 
 ## Servo applicability notes (carried from desktop .devin/SERVO-SPIKE.md, libservo v0.7.0 survey)
 
@@ -63,6 +77,6 @@ maintained "ServoView" widget exists. Bundle cost ~50–80MB per ABI.
 
 ## Rule
 
-Any new file touching `android.webkit` outside `view/` must be noted
+Any new file touching `android.webkit` outside `app/src/main/java/com/arktosbrowser/mobile/view/` must be noted
 here. The `engine` package may only reference Kotlin/stdlib +
 `android.view.View`; `android.webkit.*` in `engine/` is a violation.
