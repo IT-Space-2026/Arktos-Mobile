@@ -42,7 +42,7 @@ NO SUDO — everything user-local.
 | REBRAND01 | Rebrand to Arktos Mobile — details below | done | 0 | com.cookiegames.smartcookie→com.arktosbrowser.mobile across ~260 files, Arktos logo icon set all densities+flavors, dead services → neutral defaults (translate/news endpoints emptied, SCW suggestions + CookieJarApps SearX removed, recover.php link removed), README/ONLINE/fastlane rewritten, FUNDING/crowdin/stale AAB deleted — pushed master a53e4d3 |
 | BOOT01 | Toolchain gate + build sanity, fix build blockers — details below | pending | 0 | needs:tool:java — upstream #321 (JCenter deps) + #324 (R8 missing classes) are the expected blockers; verify assembleScMainDebug + testScMainDebugUnitTest end-to-end |
 | FIXA01 | StartPage Mobile search URL broken (upstream #326) — details below | pending | 0 | needs:tool:java |
-| FIXA02 | Error pages use null baseUrl with JS on (upstream #328) — details below | pending | 0 | cherry-pick upstream PR #329 |
+| FIXA02 | Error pages use null baseUrl with JS on (upstream #328) — details below | done | 0 | ported PR #329: null→https://arktos-error.local at 4 live sites in SmartCookieWebClient + 5 in commented-out SmartCookieKT; build not run (no JDK — deferred to BOOT01); engine-audit PASS |
 | FIXA03 | Active tab indistinct in AMOLED theme (upstream #298) — details below | pending | 0 | needs:tool:java |
 | FIXA04 | Option to trim protocol/www in URL bar (upstream #278) — details below | pending | 0 | needs:tool:java |
 | FIXA05 | Cert info window cut off at large text scale (upstream #277) — details below | pending | 0 | needs:tool:java |

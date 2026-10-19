@@ -417,7 +417,7 @@ class SmartCookieWebClient(
                 val reload = activity.getString(R.string.error_reload)
                 val error = activity.getString(R.string.malware_message)
 
-                view.loadDataWithBaseURL(null, buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
+                view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, error, reload, false), "text/html; charset=utf-8", "UTF-8", null)
                 view.invalidate()
                 view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
             }
@@ -442,7 +442,7 @@ class SmartCookieWebClient(
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL(null,  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
+                            view.loadDataWithBaseURL("https://arktos-error.local",  buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false),  "text/html; charset=utf-8", "UTF-8", null)
                             view.invalidate()
                             view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
                         }
@@ -464,7 +464,7 @@ class SmartCookieWebClient(
                                 color = ""
                             }
                             view.settings.javaScriptEnabled = true
-                            view.loadDataWithBaseURL(null, buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
+                            view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false), "text/html; charset=utf-8", "UTF-8", null)
                             view.invalidate()
                             view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
                         }
@@ -625,7 +625,7 @@ class SmartCookieWebClient(
                             }
                             val title = activity.getString(R.string.https_title)
                             val reload = activity.getString(R.string.error_reload)
-                            view.loadDataWithBaseURL(null, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
+                            view.loadDataWithBaseURL("https://arktos-error.local", buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", reload, true), "text/html; charset=utf-8", "UTF-8", null)
                             view.invalidate()
                             view.settings.javaScriptEnabled = userPreferences.javaScriptEnabled
                         }
