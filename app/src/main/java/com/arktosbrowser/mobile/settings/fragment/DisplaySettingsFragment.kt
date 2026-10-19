@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.ChooseNavbarCol
 import com.arktosbrowser.mobile.browser.DrawerLineChoice
+import com.arktosbrowser.mobile.browser.TextZoom
 import com.arktosbrowser.mobile.browser.DrawerSizeChoice
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
@@ -194,7 +195,6 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
 
 
     private fun showTextSizePicker() {
-        val maxValue = 7
         MaterialAlertDialogBuilder(requireContext()).apply {
             val layoutInflater = activity?.layoutInflater
             val customView = (layoutInflater?.inflate(R.layout.dialog_seek_bar, null) as LinearLayout).apply {
@@ -213,8 +213,8 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
 
                 findViewById<SeekBar>(R.id.text_size_seekbar).apply {
                     setOnSeekBarChangeListener(TextSeekBarListener(text, size))
-                    max = maxValue
-                    progress = maxValue - userPreferences.textSize
+                    max = TextZoom.SEEKBAR_MAX
+                    progress = TextZoom.toProgress(userPreferences.textSize)
                 }
 
             }
@@ -222,7 +222,7 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
             setTitle(R.string.title_text_size)
             setPositiveButton(android.R.string.ok) { _, _ ->
                 val seekBar = customView.findViewById<SeekBar>(R.id.text_size_seekbar)
-                userPreferences.textSize = maxValue - seekBar.progress
+                userPreferences.textSize = TextZoom.fromProgress(seekBar.progress)
             }
         }.resizeAndShow()
     }
@@ -233,8 +233,9 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
     ) : SeekBar.OnSeekBarChangeListener {
 
         override fun onProgressChanged(view: SeekBar, size: Int, user: Boolean) {
-            this.sampleText.textSize = getTextSize(size)
-            this.sizeText.text = (size * 15 + 40).toString() + "%"
+            val index = TextZoom.fromProgress(size)
+            this.sampleText.textSize = TextZoom.previewSp(index)
+            this.sizeText.text = TextZoom.zoomPercent(index).toString() + "%"
         }
 
         override fun onStartTrackingTouch(arg0: SeekBar) {}
@@ -259,26 +260,5 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_LINES = "drawer_lines"
         private const val SETTINGS_SIZE = "drawer_size"
         private const val SETTINGS_NAVBAR = "second_bar"
-
-        private const val XXXX_LARGE = 38.0f
-        private const val XXX_LARGE = 34.0f
-        private const val XX_LARGE = 30.0f
-        private const val X_LARGE = 26.0f
-        private const val LARGE = 22.0f
-        private const val MEDIUM = 20.0f
-        private const val SMALL = 18.0f
-        private const val X_SMALL = 16.0f
-
-        private fun getTextSize(size: Int): Float = when (size) {
-            0 -> X_SMALL
-            1 -> SMALL
-            2 -> MEDIUM
-            3 -> LARGE
-            4 -> X_LARGE
-            5 -> XX_LARGE
-            6 -> XXX_LARGE
-            7 -> XXXX_LARGE
-            else -> MEDIUM
-        }
     }
 }
