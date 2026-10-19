@@ -59,8 +59,12 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   Netscape bookmark imports are parsed in Rust too
 - Search suggestions (Google, DuckDuckGo, Baidu, Naver), userscript
   metadata parsing, download filename/MIME resolution, legacy
-  bookmark imports and reading-mode article extraction
+  bookmark imports/exports and reading-mode article extraction
   (`dom_smoothie`) all run in the Rust core
+- URL filtering and special-page detection, error/block page HTML,
+  hosts-file parsing, intent-scheme checks, tab/reader color math and
+  the app-lock + parental-control passwords (Argon2id with in-place
+  upgrade from legacy plaintext) run in the Rust core too
 
 ---
 

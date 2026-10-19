@@ -308,6 +308,14 @@ fn split_site_block_names(names: &str, mode: SiteBlockMode) -> Vec<String> {
 /// * only the FIRST tab becomes a space;
 /// * "localhost" is skipped only when it is the whole remaining line;
 /// * `#` comments truncate the line.
+/// UniFFI export of [`parse_hosts_file`] (PORT02) — keeps the
+/// `HostParserTest` parity check exercisable from Kotlin now that the
+/// Kotlin `HostsFileParser` is deleted.
+#[uniffi::export]
+pub fn parse_hosts_domains(content: String) -> Vec<String> {
+    parse_hosts_file(&content)
+}
+
 pub fn parse_hosts_file(content: &str) -> Vec<String> {
     let mut domains = Vec::new();
     for line in content.lines() {

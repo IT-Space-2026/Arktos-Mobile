@@ -44,8 +44,8 @@ import com.arktosbrowser.mobile.ssl.SslWarningPreferences
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.rust.ArktosCore.buildErrorPage
 import com.arktosbrowser.mobile.utils.Utils
-import com.arktosbrowser.mobile.utils.Utils.buildErrorPage
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Observable
@@ -159,7 +159,7 @@ class SmartCookieWebClient(
     private fun adBlockResponse(request: WebResourceRequest, requestUrl: String): WebResourceResponse? {
         if (request.isForMainFrame && request.url.host.toString() != lastBlockedDomain) {
             lastBlockedDomain = request.url.host.toString()
-            return blockedPageResponse(Utils.buildBlockPage(activity, blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, true))
+            return blockedPageResponse(ArktosCore.buildBlockPage(blockPageColor(), activity.resources.getString(R.string.page_blocked), activity.resources.getString(R.string.page_blocked_adblocker), requestUrl, activity.resources.getString(R.string.proceed), activity.resources.getString(R.string.go_back), true))
         } else if (request.isForMainFrame) {
             return null
         }
@@ -179,12 +179,12 @@ class SmartCookieWebClient(
                     adBlockResponse(request, requestUrl)
                 }
             RequestVerdict.BLOCK_SITE -> blockedPageResponse(
-                Utils.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false))
+                ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, "NET::SITE_BLOCKED_BY_LIST", reloadBlocked, false))
             RequestVerdict.BLOCK_MALWARE -> blockedPageResponse(
-                Utils.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), reloadBlocked, false))
+                ArktosCore.buildErrorPage(blockPageColor(), activity.getString(R.string.malware_title), activity.getString(R.string.malware_message), reloadBlocked, false))
             RequestVerdict.BLOCK_LOCAL_NETWORK ->
                 if (request.isForMainFrame) {
-                    blockedPageResponse(Utils.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), reloadBlocked, false))
+                    blockedPageResponse(ArktosCore.buildErrorPage(blockPageColor(), titleBlocked, activity.getString(R.string.page_blocked_lan), reloadBlocked, false))
                 } else {
                     emptyResponse()
                 }
@@ -800,7 +800,7 @@ class SmartCookieWebClient(
             val file = File(url.replace(FILE, ""))
 
             if (file.exists()) {
-                val newMimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(Utils.guessFileExtension(file.toString()))
+                val newMimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ArktosCore.fileExtension(file.toString()))
 
                 val intent = Intent(Intent.ACTION_VIEW)
                 intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION

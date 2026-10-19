@@ -47,8 +47,6 @@ class UrlHostsDataSource(
             }.onIOExceptionResumeNext { HostsResult.Failure(it) }
         }
 
-    override fun identifier(): String = url.toString()
-
     companion object {
         private const val TAG = "UrlHostsDataSource"
     }

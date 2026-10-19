@@ -1,6 +1,5 @@
 package com.arktosbrowser.mobile.adblock.source
 
-import com.arktosbrowser.mobile.adblock.util.hash.computeMD5
 import com.arktosbrowser.mobile.extensions.onIOExceptionResumeNext
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -31,8 +30,6 @@ class FileHostsDataSource constructor(
         logger.log(TAG, "Loaded hosts file (${content.length} chars)")
         emitter.onSuccess(HostsResult.Success(content))
     }.onIOExceptionResumeNext { HostsResult.Failure(it) }
-
-    override fun identifier(): String = file.inputStream().computeMD5()
 
     companion object {
         private const val TAG = "FileHostsDataSource"
