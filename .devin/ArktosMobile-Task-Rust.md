@@ -36,6 +36,7 @@ Toolchain: `cargo`/`rustup`, `cargo-ndk`, JDK (`needs:tool:java`).
 | STORE01 | Rust storage core: bookmarks/history/downloads (rusqlite) — details below | done | 0 | ArktosStore (rusqlite =0.40.1 bundled, one arktos.db) replaces 5 SQLiteOpenHelper DBs behind unchanged repo interfaces; bookmark.created_at preps #156, slash-path folders prep #308; Netscape importer → html5gum =0.8.4 tokenizer; deleted *Database.kt + DatabaseDelegate + CursorExtensions; cargo test 29/29 + assembleScMainDebug + testScMainDebugUnitTest + engine-audit green; libarktos.so ~2.2MB/ABI release (bundled sqlite) |
 | PORT01 | Remaining logic ports: suggestions/userscripts/download core/importers — details below | done | 0 | Rust suggestions (provider URL build + Google-XML/DDG/Baidu-GBK/Naver JSON parse via html5gum+serde_json+encoding_rs), userscript metadata→Java-regex includes, download core (RFC6266/5987 filename*, URLUtil.guessFileName parity, sanitize, mime_guess), legacy+default bookmark JSON-lines, readability4j→dom_smoothie =0.18.2; one RustSuggestionsModel + deleted 5 model/parser/util Kotlin files; unit tests now run against host libarktos.so (jna jar + jna.library.path); fixed pre-existing coreVersion() recursion in ArktosCore; cargo test 67/67 + assembleScMainDebug + testScMainDebugUnitTest + engine-audit green; libarktos.so ~5.3–9.7MB/ABI stripped |
 | SERVO01 | Servo backend — do NOT implement (spike-gated) — details below | blocked | 0 | blocked:spike-gated — engine/BrowserEngine.kt boundary + .devin/ENGINE.md exist; desktop ENG03 verdicts apply; needs separate Android-embedding spike first |
+| LIST01 | Multi-list adblock subscriptions mirroring desktop presets — details below | pending | 0 | needs:task:BLOCK01 — also closes upstream #312 (multiple hosts files) |
 
 ## Task details
 
@@ -122,3 +123,47 @@ lifecycle plumbing and ~50–80MB/ABI.
 
 Unblock condition: a dedicated Android-embedding spike proving
 lifecycle/surface/input viability, decided explicitly.
+
+### LIST01
+Multi-list adblock subscriptions — mirror the desktop's preset
+catalog + subscription model on top of the Rust BlocklistEngine.
+
+- Source of truth (desktop repo, arora worktree):
+  `src/adblock/adblockpresets.cpp` (curated catalog),
+  `adblocksubscription.*` (fetch/update), `adblockmanager.*`.
+- Desktop preset groups to mirror (from adblockpresets.cpp):
+  - Core: uBlock filters, EasyList, EasyPrivacy, AdGuard Base
+    (filters/2.txt), AdGuard Tracking Protection (3), AdGuard
+    Social Media (17), uBlock privacy.txt, unbreak.txt,
+    quick-fixes.txt, lan-block.txt
+  - Annoyances: uBlock annoyances, AdGuard annoyances (14)
+  - Regional: EasyList Italy, Liste AR, EasyList China, IndianList,
+    EasyDutch, EasyListHebrew, Polish filters, Bulgarian (adblockbg),
+    ABPVN Vietnam, AdGuard Turkish/Chinese/Spanish-Portuguese etc.
+    — port the full catalog verbatim from the desktop file.
+- Mobile model changes:
+  - Today: ONE hosts source (asset/file/URL radio) + single
+    refresh frequency. Replace with a subscription list —
+    each entry {name, url, category, enabled, lastUpdated}.
+  - Persistence: extend the Rust store (STORE01) or keep a
+    subscriptions table; engine recompiles merged list on change.
+  - Fetch via the Rust side (PORT01 download core) or keep Kotlin
+    okhttp fetch + push content into the engine — pick the seam
+    that keeps per-request verdicts on the existing
+    shouldInterceptRequest path.
+  - Refresh cadence: reuse the existing remote-refresh pref;
+    update enabled subscriptions on that interval (and on demand).
+  - Upstream #312 ("multiple hosts files") is solved by the same
+    mechanism — note it in Notes when done.
+- UI: subscriptions section in the adblock settings screen —
+  enabled toggles per list grouped by category, "add custom URL"
+  (existing custom-source flow), last-updated timestamp,
+  manual refresh action. Follow existing settings conventions
+  (CheetahPreference style in settings/fragment).
+- Backward compat: existing single hosts.txt asset stays as the
+  built-in baseline list; migrate the current file/URL source
+  choice into a subscription entry on upgrade.
+- Verify: cargo tests + HostParserTest parity, unit tests for the
+  subscription model, `./gradlew assembleScMainDebug` +
+  `testScMainDebugUnitTest` green, list toggles persist across
+  restart, engine-audit PASS.
