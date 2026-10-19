@@ -246,6 +246,8 @@
     <string name="jsoup">jsoup: Java HTML Parser</string>
     <string name="mit_license">MIT License</string>
     <string name="url_contents">URL box contents</string>
+    <string name="trim_url_bar">Shorten address bar URLs</string>
+    <string name="trim_url_bar_summary">Hide the protocol and www. prefix in the address bar (display only)</string>
     <string name="text_encoding">Text encoding</string>
     <string-array name="url_content_array">
         <item>URL</item>

@@ -64,6 +64,12 @@
             android:key="url_contents"
             android:singleLineTitle="false"
             android:title="@string/url_contents" />
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="trim_url_bar"
+            android:singleLineTitle="false"
+            android:summary="@string/trim_url_bar_summary"
+            android:title="@string/trim_url_bar" />
         <Preference
             android:key="translation_endpoint"
             android:singleLineTitle="false"

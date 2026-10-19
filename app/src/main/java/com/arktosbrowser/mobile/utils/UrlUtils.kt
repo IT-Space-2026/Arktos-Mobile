@@ -82,6 +82,24 @@ fun String?.isSpecialUrl(): Boolean =
         || this.endsWith(IncognitoPageFactory.FILENAME))
 
 /**
+ * Returns a display-only variant of the url with the scheme (`http://`,
+ * `https://`, `file://`, …) and a leading `www.` host prefix removed, e.g.
+ * `https://www.example.com/a` becomes `example.com/a`.
+ *
+ * The receiver is unchanged; the result is only meant for rendering in the
+ * URL bar, never for navigation. Urls without a `://` separator are returned
+ * as-is apart from the `www.` trim.
+ */
+fun String.trimmedForDisplay(): String {
+    val withoutScheme = substringAfter("://", this)
+    return if (withoutScheme.startsWith(WWW_PREFIX, ignoreCase = true)) {
+        withoutScheme.substring(WWW_PREFIX.length)
+    } else {
+        withoutScheme
+    }
+}
+
+/**
  * Determines if the url is a url for the bookmark page.
  *
  * @return true if the url is a bookmark url, false otherwise.
@@ -116,3 +134,4 @@ fun String?.isStartPageUrl(): Boolean =
 private val ACCEPTED_URI_SCHEMA = Pattern.compile("(?i)((?:http|https|file)://|(?:inline|data|about|javascript):|(?:.*:.*@))(.*)")
 const val QUERY_PLACE_HOLDER = "%s"
 private const val URL_ENCODED_SPACE = "%20"
+private const val WWW_PREFIX = "www."
