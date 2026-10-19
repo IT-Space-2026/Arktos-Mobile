@@ -7,6 +7,6 @@ import com.arktosbrowser.mobile.R
  */
 class StartPageSearch : BaseSearchEngine(
     "file:///android_asset/startpage.webp",
-    "https://startpage.com/do/search?language=english&query=",
+    "https://www.startpage.com/sp/search?language=english&query=",
     R.string.search_engine_startpage
 )
