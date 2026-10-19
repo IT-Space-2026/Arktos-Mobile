@@ -60,6 +60,12 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
+            preference = SETTINGS_TRIM_URL_BAR,
+            isChecked = userPreferences.trimUrlBarEnabled,
+            onCheckChange = { userPreferences.trimUrlBarEnabled = it }
+        )
+
+        switchPreference(
             preference = SETTINGS_NEW_WINDOW,
             isChecked = userPreferences.popupsEnabled,
             onCheckChange = { userPreferences.popupsEnabled = it }
@@ -256,6 +262,7 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_RESTORE_TABS = "restore_tabs"
         private const val SETTINGS_RENDERING_MODE = "rendering_mode"
         private const val SETTINGS_URL_CONTENT = "url_contents"
+        private const val SETTINGS_TRIM_URL_BAR = "trim_url_bar"
         private const val SETTINGS_TEXT_ENCODING = "text_encoding"
         private const val SETTINGS_BLOCK_INTENT = "block_intent"
         private const val SETTINGS_SHOW_SSL = "show_ssl"

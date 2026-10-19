@@ -221,6 +221,13 @@ class UserPreferences @Inject constructor(
     var urlBoxContentChoice by preferences.enumPreference(URL_BOX_CONTENTS, SearchBoxDisplayChoice.URL)
 
     /**
+     * True if the URL bar should hide the scheme and a leading "www." when
+     * displaying the current URL, false to show the full URL. The loaded URL
+     * itself is never modified.
+     */
+    var trimUrlBarEnabled by preferences.booleanPreference(TRIM_URL_BAR, false)
+
+    /**
      * True if the browser should invert the display colors of the web page content, false
      * otherwise.
      */
@@ -425,6 +432,7 @@ private const val RENDERING_MODE = "renderMode"
 private const val BLOCK_THIRD_PARTY = "thirdParty"
 private const val ENABLE_COLOR_MODE = "colorMode"
 private const val URL_BOX_CONTENTS = "urlContent"
+private const val TRIM_URL_BAR = "trimUrlBar"
 private const val INVERT_COLORS = "invertColors"
 private const val READING_TEXT_SIZE = "readingTextSize"
 private const val THEME = "Theme"

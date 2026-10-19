@@ -44,7 +44,7 @@ NO SUDO — everything user-local.
 | FIXA01 | StartPage Mobile search URL broken (upstream #326) — details below | done | 1 | startpage.com/do/* retired (302→error page); both StartPage engines → www.startpage.com/sp/search; live curl 200; 3 unit tests + assembleScMainDebug + engine-audit PASS |
 | FIXA02 | Error pages use null baseUrl with JS on (upstream #328) — details below | done | 0 | ported PR #329: null→https://arktos-error.local at 4 live sites in SmartCookieWebClient + 5 in commented-out SmartCookieKT; build not run (no JDK — deferred to BOOT01); engine-audit PASS |
 | FIXA03 | Active tab indistinct in AMOLED theme (upstream #298) — details below | done | 0 | selectedBackground #0FFF→new selected_black #40FFFFFF on Theme.BaseBlackTheme only (~#0F0F0F→#404040 over black drawer); light/dark untouched; 3 unit tests + assembleScMainDebug + engine-audit PASS |
-| FIXA04 | Option to trim protocol/www in URL bar (upstream #278) — details below | pending | 0 | needs:tool:java |
+| FIXA04 | Option to trim protocol/www in URL bar (upstream #278) — details below | done | 0 | display-only `trimmedForDisplay()` in UrlUtils + `trimUrlBarEnabled` pref + switch under Advanced→URL box contents; applied in SearchBoxModel for URL/loading display; 6 unit tests + assembleScMainDebug + engine-audit PASS |
 | FIXA05 | Cert info window cut off at large text scale (upstream #277) — details below | pending | 0 | needs:tool:java |
 | FIXA06 | Raise text-size maximum (upstream #275) — details below | pending | 0 | needs:tool:java |
 | FIXA07 | Follow system dark mode + auto dark-web addon (upstream #251) — details below | pending | 0 | needs:tool:java |
