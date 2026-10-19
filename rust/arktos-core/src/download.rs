@@ -53,6 +53,18 @@ pub fn sanitize_file_name(name: Option<String>) -> String {
     }
 }
 
+/// `Utils.guessFileExtension` (PORT02) — the substring after the last
+/// `.`, `None` when absent or trailing.
+#[uniffi::export]
+pub fn file_extension(filename: String) -> Option<String> {
+    let idx = filename.rfind('.')? + 1;
+    if filename.len() > idx {
+        Some(filename[idx..].to_owned())
+    } else {
+        None
+    }
+}
+
 /// `DownloadHandler.getFileNameFromURL` — pick the file name for a
 /// download from the Content-Disposition header when present,
 /// otherwise from the URL path, otherwise guess from the MIME type.

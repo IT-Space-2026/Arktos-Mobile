@@ -17,6 +17,7 @@ import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.settings.activity.SettingsActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import javax.inject.Inject
@@ -88,12 +89,19 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
                 }
                 .setPositiveButton(R.string.action_ok
                 ) { _, _ ->
-                    //listener.onClick(editText.getText().toString());
-                    if (editText.text.toString() != userPreferences.passwordText){
+                    // PORT02 — stored value is `arktos:v1:` argon2id;
+                    // a legacy plaintext match upgrades in place.
+                    val check = ArktosCore.verifyPassword(
+                        userPreferences.passwordText,
+                        editText.text.toString()
+                    )
+                    if (!check.matched) {
                         val duration = Toast.LENGTH_SHORT
                         val toast = Toast.makeText(activity, resources.getString(R.string.wrong_password), duration)
                         toast.show()
                         passwordDialog()
+                    } else {
+                        check.upgradedHash?.let { userPreferences.passwordText = it }
                     }
                 }
 
@@ -217,19 +225,17 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
         val v = activity.layoutInflater.inflate(R.layout.password, null)
         val passwordText = v.findViewById<TextView>(R.id.password)
 
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
-        val maxCharacters = Integer.MAX_VALUE.toString().length
-
-        passwordText.text = userPreferences.passwordText
-
+        // PORT02 — the stored value is an argon2id hash now, so the
+        // field can't be prefilled; an empty submission keeps the
+        // existing password.
         BrowserDialog.showCustomDialog(activity) {
             setTitle(R.string.enter_password)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
             val passwordCode = passwordText.text.toString()
-            userPreferences.passwordText = passwordCode
+            if (passwordCode.isNotEmpty()) {
+                userPreferences.passwordText = ArktosCore.hashPassword(passwordCode)
+            }
         }
     }
     }

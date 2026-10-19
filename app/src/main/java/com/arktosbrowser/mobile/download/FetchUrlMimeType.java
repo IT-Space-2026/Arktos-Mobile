@@ -12,7 +12,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import com.arktosbrowser.mobile.rust.ArktosCore;
-import com.arktosbrowser.mobile.utils.Utils;
 import androidx.annotation.NonNull;
 import io.reactivex.Single;
 
@@ -89,7 +88,7 @@ class FetchUrlMimeType {
             if (mimeType != null) {
                 if (mimeType.equalsIgnoreCase("text/plain")
                     || mimeType.equalsIgnoreCase("application/octet-stream")) {
-                    String extension = Utils.guessFileExtension(mUri);
+                    String extension = ArktosCore.INSTANCE.fileExtension(mUri);
                     String newMimeType = extension == null ? null
                         : ArktosCore.INSTANCE.mimeTypeForExtension(extension);
                     if (newMimeType != null) {

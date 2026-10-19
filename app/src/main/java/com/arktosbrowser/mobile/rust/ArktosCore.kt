@@ -22,17 +22,36 @@ import com.arktosbrowser.mobile.uniffi.SiteBlockMode
 import com.arktosbrowser.mobile.uniffi.StoreBookmark
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import com.arktosbrowser.mobile.uniffi.UserScriptMeta
+import com.arktosbrowser.mobile.uniffi.PasswordCheck
+import com.arktosbrowser.mobile.uniffi.acceptedUriScheme as uniffiAcceptedUriScheme
 import com.arktosbrowser.mobile.uniffi.adblockPresets
+import com.arktosbrowser.mobile.uniffi.buildBlockPage as uniffiBuildBlockPage
+import com.arktosbrowser.mobile.uniffi.buildErrorPage as uniffiBuildErrorPage
+import com.arktosbrowser.mobile.uniffi.composeSearchUrl as uniffiComposeSearchUrl
 import com.arktosbrowser.mobile.uniffi.contentDispositionFilename as uniffiContentDispositionFilename
 import com.arktosbrowser.mobile.uniffi.corePing
 import com.arktosbrowser.mobile.uniffi.coreVersion as uniffiCoreVersion
+import com.arktosbrowser.mobile.uniffi.domainName as uniffiDomainName
 import com.arktosbrowser.mobile.uniffi.downloadFileName as uniffiDownloadFileName
+import com.arktosbrowser.mobile.uniffi.exportLegacyBookmarks as uniffiExportLegacyBookmarks
 import com.arktosbrowser.mobile.uniffi.extractReadableArticle as uniffiExtractReadableArticle
+import com.arktosbrowser.mobile.uniffi.fileExtension as uniffiFileExtension
 import com.arktosbrowser.mobile.uniffi.formatDataSize as uniffiFormatDataSize
 import com.arktosbrowser.mobile.uniffi.guessFileName as uniffiGuessFileName
+import com.arktosbrowser.mobile.uniffi.hashPassword as uniffiHashPassword
 import com.arktosbrowser.mobile.uniffi.importLegacyBookmarks as uniffiImportLegacyBookmarks
+import com.arktosbrowser.mobile.uniffi.isBookmarkUrl as uniffiIsBookmarkUrl
+import com.arktosbrowser.mobile.uniffi.isColorTooDark as uniffiIsColorTooDark
+import com.arktosbrowser.mobile.uniffi.isDownloadsUrl as uniffiIsDownloadsUrl
+import com.arktosbrowser.mobile.uniffi.isHistoryUrl as uniffiIsHistoryUrl
+import com.arktosbrowser.mobile.uniffi.isIntentUrlAllowed as uniffiIsIntentUrlAllowed
+import com.arktosbrowser.mobile.uniffi.isSpecialUrl as uniffiIsSpecialUrl
+import com.arktosbrowser.mobile.uniffi.isStartPageUrl as uniffiIsStartPageUrl
 import com.arktosbrowser.mobile.uniffi.mimeTypeForExtension as uniffiMimeTypeForExtension
+import com.arktosbrowser.mobile.uniffi.mixColorFraction as uniffiMixColorFraction
+import com.arktosbrowser.mobile.uniffi.mixTwoColors as uniffiMixTwoColors
 import com.arktosbrowser.mobile.uniffi.parseDefaultBookmarks as uniffiParseDefaultBookmarks
+import com.arktosbrowser.mobile.uniffi.parseHostsDomains as uniffiParseHostsDomains
 import com.arktosbrowser.mobile.uniffi.parseNetscapeBookmarks
 import com.arktosbrowser.mobile.uniffi.parseSuggestions as uniffiParseSuggestions
 import com.arktosbrowser.mobile.uniffi.parseUserscript
@@ -46,7 +65,9 @@ import com.arktosbrowser.mobile.uniffi.siteRankSetDataDir as uniffiSiteRankSetDa
 import com.arktosbrowser.mobile.uniffi.siteRankSources as uniffiSiteRankSources
 import com.arktosbrowser.mobile.uniffi.siteRankUpdateIfStale as uniffiSiteRankUpdateIfStale
 import com.arktosbrowser.mobile.uniffi.siteRankUpdateNow as uniffiSiteRankUpdateNow
+import com.arktosbrowser.mobile.uniffi.smartUrlFilter as uniffiSmartUrlFilter
 import com.arktosbrowser.mobile.uniffi.suggestionQueryUrl as uniffiSuggestionQueryUrl
+import com.arktosbrowser.mobile.uniffi.verifyPassword as uniffiVerifyPassword
 
 object ArktosCore {
 
@@ -230,6 +251,105 @@ object ArktosCore {
 
     /** Merged rank-table entry count (RANK01). */
     fun rankEntryCount(): Long = uniffiSiteRankEntryCount().toLong()
+
+    // ---- PORT02 --------------------------------------------------
+
+    /**
+     * `UrlUtils.smartUrlFilter` (PORT02) — resolve user input to a URL
+     * or a composed search URL; `""` when [canBeSearch] is false and
+     * the input is no URL.
+     */
+    fun smartUrlFilter(url: String, canBeSearch: Boolean, searchUrl: String): String =
+        uniffiSmartUrlFilter(url, canBeSearch, searchUrl)
+
+    /** The `ACCEPTED_URI_SCHEMA` check shared by UrlUtils/IntentUtils (PORT02). */
+    fun acceptedUriScheme(url: String): Boolean = uniffiAcceptedUriScheme(url)
+
+    /** `BrowserPresenter.isIntentUrlAllowed` — incoming-intent scheme allowlist (PORT02). */
+    fun isIntentUrlAllowed(url: String): Boolean = uniffiIsIntentUrlAllowed(url)
+
+    /** `URLUtil.composeSearchUrl` — placeholder substitution with form encoding (PORT02). */
+    fun composeSearchUrl(query: String, template: String, placeholder: String): String =
+        uniffiComposeSearchUrl(query, template, placeholder)
+
+    /** Generated in-app `file://` page checks (PORT02). */
+    fun isSpecialUrl(url: String): Boolean = uniffiIsSpecialUrl(url)
+    fun isBookmarkUrl(url: String): Boolean = uniffiIsBookmarkUrl(url)
+    fun isDownloadsUrl(url: String): Boolean = uniffiIsDownloadsUrl(url)
+    fun isHistoryUrl(url: String): Boolean = uniffiIsHistoryUrl(url)
+    fun isStartPageUrl(url: String): Boolean = uniffiIsStartPageUrl(url)
+
+    /** `Utils.getDomainName` — display-only domain extraction (PORT02). */
+    fun domainName(url: String): String = uniffiDomainName(url)
+
+    /** `Utils.guessFileExtension` (PORT02). */
+    fun fileExtension(filename: String): String? = uniffiFileExtension(filename)
+
+    /**
+     * `Utils.buildErrorPage` (PORT02) — the error interstitial HTML;
+     * all strings arrive localized, [color] is the theme override
+     * fragment appended verbatim.
+     */
+    fun buildErrorPage(
+        color: String,
+        title: String,
+        error: String,
+        reload: String,
+        showButton: Boolean,
+        reloadCode: String = "window.history.back();"
+    ): String = uniffiBuildErrorPage(color, title, error, reload, showButton, reloadCode)
+
+    /** `Utils.buildBlockPage` (PORT02) — the block interstitial HTML. */
+    fun buildBlockPage(
+        color: String,
+        title: String,
+        error: String,
+        blockedUrl: String,
+        proceedLabel: String,
+        goBackLabel: String,
+        showProceed: Boolean
+    ): String =
+        uniffiBuildBlockPage(color, title, error, blockedUrl, proceedLabel, goBackLabel, showProceed)
+
+    /** `Utils.isColorTooDark` — tab-strip luminance heuristic (PORT02). */
+    fun isColorTooDark(color: Int): Boolean = uniffiIsColorTooDark(color)
+
+    /** `Utils.mixTwoColors` — ARGB blend (PORT02). */
+    fun mixTwoColors(color1: Int, color2: Int, amount: Float): Int =
+        uniffiMixTwoColors(color1, color2, amount)
+
+    /** `DrawableUtils.mixColor` — fraction-lerp incl. alpha (PORT02). */
+    fun mixColorFraction(fraction: Float, startValue: Int, endValue: Int): Int =
+        uniffiMixColorFraction(fraction, startValue, endValue)
+
+    /**
+     * Argon2id hash for the app-lock / parental-control passwords
+     * (PORT02) — replaces the plaintext SharedPreferences storage.
+     */
+    fun hashPassword(password: String): String = uniffiHashPassword(password)
+
+    /**
+     * Verify [candidate] against the stored value (PORT02). A legacy
+     * plaintext stored value that matches returns the Argon2id
+     * replacement in [PasswordCheck.upgradedHash] — persist it to
+     * complete the migration.
+     */
+    fun verifyPassword(stored: String, candidate: String): PasswordCheck =
+        uniffiVerifyPassword(stored, candidate)
+
+    /**
+     * Hosts-file → domain list (PORT02) — the Rust parser behind the
+     * engine, exposed for the `HostParserTest` parity check.
+     */
+    fun parseHostsDomains(content: String): List<String> = uniffiParseHostsDomains(content)
+
+    /**
+     * `BookmarkExporter` payload (PORT02) — the legacy JSON-lines
+     * export text for the given bookmarks (upstream field order and
+     * org.json escaping preserved).
+     */
+    fun exportLegacyBookmarks(bookmarks: List<StoreBookmark>): String =
+        uniffiExportLegacyBookmarks(bookmarks)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {

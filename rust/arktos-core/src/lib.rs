@@ -9,12 +9,16 @@
 mod blocklist;
 mod bookmarks;
 mod download;
+mod misc;
 mod netscape;
+mod pages;
+mod password;
 mod ranklist;
 mod readability;
 mod storage;
 mod subscriptions;
 mod suggestions;
+mod urlutils;
 mod userscript;
 mod util;
 mod zipwalk;

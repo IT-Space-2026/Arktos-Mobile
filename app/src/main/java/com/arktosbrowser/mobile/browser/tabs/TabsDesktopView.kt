@@ -15,7 +15,7 @@ import com.arktosbrowser.mobile.extensions.inflater
 import com.arktosbrowser.mobile.list.HorizontalItemAnimator
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ThemeUtils
-import com.arktosbrowser.mobile.utils.Utils
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.view.SmartCookieView
 
 
@@ -34,7 +34,7 @@ class TabsDesktopView @JvmOverloads constructor(
     private val tabList: RecyclerView
 
     init {
-        setBackgroundColor(Utils.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f))
+        setBackgroundColor(ArktosCore.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f))
         context.inflater.inflate(R.layout.tab_strip, this, true)
         findViewById<ImageView>(R.id.new_tab_button).apply {
             setColorFilter(ThemeUtils.getTextColor(uiController as Context))
@@ -67,7 +67,7 @@ class TabsDesktopView @JvmOverloads constructor(
             setHasFixedSize(true)
         }
 
-        val backgroundColor = Utils.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f)
+        val backgroundColor = ArktosCore.mixTwoColors(ThemeUtils.getColorBackground(uiController as Context), Color.BLACK, 0.85f)
         tabList.setBackgroundColor(backgroundColor)
     }
 

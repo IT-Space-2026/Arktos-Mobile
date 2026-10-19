@@ -2,7 +2,7 @@ package com.arktosbrowser.mobile.browser
 
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.utils.Utils
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.isSpecialUrl
 import android.app.Application
 import dagger.Reusable
@@ -50,6 +50,6 @@ class SearchBoxModel @Inject constructor(
             }
         }
 
-    private fun safeDomain(url: String) = Utils.getDomainName(url)
+    private fun safeDomain(url: String) = ArktosCore.domainName(url)
 
 }

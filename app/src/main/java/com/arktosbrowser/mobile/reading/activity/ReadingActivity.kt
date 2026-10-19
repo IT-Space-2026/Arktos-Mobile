@@ -44,7 +44,6 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
-import com.arktosbrowser.mobile.utils.Utils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Scheduler
 import io.reactivex.disposables.Disposable
@@ -246,7 +245,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 return false
             }
         if (supportActionBar != null) {
-            supportActionBar!!.title = Utils.getDomainName(mUrl)
+            supportActionBar!!.title = ArktosCore.domainName(mUrl ?: "")
         }
         mProgressDialog = ProgressDialog(this@ReadingActivity)
         mProgressDialog!!.setProgressStyle(ProgressDialog.STYLE_SPINNER)

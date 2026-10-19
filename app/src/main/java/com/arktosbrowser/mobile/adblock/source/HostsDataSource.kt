@@ -12,9 +12,4 @@ interface HostsDataSource {
      */
     fun loadHosts(): Single<HostsResult>
 
-    /**
-     * The unique [String] identifier for this source.
-     */
-    fun identifier(): String
-
 }

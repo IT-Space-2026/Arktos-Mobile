@@ -4,9 +4,6 @@ import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -32,11 +29,6 @@ import io.reactivex.Completable;
 public final class BookmarkExporter {
 
     private static final String TAG = "BookmarkExporter";
-
-    private static final String KEY_URL = "url";
-    private static final String KEY_TITLE = "title";
-    private static final String KEY_FOLDER = "folder";
-    private static final String KEY_ORDER = "order";
 
     private BookmarkExporter() {}
 
@@ -90,15 +82,9 @@ public final class BookmarkExporter {
                 //noinspection IOResourceOpenedButNotSafelyClosed
                 bookmarkWriter = new BufferedWriter(new OutputStreamWriter(aStream));
 
-                JSONObject object = new JSONObject();
-                for (Bookmark.Entry item : bookmarkList) {
-                    object.put(KEY_TITLE, item.getTitle());
-                    object.put(KEY_URL, item.getUrl());
-                    object.put(KEY_FOLDER, item.getFolder().getTitle());
-                    object.put(KEY_ORDER, item.getPosition());
-                    bookmarkWriter.write(object.toString());
-                    bookmarkWriter.newLine();
-                }
+                // PORT02 — the JSON-lines payload (field order and
+                // org.json escaping) is produced by the Rust core.
+                bookmarkWriter.write(StoreBookmarkMappingKt.legacyExportJson(bookmarkList));
             } finally {
                 Utils.close(bookmarkWriter);
             }

@@ -1,6 +1,5 @@
 package com.arktosbrowser.mobile.adblock.source
 
-import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.log.Logger
 import android.content.res.AssetManager
 import io.reactivex.Single
@@ -31,8 +30,6 @@ class AssetsHostsDataSource constructor(
         logger.log(TAG, "Loaded hosts file (${content.length} chars)")
         emitter.onSuccess(HostsResult.Success(content))
     }
-
-    override fun identifier(): String = "assets:${BuildConfig.VERSION_CODE}"
 
     companion object {
         private const val TAG = "AssetsHostsDataSource"

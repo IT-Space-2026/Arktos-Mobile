@@ -83,6 +83,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.notifications.IncognitoNotification
 import com.arktosbrowser.mobile.permissions.PermissionsManager
 import com.arktosbrowser.mobile.popup.PopUpClass
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.search.SuggestionsAdapter
 import com.arktosbrowser.mobile.ssl.SslState
@@ -563,7 +564,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             builder.setCancelable(false)
 
             builder.setPositiveButton(resources.getString(R.string.action_ok)) { dialog, _ ->
-                if (customLayoutBinding.textFieldText.text.toString() == userPreferences.passwordTextLock) {
+                // PORT02 — stored value is an `arktos:v1:` argon2id
+                // hash; a legacy plaintext match upgrades in place.
+                val check = ArktosCore.verifyPassword(
+                    userPreferences.passwordTextLock,
+                    customLayoutBinding.textFieldText.text.toString()
+                )
+                if (check.matched) {
+                    check.upgradedHash?.let { userPreferences.passwordTextLock = it }
                     dialog.cancel()
                 }
                 else{
@@ -1518,7 +1526,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             currentUiColor = userPreferences.colorNavbar
 
             searchBackground?.background?.tint(
-                    Utils.mixTwoColors(Color.WHITE, userPreferences.colorNavbar, 0.25f)
+                    ArktosCore.mixTwoColors(Color.WHITE, userPreferences.colorNavbar, 0.25f)
             )
 
             backgroundDrawable.color = userPreferences.colorNavbar
@@ -1541,7 +1549,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             tabBackground?.tint(currentColor)
             binding.toolbarLayout.setBackgroundColor(currentColor)
             searchBackground?.background?.tint(
-                    Utils.mixTwoColors(Color.WHITE, currentColor, 0.25f)
+                    ArktosCore.mixTwoColors(Color.WHITE, currentColor, 0.25f)
             )
         }
     }
@@ -1567,8 +1575,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             val color = Color.BLACK or (palette?.getVibrantColor(defaultColor) ?: defaultColor)
 
             // Lighten up the dark color if it is too dark
-            val finalColor = if (!shouldShowTabsInDrawer || Utils.isColorTooDark(color)) {
-                Utils.mixTwoColors(defaultColor, color, 0.25f)
+            val finalColor = if (!shouldShowTabsInDrawer || ArktosCore.isColorTooDark(color)) {
+                ArktosCore.mixTwoColors(defaultColor, color, 0.25f)
             } else {
                 color
             }
