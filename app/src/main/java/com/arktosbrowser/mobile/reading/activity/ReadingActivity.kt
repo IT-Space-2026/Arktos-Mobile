@@ -32,8 +32,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
-import butterknife.BindView
-import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.R
@@ -49,7 +47,14 @@ import com.arktosbrowser.mobile.utils.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.Scheduler
 import io.reactivex.disposables.Disposable
-import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Callback
+import okhttp3.Call
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -333,12 +338,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mProgressDialog!!.setMessage(getString(R.string.loading))
         mProgressDialog!!.show()
 
-        val formBody: RequestBody = RequestBody.create(
-            MediaType.parse("application/json"),
-            ArktosCore.translateRequestBody(
-                listOf(Html.toHtml(spanned)), "auto", lang ?: "en"
-            )
-        )
+        val formBody: RequestBody = ArktosCore.translateRequestBody(
+            listOf(Html.toHtml(spanned)), "auto", lang ?: "en"
+        ).toRequestBody("application/json".toMediaType())
         val translateUrl = mUserPreferences?.translationEndpoint.orEmpty()
         val request = Request.Builder()
                 .url(ArktosCore.translateUrl(translateUrl))
@@ -368,7 +370,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     }
                     throw IOException("Unexpected code $response")
                 } else {
-                    val values = response.body()!!.string()
+                    val values = response.body.string()
                     runOnUiThread {
                         try {
                             val translated = ArktosCore.parseTranslateResponse(values).first()

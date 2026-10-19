@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.RecyclerView
-import butterknife.ButterKnife
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.database.HistoryEntry
@@ -65,7 +64,6 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
-        ButterKnife.bind(this)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
         if (supportActionBar != null) supportActionBar!!.setDisplayHomeAsUpEnabled(true)

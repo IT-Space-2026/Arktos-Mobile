@@ -10,6 +10,7 @@ import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.uniffi.SuggestionProvider
 import io.reactivex.Single
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import java.io.IOException
@@ -45,7 +46,7 @@ class RustSuggestionsModel(
                     return@fromCallable emptyList<SearchSuggestion>()
                 }
                 return@fromCallable client.downloadSuggestionsForQuery(query)
-                    ?.body()
+                    ?.body
                     ?.use { body -> ArktosCore.parseSuggestions(provider, body.bytes()) }
                     ?.take(MAX_RESULTS)
                     ?.map { SearchSuggestion("$searchSubtitle \"$it\"", it) }
@@ -58,7 +59,7 @@ class RustSuggestionsModel(
      * NOTE: This is a blocking operation, do not fetchResults on the UI thread.
      */
     private fun OkHttpClient.downloadSuggestionsForQuery(query: String): Response? {
-        val queryUrl = HttpUrl.parse(ArktosCore.suggestionQueryUrl(provider, query, language))
+        val queryUrl = ArktosCore.suggestionQueryUrl(provider, query, language).toHttpUrlOrNull()
             ?: return null
         val request = requestFactory.createSuggestionsRequest(queryUrl, UTF8)
         return try {

@@ -16,7 +16,8 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -138,13 +139,13 @@ class RankListTest {
     @Test
     fun `fetch is https only with a loopback exception`() {
         val loader = loader(File("/nonexistent"))
-        assertTrue(loader.fetchAllowed(HttpUrl.parse("https://tranco-list.eu/x.zip")!!))
-        assertTrue(loader.fetchAllowed(HttpUrl.parse("http://127.0.0.1:8080/list")!!))
-        assertTrue(loader.fetchAllowed(HttpUrl.parse("http://localhost:9/list")!!))
-        assertTrue(loader.fetchAllowed(HttpUrl.parse("http://[::1]:9/list")!!))
-        assertFalse(loader.fetchAllowed(HttpUrl.parse("http://example.com/list")!!))
+        assertTrue(loader.fetchAllowed("https://tranco-list.eu/x.zip".toHttpUrl()))
+        assertTrue(loader.fetchAllowed("http://127.0.0.1:8080/list".toHttpUrl()))
+        assertTrue(loader.fetchAllowed("http://localhost:9/list".toHttpUrl()))
+        assertTrue(loader.fetchAllowed("http://[::1]:9/list".toHttpUrl()))
+        assertFalse(loader.fetchAllowed("http://example.com/list".toHttpUrl()))
         // Non-http(s) schemes can't even build an HttpUrl.
-        assertEquals(null, HttpUrl.parse("ftp://127.0.0.1/list"))
+        assertEquals(null, "ftp://127.0.0.1/list".toHttpUrlOrNull())
     }
 
     @Test

@@ -2,13 +2,15 @@ package com.arktosbrowser.mobile.utils
 
 import android.app.Activity
 import android.util.Log
-import com.arktosbrowser.mobile.BrowserApp
+import androidx.core.content.ContextCompat
+import androidx.webkit.ProxyConfig
+import androidx.webkit.ProxyController
+import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
 import com.arktosbrowser.mobile.preference.UserPreferences
-import info.guardianproject.netcipher.webkit.WebkitProxy
 import java.net.InetSocketAddress
 import java.net.Proxy
 import javax.inject.Inject
@@ -53,11 +55,31 @@ class ProxyUtils @Inject constructor(
             }
         }
 
+        // WebView-specific adapter — the only WebView-coupled piece of proxy
+        // support. A future engine would get its own applier behind this seam.
         try {
-            WebkitProxy.setProxy(BrowserApp::class.java.name, activity.applicationContext, null, host, port)
+            applyWebViewProxy(activity, host, port)
         } catch (e: Exception) {
             Log.d(TAG, "error enabling web proxying", e)
         }
+    }
+
+    private fun applyWebViewProxy(activity: Activity, host: String, port: Int) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            Log.w(TAG, "WebView on this device does not support proxy override")
+            return
+        }
+        val config = ProxyConfig.Builder().addProxyRule("$host:$port").build()
+        ProxyController.getInstance()
+            .setProxyOverride(config, ContextCompat.getMainExecutor(activity)) {}
+    }
+
+    private fun clearWebViewProxy(activity: Activity) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            return
+        }
+        ProxyController.getInstance()
+            .clearProxyOverride(ContextCompat.getMainExecutor(activity)) {}
     }
 
     fun isProxyReady(activity: Activity): Boolean {
@@ -79,7 +101,7 @@ class ProxyUtils @Inject constructor(
             initializeProxy(activity)
         } else {
             try {
-                WebkitProxy.resetProxy(BrowserApp::class.java.name, activity.applicationContext)
+                clearWebViewProxy(activity)
             } catch (e: Exception) {
                 Log.e(TAG, "Unable to reset proxy", e)
             }
