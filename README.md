@@ -33,6 +33,14 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   `x86_64-linux-android`), `cargo-ndk`, and an Android NDK under the
   configured SDK (`ndk/` side-by-side or `ndk-bundle`).
 
+Signed APKs are published on the [Releases
+page](https://github.com/IT-Space-2026/Arktos-Mobile/releases). The
+repo carries fastlane store metadata
+(`fastlane/metadata/android/en-US/`), so the package already meets the
+listing prerequisites for F-Droid/IzzyOnDroid — inclusion in those
+repos is a maintainer/packaging step, not a code change (upstream
+SmartCookieWeb#314).
+
 ---
 
 ## Features
@@ -49,6 +57,11 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Per-site JavaScript and cookie quick-toggles in the toolbar menu and
   on long-pressing a link — host-keyed overrides that persist per
   origin on top of the global switches
+- Userscript support — Greasemonkey-style `.user.js` scripts install
+  from a page prompt, persist per-site `@include`/`@require` metadata,
+  and can be removed under Extensions settings
+- Proxy support — Orbot/Tor, I2P, or a manual HTTP proxy host:port
+  (Settings → General → HTTP proxy); no special build needed
 - Site-rank table (Tranco + Majestic Million) in the Rust core — a
   vendored top-100k seed merged best-rank-wins with consent-gated
   downloads, ready for "top-N site" trust policy
