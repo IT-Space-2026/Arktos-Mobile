@@ -432,6 +432,8 @@
     <string name="error_reload">Reload</string>
     <string name="error_offline_title">No internet connection</string>
     <string name="error_offline_message">NET::ERR_INTERNET_DISCONNECTED</string>
+    <string name="error_page_hint">Check the address or your connection, then try again.</string>
+    <string name="page_blocked_hint">This page was blocked for your protection.</string>
 
     <string name="https_title">Oh crumbs! &lt;br&gt; That site doesn\'t support HTTPS and block HTTP is enabled.</string>
 

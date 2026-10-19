@@ -74,6 +74,7 @@ class ConnectivityGateTest {
             "<style>x</style>",
             "No internet connection",
             "NET::ERR_INTERNET_DISCONNECTED",
+            "Check the address or your connection, then try again.",
             "Reload",
             true,
             "window.location.href = 'https://example.com/';"
