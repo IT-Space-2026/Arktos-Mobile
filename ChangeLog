@@ -203,3 +203,83 @@ Search suggestions:
 - Qwant suggestion requests carry the device locale
   (language_COUNTRY, e.g. de_DE, pt-BR → pt_BR) instead of a
   hardcoded en_US; unknown locales fall back to en_US (SUGG02).
+
+Security (continued):
+- Mixed content is blocked by default in normal browsing (SEC03);
+  Force HTTPS now warns on cleartext navigations instead of silently
+  upgrading, with upgrade/back/proceed choices (SEC04).
+- The in-page translation bridge exposes only a postMessage surface
+  to web pages (SEC05); the userscript GM bridge enforces @connect
+  domains and origin gating (SEC06).
+- Incognito windows are FLAG_SECURE — no screenshots or recents
+  thumbnails — and an optional whole-app secure-window toggle exists
+  (SEC07); sensitive dialogs filter overlay touches to block
+  tapjacking (SEC08).
+- Exported components and incoming VIEW intents were audited and
+  hardened, and the external panic TRIGGER intent sits behind a
+  privacy toggle (SEC09); release builds shrink resources with R8
+  keep rules for the Rust bridge (SEC10).
+- Downloads warn before enqueueing executables or disguised file
+  types (SEC11); internationalized domains display as punycode in
+  the URL bar so lookalikes stand out (SEC12); a privacy toggle
+  trims referrers on top-level navigations (SEC13).
+- CI gates check dependency integrity, committed secrets and the
+  manifest surface (SEC14); the browsing database encrypts at rest
+  via SQLCipher (SEC15); toolchains are pinned and dependencies
+  verified for reproducible builds (SEC16 — see REPRODUCIBLE.md).
+- Navigations send DNT: 1 and Sec-GPC: 1 on main-frame GETs (SEC17);
+  the header re-issue path is GET-only so POST bodies are no longer
+  corrupted, and WebView's subresource header gap is documented in
+  ONLINE.md.
+- The app-lock prompt is a full-screen lock screen — PIN, password
+  or biometric — covering the whole browser including tabs.
+
+Dual engine (ENG02–ENG05):
+- engine/BrowserEngine.kt grew into a real Backend/Profile/Page
+  seam; the WebView implementation moved behind it as the webview
+  flavor backend (ENG02).
+- Product flavors split the build: scMainWebview ships as
+  "Arktos Light" (com.arktosbrowser.mobile) and scMainGecko as
+  "Arktos" (com.arktosbrowser.mobile.full, arm64-only release)
+  (ENG03).
+- Gecko parity pass A: navigation decisions, request policy, SSL
+  errors, tab state and prompts/downloads run on GeckoView
+  delegates (ENG04).
+- Gecko parity pass B: storage/cookies, proxy/I2P plumbing,
+  userscript injection and capability-gated settings (ENG05).
+- The Page interface exposes desktop-mode UA toggling on both
+  engines.
+
+Incognito hardening:
+- The incognito WebView partition is wiped when the session ends and
+  on every fresh start, so cookies and logins cannot carry between
+  private sessions (INCOG01); panic clean covers the incognito
+  profile too (INCOG02).
+- The private-tabs reminder notification hides from the lock screen
+  (INCOG03); the incognito URL bar opts out of keyboard personalized
+  learning (INCOG04).
+
+Modernization sweep (MOD01–MOD10):
+- Download entry points, ReadingActivity and Utils.kt moved off
+  deprecated APIs; camera uploads use FileProvider URIs instead of
+  raw file:// (MOD01–MOD03).
+- Dead PreferenceActivity wrappers deleted; file picking, adblock
+  host import and the I2P launch migrated to Activity Result APIs;
+  the callback/reflection PermissionsManager was replaced by a
+  single RequestMultiplePermissions launcher (MOD04–MOD06).
+- The horizontal/vertical tab-list animators merged into one
+  ArktosItemAnimator; overridePendingTransition calls moved to
+  overrideActivityTransition on API 34+; AnimatedProgressBar
+  slimmed to a single retargeted animator and J2K-era null handling
+  cleaned up in the remaining helpers (MOD07–MOD10).
+
+Naming / docs:
+- The WebView flavor installs as "Arktos Light" and the GeckoView
+  flavor as "Arktos"; the in-app name follows the flavor via
+  resValue.
+- ONLINE.md and README were corrected so online-service claims match
+  actual defaults (suggestions on via DuckDuckGo, news feed removed,
+  translation endpoint pre-set but feature off).
+- Repo-wide SPDX headers now read "Copyright 2014 A.C.R. and Arktos
+  contributors", keeping upstream attribution.
+

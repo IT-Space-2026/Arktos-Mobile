@@ -244,6 +244,35 @@
             <li>New installs default to DuckDuckGo; choices for removed providers migrate to DuckDuckGo instead of switching to Google.</li>
             <li>Qwant requests use the device locale (e.g. de_DE, pt_BR) instead of a hardcoded en_US.</li>
         </ul>
+
+        <h3>Security (continued)</h3>
+        <ul>
+            <li>Mixed content blocked by default; Force HTTPS warns on cleartext navigations instead of silently upgrading.</li>
+            <li>Translation bridge reduced to a postMessage surface; the userscript GM bridge enforces @connect domains.</li>
+            <li>Incognito windows can't be screenshotted or previewed in recents; optional secure-window toggle for the whole app; dialogs hardened against tapjacking overlays.</li>
+            <li>Exported components and incoming intents audited; the panic trigger sits behind a privacy toggle; release builds shrink unused resources.</li>
+            <li>Warnings before executable or disguised downloads; internationalized domains display as punycode; optional referrer trimming on navigations.</li>
+            <li>CI checks dependency integrity, secrets and the manifest; the browsing database encrypts at rest; toolchains pinned for reproducible builds.</li>
+            <li>Navigations send Do Not Track and Global Privacy Control signals; POST forms no longer lose their body when privacy headers are enabled.</li>
+        </ul>
+
+        <h3>Two engines</h3>
+        <ul>
+            <li>The browser core sits behind a real engine seam — the WebView build ships as Arktos Light, a GeckoView build as Arktos (arm64).</li>
+            <li>GeckoView parity: navigation policy, SSL errors, tab state, prompts, downloads, storage/cookies, proxy/I2P and userscripts.</li>
+        </ul>
+
+        <h3>Incognito hardening</h3>
+        <ul>
+            <li>The incognito data partition is wiped when the session ends and on fresh start — cookies and logins can't carry between private sessions.</li>
+            <li>Panic clean covers the incognito profile; the private-tabs reminder stays off the lock screen; incognito typing doesn't feed keyboard learning.</li>
+        </ul>
+
+        <h3>Modernization</h3>
+        <ul>
+            <li>Deprecated APIs swept out: file picking, permissions and activity results use modern contracts; camera uploads use safe FileProvider URIs.</li>
+            <li>Dead code removed: old preference-activity wrappers, the reflection-based permissions framework, duplicate animators.</li>
+        </ul>
     </div>
 
 </body>
