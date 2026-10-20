@@ -1,0 +1,11 @@
+# Pinned Rust toolchain for libarktos.so (SEC16 — reproducible
+# builds). rustup auto-installs this version + the Android targets
+# when any cargo command runs under rust/. Bump deliberately.
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+targets = [
+    "aarch64-linux-android",
+    "armv7-linux-androideabi",
+    "x86_64-linux-android",
+]

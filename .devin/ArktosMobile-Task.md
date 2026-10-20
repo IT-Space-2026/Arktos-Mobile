@@ -84,7 +84,7 @@ NO SUDO — everything user-local.
 | SEC13 | Referrer-trim privacy toggle — details below | done | 0 | ReferrerPolicy (DEFAULT/SAME_ORIGIN/STRIP; origin = scheme+host+port w/ default ports; fragment-only navs untouched) + referrerMode pref + 3-way picker in Privacy→Security; shouldOverrideUrlLoading vetoes main-frame GETs and re-issues via loadUrl (programmatic loads carry no auto-Referer; POSTs left alone), applied after external-app resolution; stale Referer purged from base headers — ReferrerPolicyTest 10/10 (335 total 0 fail), assembleScMainDebug + engine-audit PASS |
 | SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | done | 0 | new `security` job: engine-audit + check-manifest-security.py (export/permission allowlists, implicit-export + debuggable lint) + gitleaks 8.30.1 full-history + osv-scanner-action v2.7.0; dependabot.yml covers gradle/cargo/actions; rust/osv-scanner.toml accepts unmaintained basic-toml (build-time askama dep, expires 2027-10) — all gates run locally exit 0, ManifestSecurityTest 4/4 |
 | SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | done | 0 | rusqlite→bundled-sqlcipher-vendored-openssl; ArktosStore.open(path,key) + sqlcipher_export plaintext migration; DatabaseKeyProvider (Keystore AES/GCM-wrapped random 32B — argon2id-of-credential infeasible: credential is hash-only, store opens pre-unlock); unreadable DB quarantined; database domain re-included in backup rules — cargo 146/146, 350 unit tests 0 fail (EncryptedStoreTest 5/5, DatabaseKeyProviderTest 6/6), assembleScMainDebug + engine-audit PASS |
-| SEC16 | Reproducible/verified build investigation — details below | pending | 0 | — |
+| SEC16 | Reproducible/verified build investigation — details below | done | 0 | wrapper sha256 + rust-toolchain.toml (1.99.0) + ndkVersion/buildToolsVersion pins + gradle verification-metadata.xml + cargo --locked + RUSTFLAGS remap-path-prefix (142 dep paths normalized in release .so); REPRODUCIBLE.md recipe + residual-gap doc — ReproducibleBuildTest 7/7, 357 unit tests 0 fail, assembleScMainDebug/Release + engine-audit PASS |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | pending | 0 | — |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | pending | 0 | — |
 | ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | pending | 0 | — |
@@ -717,6 +717,34 @@ Reproducible/verified builds: pin toolchain versions, lockfile
 verification (Cargo.lock + Gradle verification-metadata), strip
 nondeterminism (build timestamps), document the recipe — groundwork
 for F-Droid inclusion.
+
+Landed (this run): toolchain pinning — `distributionSha256Sum` added to
+gradle-wrapper.properties (official 9.6.0-bin hash from
+gradle.org/release-checksums); `rust/rust-toolchain.toml` pins
+channel 1.99.0 + the three Android targets (rustup auto-installs); new
+`android.ndkVersion '28.2.13676358'` (CI installs exactly that pin now)
+and `buildToolsVersion 37.0.0` wired from the root ext — the ext value
+existed at 31.0.0 but was never consumed. `rustNdkHome` prefers
+`ndk/<ndkVersion>` over "newest installed". `dtolnay/rust-toolchain`
+moved to `@master` so CI honors the toolchain file.
+Dependency verification: `gradle/verification-metadata.xml` generated
+(`--write-verification-metadata sha256`, ~4.7k lines, enforced on every
+Gradle invocation once present); all three cargo call sites pass
+`--locked` (cargo-ndk forwards trailing args to `cargo build`).
+Nondeterminism: build scripts already carried no wall-clock input (a
+test now enforces that); the Gradle cargo tasks export
+`RUSTFLAGS=--remap-path-prefix=$CARGO_HOME/{registry,git}=/cargo/…` —
+verified: dependency paths show as `/cargo/registry/…` in libarktos.so.
+Residual (documented in REPRODUCIBLE.md): vendored OpenSSL bakes
+install-prefix literals (ENGINESDIR/MODULESDIR) and build scripts
+capture absolute OUT_DIR, so bit-identity still needs identical
+checkout path + CARGO_TARGET_DIR — F-Droid's fixed build root covers
+it; openssl-src patching tracked as open gap.
+Docs: new REPRODUCIBLE.md (pin table, verification, determinism
+measures, unsigned-release recipe, signing model, residuals) linked
+from README Installation.
+Verify: ReproducibleBuildTest 7/7; 357 unit tests 0 fail;
+assembleScMainDebug + engine-audit PASS; assembleScMainRelease ok.
 
 ### ENG02
 Consume the `engine/BrowserEngine.kt` seam for real: make the WebView

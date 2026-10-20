@@ -33,6 +33,10 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   `x86_64-linux-android`), `cargo-ndk`, and an Android NDK under the
   configured SDK (`ndk/` side-by-side or `ndk-bundle`).
 
+- Toolchain versions, dependency-verification setup and the unsigned
+  release recipe for reproducible/F-Droid-style builds are documented
+  in [REPRODUCIBLE.md](REPRODUCIBLE.md).
+
 Signed APKs are published on the [Releases
 page](https://github.com/IT-Space-2026/Arktos-Mobile/releases). The
 repo carries fastlane store metadata

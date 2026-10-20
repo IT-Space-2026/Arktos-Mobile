@@ -12,6 +12,10 @@ android {
             minorApiLevel = 2
         }
     }
+    // Pinned so every build host uses identical aapt2/d8/clang binaries
+    // (SEC16 — reproducible builds). Bump deliberately.
+    buildToolsVersion project.buildToolsVersion
+    ndkVersion '28.2.13676358'
 
     lintOptions {
         checkReleaseBuilds false
@@ -229,12 +233,18 @@ def uniffiGenDir = "${buildDir}/generated/source/uniffi"
 def rustJniLibsDebug = "${buildDir}/rustJniLibs/debug"
 def rustJniLibsRelease = "${buildDir}/rustJniLibs/release"
 
-// cargo-ndk needs ANDROID_NDK_HOME (or ANDROID_NDK); resolve the newest
-// side-by-side NDK under the configured SDK, falling back to ndk-bundle.
+// cargo-ndk needs ANDROID_NDK_HOME (or ANDROID_NDK); resolve the
+// side-by-side NDK under the configured SDK matching the pinned
+// android.ndkVersion, falling back to newest installed / ndk-bundle.
 def rustNdkHome = {
     def sdkDir = androidComponents.sdkComponents.sdkDirectory.get().asFile
     def sideBySide = new File(sdkDir, 'ndk')
     if (sideBySide.directory) {
+        // Prefer the pinned ndkVersion so every build host compiles
+        // libarktos.so with the same clang (SEC16); fall back to the
+        // newest installed for dev machines missing the pin.
+        def pinned = new File(sideBySide, android.ndkVersion)
+        if (pinned.directory) return pinned.absolutePath
         def newest = sideBySide.listFiles()?.findAll { it.directory }?.sort()?.last()
         if (newest != null) return newest.absolutePath
     }
@@ -242,11 +252,23 @@ def rustNdkHome = {
     return bundle.directory ? bundle.absolutePath : null
 }
 
+// Deterministic libarktos.so across build hosts (SEC16): rustc embeds
+// absolute source paths of registry/git dependencies in panic
+// locations and debug info — remap them to fixed prefixes so the
+// same source produces identical bytes on any machine. Workspace
+// sources already reach rustc as workspace-relative paths.
+def cargoRegistryRoot = System.getenv('CARGO_HOME') ?: "${System.getProperty('user.home')}/.cargo"
+def rustRustflags = "--remap-path-prefix=${cargoRegistryRoot}/registry=/cargo/registry" +
+        " --remap-path-prefix=${cargoRegistryRoot}/git=/cargo/git"
+
 tasks.register('buildRustHostLib', Exec) {
     group = 'build'
     description = 'Builds libarktos for the host — input for uniffi-bindgen metadata.'
     workingDir rustDir
-    commandLine 'cargo', 'build', '-p', 'arktos-core'
+    environment 'RUSTFLAGS', rustRustflags
+    // --locked fails the build if Cargo.lock drifts instead of
+    // silently resolving new versions (SEC16).
+    commandLine 'cargo', 'build', '--locked', '-p', 'arktos-core'
     inputs.files "${rustDir}/Cargo.toml", "${rustDir}/Cargo.lock"
     inputs.dir "${rustDir}/arktos-core"
     outputs.file rustHostLib
@@ -257,8 +279,9 @@ tasks.register('generateUniffiBindings', Exec) {
     description = 'Generates Kotlin bindings for libarktos.so via uniffi-bindgen.'
     dependsOn 'buildRustHostLib'
     workingDir rustDir
+    environment 'RUSTFLAGS', rustRustflags
     // --no-format: ktlint is not a build prerequisite.
-    commandLine 'cargo', 'run', '--quiet', '-p', 'arktos-core',
+    commandLine 'cargo', 'run', '--quiet', '--locked', '-p', 'arktos-core',
             '--features', 'cli', '--bin', 'uniffi-bindgen', '--',
             'generate', '--library', rustHostLib,
             '--language', 'kotlin', '--no-format',
@@ -279,12 +302,15 @@ tasks.register('generateUniffiBindings', Exec) {
         if (ndk != null) {
             environment 'ANDROID_NDK_HOME', ndk
         }
+        environment 'RUSTFLAGS', rustRustflags
         workingDir rustDir
 
+        // Trailing args pass through to `cargo build` — --locked pins
+        // dependency resolution to the committed Cargo.lock (SEC16).
         def args = ['cargo', 'ndk',
                     '-t', 'arm64-v8a', '-t', 'armeabi-v7a', '-t', 'x86_64',
                     '--platform', project.minSdkVersion.toString(),
-                    '-o', outDir, 'build']
+                    '-o', outDir, 'build', '--locked']
         if (type == 'Release') {
             args += '--release'
         }

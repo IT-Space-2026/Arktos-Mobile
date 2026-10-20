@@ -19,19 +19,20 @@ jobs:
         distribution: temurin
         java-version: 21
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      # No toolchain input: rust/rust-toolchain.toml pins the channel
+      # and the Android targets (SEC16).
+      uses: dtolnay/rust-toolchain@master
     - name: Install cargo-ndk
       run: cargo install cargo-ndk --version 4.1.2 --locked
     - name: Install Android NDK
       run: |
-        # The build resolves the newest side-by-side NDK under the SDK —
-        # runners ship one already, so only install when none exists.
+        # The build pins android.ndkVersion — this exact side-by-side
+        # NDK must exist regardless of what the runner image ships.
         # sdkmanager is not on PATH on ubuntu-26.04; it lives under
         # $ANDROID_HOME/cmdline-tools/latest/bin.
-        if [ -d "$ANDROID_HOME/ndk" ] && ls "$ANDROID_HOME/ndk" | grep -q .; then
-          echo "Using preinstalled NDK: $(ls "$ANDROID_HOME/ndk" | sort | tail -1)"
+        NDK_VERSION="28.2.13676358"
+        if [ -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+          echo "Using preinstalled NDK $NDK_VERSION"
           exit 0
         fi
         SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -42,7 +43,7 @@ jobs:
           echo "sdkmanager not found under $ANDROID_HOME or PATH" >&2
           exit 1
         fi
-        "$SDKMANAGER" --install "ndk;28.2.13676358"
+        "$SDKMANAGER" --install "ndk;$NDK_VERSION"
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build scMain debug APK
