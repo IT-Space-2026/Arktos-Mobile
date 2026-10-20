@@ -4,10 +4,13 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
-import android.webkit.URLUtil
+import com.arktosbrowser.mobile.utils.isFileUrl
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.DiskScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.PageRequest
+import com.arktosbrowser.mobile.engine.ProfileOptions
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.SearchEngineProvider
@@ -83,7 +86,7 @@ class TabsManager @Inject constructor(
         isInitialized = true
         for (tab in tabList) {
             if(!tab.isForegroundTab && !userPreferences.allTabs){
-                tab.stopLoading()
+                tab.stop()
             }
         }
 
@@ -130,7 +133,7 @@ class TabsManager @Inject constructor(
         restorePreviousTabs()
             .concatWith(Maybe.fromCallable<TabInitializer> {
                 return@fromCallable initialUrl?.let {
-                    if (URLUtil.isFileUrl(it)) {
+                    if (it.isFileUrl()) {
                         PermissionInitializer(it, activity, homePageInitializer)
                     } else {
                         UrlInitializer(it)
@@ -258,17 +261,7 @@ class TabsManager @Inject constructor(
         isIncognito: Boolean
     ): ArktosCookieView {
         logger.log(TAG, "New tab")
-        val tab = ArktosCookieView(
-            activity,
-            tabInitializer,
-            isIncognito,
-            homePageInitializer,
-            incognitoPageInitializer,
-            bookmarkPageInitializer,
-            downloadPageInitializer,
-            historyPageInitializer,
-            logger
-        )
+        val tab = newPage(activity, tabInitializer, isIncognito)
         tabList.add(tab)
         tabNumberListeners.forEach { it(size()) }
         return tab
@@ -289,20 +282,29 @@ class TabsManager @Inject constructor(
             index: Int
     ): ArktosCookieView {
         logger.log(TAG, "New tab")
-        val tab = ArktosCookieView(
-                activity,
-                tabInitializer,
-                isIncognito,
-                homePageInitializer,
-                incognitoPageInitializer,
-                bookmarkPageInitializer,
-                downloadPageInitializer,
-                historyPageInitializer,
-                logger
-        )
+        val tab = newPage(activity, tabInitializer, isIncognito)
         tabList.add(index, tab)
         tabNumberListeners.forEach { it(size()) }
         return tab
+    }
+
+    /**
+     * Creates a tab through the engine [Backend.createPage] seam (ENG02) and
+     * downcasts to the WebView adapter's concrete [ArktosCookieView] — the
+     * manager still needs the UI-facing surface (favicon, lifecycle, timers)
+     * that lives on the adapter type rather than the neutral `Page`.
+     */
+    private fun newPage(
+        activity: Activity,
+        tabInitializer: TabInitializer,
+        isIncognito: Boolean
+    ): ArktosCookieView {
+        val profile = Engines.backend.createProfile(
+            ProfileOptions(storageName = null, offTheRecord = isIncognito)
+        )
+        return Engines.backend.createPage(
+            PageRequest(activity = activity, profile = profile, initializer = tabInitializer)
+        ) as ArktosCookieView
     }
 
     /**
@@ -431,7 +433,7 @@ class TabsManager @Inject constructor(
      * @return the tab with an identical hash, or null.
      */
     fun getTabForHashCode(hashCode: Int): ArktosCookieView? =
-        tabList.firstOrNull { lightningView -> lightningView.webView?.let { it.hashCode() == hashCode } == true }
+        tabList.firstOrNull { lightningView -> lightningView.hashCode() == hashCode }
 
     /**
      * Switch the current tab to the one at the given position. It returns the selected tab that has

@@ -34,6 +34,7 @@ import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.engine.LoadStatus
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.html.ChangelogPage
@@ -52,7 +53,7 @@ import com.arktosbrowser.mobile.translate.TranslateBridge
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.utils.ERROR_PAGE_ORIGIN
 import com.arktosbrowser.mobile.utils.IntentUtils
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import com.arktosbrowser.mobile.rust.ArktosCore.buildErrorPage
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
@@ -416,6 +417,7 @@ class ArktosCookieWebClient(
 
 
     override fun onPageFinished(view: WebView, url: String) {
+        arktosCookieView.onLoadStatusChanged?.invoke(LoadStatus.Succeeded)
         if(url.contains(BuildConfig.APPLICATION_ID + "/files/homepage.html")  || url.contains(BuildConfig.APPLICATION_ID + "/files/private.html")) {
             val preferenceArray = arrayListOf(userPreferences.link1, userPreferences.link2, userPreferences.link3, userPreferences.link4)
             for(i in 1..4){
@@ -622,6 +624,9 @@ class ArktosCookieWebClient(
             httpsInterstitialUrl = null
         }
 
+        arktosCookieView.onLoadStatusChanged?.invoke(LoadStatus.Started)
+        arktosCookieView.onUrlChanged?.invoke(url)
+
         // Forced SafeSearch backstop (upstream #327): any navigation that
         // reached a search engine without the strict parameter — redirects
         // or script navigations that bypassed shouldOverrideUrlLoading —
@@ -794,6 +799,7 @@ class ArktosCookieWebClient(
     override fun onReceivedError(webview: WebView, errorCode: Int, error: String, failingUrl: String) {
         if(errorCode != -1) {
             errored = true
+            arktosCookieView.onLoadStatusChanged?.invoke(LoadStatus.Failed)
             Thread.sleep(500)
             webview.settings.javaScriptEnabled = true
             if (userPreferences.resolvedTheme(activity) == AppTheme.LIGHT ||
@@ -1011,7 +1017,7 @@ class ArktosCookieWebClient(
             return continueLoadingUrl(view, url, headers, referrerEligible)
         }
 
-        return if (isMailOrIntent(url, view) || intentUtils.startActivityForUrl(view, url)) {
+        return if (isMailOrIntent(url, view) || intentUtils.startActivityForUrl(arktosCookieView, url)) {
             // If it was a mailto: link, or an intent, or could be launched elsewhere, do that
             true
         } else {
@@ -1073,7 +1079,7 @@ class ArktosCookieWebClient(
             // handlers: the pinned app first, then any other installed app
             // that handles the link, then browser_fallback_url, then the
             // store (upstream #316).
-            return intentUtils.startActivityForUrl(view, url)
+            return intentUtils.startActivityForUrl(arktosCookieView, url)
         }
         else if (url.startsWith("gh4b://") || url.contains("://oauth")) {
             val intent = try {

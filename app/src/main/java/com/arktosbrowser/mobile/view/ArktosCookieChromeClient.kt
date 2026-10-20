@@ -50,6 +50,7 @@ class ArktosCookieChromeClient(
     }
 
     override fun onProgressChanged(view: WebView, newProgress: Int) {
+        arktosCookieView.onProgressChanged?.invoke(newProgress)
         if (arktosCookieView.isShown) {
             uiController.updateProgress(newProgress)
         }
@@ -57,6 +58,7 @@ class ArktosCookieChromeClient(
 
     override fun onReceivedIcon(view: WebView, icon: Bitmap) {
         arktosCookieView.titleInfo.setFavicon(icon)
+        arktosCookieView.onFaviconChanged?.invoke()
         uiController.tabChanged(arktosCookieView)
         cacheFavicon(view.url, icon)
     }
@@ -83,6 +85,7 @@ class ArktosCookieChromeClient(
         } else {
             arktosCookieView.titleInfo.setTitle(activity.getString(R.string.untitled))
         }
+        arktosCookieView.onTitleChanged?.invoke(arktosCookieView.title)
         uiController.tabChanged(arktosCookieView)
         if (view != null && view.url != null) {
             uiController.updateHistory(title, view.url.orEmpty())
@@ -181,19 +184,20 @@ class ArktosCookieChromeClient(
     override fun onCloseWindow(window: WebView) = uiController.onCloseWindow(arktosCookieView)
 
     @Suppress("unused", "UNUSED_PARAMETER")
-    fun openFileChooser(uploadMsg: ValueCallback<Uri>) = uiController.openFileChooser(uploadMsg)
+    fun openFileChooser(uploadMsg: ValueCallback<Uri>) =
+        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
 
     @Suppress("unused", "UNUSED_PARAMETER")
     fun openFileChooser(uploadMsg: ValueCallback<Uri>, acceptType: String) =
-        uiController.openFileChooser(uploadMsg)
+        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
 
     @Suppress("unused", "UNUSED_PARAMETER")
     fun openFileChooser(uploadMsg: ValueCallback<Uri>, acceptType: String, capture: String) =
-        uiController.openFileChooser(uploadMsg)
+        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
 
     override fun onShowFileChooser(webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
                                    fileChooserParams: FileChooserParams): Boolean {
-        uiController.showFileChooser(filePathCallback)
+        uiController.showFileChooser { filePathCallback.onReceiveValue(it) }
         return true
     }
 
@@ -236,11 +240,11 @@ class ArktosCookieChromeClient(
     override fun onHideCustomView() = uiController.onHideCustomView()
 
     override fun onShowCustomView(view: View, callback: CustomViewCallback) =
-        uiController.onShowCustomView(view, callback)
+        uiController.onShowCustomView(view, { callback.onCustomViewHidden() })
 
     override fun onShowCustomView(view: View, requestedOrientation: Int,
                                   callback: CustomViewCallback) =
-        uiController.onShowCustomView(view, callback, requestedOrientation)
+        uiController.onShowCustomView(view, { callback.onCustomViewHidden() }, requestedOrientation)
 
     companion object {
         private const val TAG = "ArktosCookieChromeClient"

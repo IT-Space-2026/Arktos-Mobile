@@ -1,7 +1,9 @@
 /*
  * Copyright 2014 A.C.R. Development
  */
-package com.arktosbrowser.mobile.download
+package com.arktosbrowser.mobile.view
+
+import com.arktosbrowser.mobile.download.DownloadHandler
 
 import android.Manifest
 import android.app.Activity

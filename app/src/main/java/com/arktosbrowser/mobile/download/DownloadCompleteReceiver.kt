@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
-import android.webkit.CookieManager
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.log.Logger
 import java.io.File
@@ -105,7 +105,7 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, meta.fileName)
             meta.mimeType?.let { request.setMimeType(it) }
             meta.userAgent?.let { request.addRequestHeader("User-Agent", it) }
-            CookieManager.getInstance().getCookie(meta.url)
+            Engines.defaultProfile.getCookie(meta.url)
                 ?.let { request.addRequestHeader("Cookie", it) }
 
             val newId = downloadManager.enqueue(request)

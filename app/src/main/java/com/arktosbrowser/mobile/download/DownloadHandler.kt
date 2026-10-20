@@ -9,7 +9,7 @@ import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
-import android.webkit.CookieManager
+import com.arktosbrowser.mobile.engine.Engines
 import android.widget.Toast
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
@@ -23,7 +23,7 @@ import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Scheduler
@@ -87,7 +87,7 @@ class DownloadHandler @Inject constructor(
             // Handed off to an external downloader app via ACTION_VIEW.
             return
         } else {
-            val cookies = runCatching { CookieManager.getInstance().getCookie(url) }.getOrNull()
+            val cookies = runCatching { Engines.defaultProfile.getCookie(url) }.getOrNull()
 
             // Probe the real response headers first: the WebView-supplied mime
             // type is often application/octet-stream and the URL may still be

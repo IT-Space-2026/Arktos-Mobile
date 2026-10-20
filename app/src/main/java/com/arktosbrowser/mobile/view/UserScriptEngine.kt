@@ -17,7 +17,7 @@ import com.arktosbrowser.mobile.di.NetworkScheduler
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.uniffi.ArktosStore
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import java.util.concurrent.ConcurrentHashMap

@@ -1,11 +1,9 @@
 package com.arktosbrowser.mobile.translate
 
-import android.webkit.WebView
-import androidx.webkit.JavaScriptReplyProxy
-import androidx.webkit.WebViewCompat
-import androidx.webkit.WebViewFeature
+import android.content.Context
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
+import com.arktosbrowser.mobile.engine.Page
 import com.arktosbrowser.mobile.js.TranslatePage
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -23,19 +21,24 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In-page translation. [register] installs a `WebMessageListener`
- * exposed to pages as `window.ArktosTranslate` — a postMessage-only
- * object (same pattern as the userscript `arktosGM` bridge), so no
- * host interface is reachable from page JavaScript. [translatePage]
- * injects TranslatePage.js, which batches text nodes through the
- * listener as `{"id":…,"texts":[…],"target":"…"}` messages and applies
- * the `{"id":…,"translated":[…]}` replies in order.
+ * In-page translation. The engine adapter installs a
+ * `WebMessageListener` exposed to pages as `window.ArktosTranslate`
+ * — a postMessage-only object (same pattern as the userscript
+ * `arktosGM` bridge), so no host interface is reachable from page
+ * JavaScript. [translatePage] injects TranslatePage.js, which
+ * batches text nodes through the listener as
+ * `{"id":…,"texts":[…],"target":"…"}` messages and applies the
+ * `{"id":…,"translated":[…]}` replies in order.
  *
  * The wire format (LibreTranslate `{"q":…,"translatedText":…}`) is
  * built and parsed in Rust via [ArktosCore]; this class only owns the
  * HTTP call. Message callbacks arrive on the UI thread, so the
  * blocking request runs on [networkScheduler] and the reply is posted
  * back on [mainScheduler].
+ *
+ * This class is engine-neutral: the `WebViewCompat` listener install
+ * lives in the WebView adapter (`view/TranslateBridgeWebView.kt`),
+ * which forwards each message to [dispatch].
  */
 @Singleton
 class TranslateBridge @Inject constructor(
@@ -51,39 +54,33 @@ class TranslateBridge @Inject constructor(
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    /**
-     * Installs the `ArktosTranslate` postMessage object on [webView].
-     * Must run before the first navigation: the object is injected
-     * into matching frames when a page loads, so registering after a
-     * page is already loaded would only take effect on the next load.
-     */
-    fun register(webView: WebView) {
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
-            WebViewCompat.addWebMessageListener(webView, JS_OBJECT_NAME, setOf("*"), listener)
-        } else {
-            logger.log(TAG, "WEB_MESSAGE_LISTENER unsupported — in-page translation disabled")
-        }
-    }
-
-    /** Runs the translation walker on [webView]. */
-    fun translatePage(webView: WebView, targetLanguage: String) {
+    /** Runs the translation walker on [page]. */
+    fun translatePage(page: Page, context: Context, targetLanguage: String) {
         val target = targetLanguage.takeIf { it.matches(Companion.LANG_TAG) }
             ?: FALLBACK_LANGUAGE
-        webView.evaluateJavascript(
-            translatePageJs.provideJs(webView.context)
-                .replace(TARGET_TOKEN, JSONObject.quote(target)),
-            null
-        )
+        page.runJavaScript(
+            translatePageJs.provideJs(context)
+                .replace(TARGET_TOKEN, JSONObject.quote(target))
+        ) {}
     }
 
-    private val listener = WebViewCompat.WebMessageListener { _, message, _, _, replyProxy ->
-        val data = message.data ?: return@WebMessageListener
+    /**
+     * Entry point for the engine-side message listener: resolves
+     * [data] to a reply payload off the UI thread, then delivers it
+     * to [reply] on the main scheduler.
+     */
+    internal fun dispatchMessage(data: String, reply: (String) -> Unit) {
         networkScheduler.scheduleDirect {
             val payload = handleMessage(data)
             mainScheduler.scheduleDirect {
-                runCatching { replyProxy.postMessage(payload) }
+                reply(payload)
             }
         }
+    }
+
+    /** Logged by the adapter when `WEB_MESSAGE_LISTENER` is unavailable. */
+    internal fun logMessageListenerUnsupported() {
+        logger.log(TAG, "WEB_MESSAGE_LISTENER unsupported — in-page translation disabled")
     }
 
     /**

@@ -5,51 +5,67 @@ for a possible selectable-engine effort: the Android UI shell stays;
 the web engine underneath could become selectable per tab —
 **Android WebView today, Servo as a future candidate.**
 
-**No refactor has been done.** `app/src/main/java/com/arktosbrowser/mobile/engine/BrowserEngine.kt`
-is the compiled-but-unused interface sketch — the Kotlin counterpart
-of desktop's `src/engine/engineinterface.h`. Nothing references the
-`engine` package yet; the sketch exists only to pin the boundary.
+**The seam is live (ENG02).**
+`app/src/main/java/com/arktosbrowser/mobile/engine/BrowserEngine.kt`
+is the real boundary — `Backend` / `Profile` / `Page` plus neutral
+value types — and `engine/Engines.kt` is the process-wide registry.
+`BrowserApp` installs the WebView adapter at startup; every
+engine-neutral caller reaches engine services through `Engines.backend`
+/ `Engines.defaultProfile` / `Page` instead of `android.webkit` types.
+The adapter below is the only place the platform webview API may be
+referenced.
 
 ## Backends
 
 | # | Engine | Status |
 |---|--------|--------|
-| 0 | Android WebView | the only backend today |
+| 0 | Android WebView | the only backend; adapter in `view/` implements `Backend`/`Profile`/`Page` |
 | 1 | Servo | not started — desktop ENG03 spike verdicts carried below; Android embedding viability is a separate open question (EGL surface, NDK lifecycle, no WebView-compat API) |
 
-## Adapter boundary (where WebView types are allowed to live today)
+## Adapter boundary (where WebView types are allowed to live)
 
-Every file importing `android.webkit.*` is engine-coupled by
-definition. A future refactor splits each into a neutral core + thin
-WebView adapter:
+Everything under `app/src/main/java/com/arktosbrowser/mobile/view/` is
+the WebView adapter — the only subtree allowed to import
+`android.webkit`/`androidx.webkit`. The pieces:
 
-- `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieView.kt` — tab object, WebView lifecycle, settings apply.
-- `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock/offline/HTTPS-only seam), errors, downloads; error/interstitial pages emitted via `loadDataWithBaseURL` (upstream `SmartCookieKT.kt` folded in); SEC04 HTTPS-only warning interstitial + proceed-marker consent handled here (decision logic in engine-neutral `network/HttpsOnlyGate.kt`); SEC13 referrer control takes over main-frame GET navigations via `loadUrl` headers (decision logic in engine-neutral `network/ReferrerPolicy.kt`).
-- `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
-- `app/src/main/java/com/arktosbrowser/mobile/view/TabInitializer.kt` — per-tab init.
-- `app/src/main/java/com/arktosbrowser/mobile/view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.
-- `app/src/main/java/com/arktosbrowser/mobile/view/MixedContentPolicy.kt` — mixed-content mode decision (NEVER_ALLOW default; compatibility mode only via the privacy toggle, never in incognito).
-- `app/src/test/java/com/arktosbrowser/mobile/view/MixedContentPolicyTest.kt` — unit tests for the mixed-content mode decision.
-- `app/src/main/java/com/arktosbrowser/mobile/view/UserScriptEngine.kt` — userscript runtime: `WebViewCompat` document-start injection + `WebMessageListener` GM bridge; maps to `UserScript`/`UserContentManager` + host messaging on the engine interface.
-- `app/src/test/java/com/arktosbrowser/mobile/view/NewWindowTransportTest.kt` — unit tests for the transport check (mocked `WebViewTransport`).
-- `app/src/main/java/com/arktosbrowser/mobile/view/webrtc/WebRtcPermissionsModel.kt` — WebRTC permission model.
-- `app/src/main/java/com/arktosbrowser/mobile/browser/TabsManager.kt` — tab collection; would become the `Page` registry and engine selector.
-- `app/src/main/java/com/arktosbrowser/mobile/browser/activity/BrowserActivity.kt` — WebView/WebSettings touchpoints (UA, zoom, text size, cookies, JS toggle, geolocation), `onPause`/`onResume` engine lifecycle.
-- `app/src/main/java/com/arktosbrowser/mobile/browser/BrowserPresenter.kt`, `app/src/main/java/com/arktosbrowser/mobile/browser/activity/` siblings — tab orchestration.
-- `app/src/main/java/com/arktosbrowser/mobile/BrowserApp.kt`, `app/src/main/java/com/arktosbrowser/mobile/MainActivity.kt`, `app/src/main/java/com/arktosbrowser/mobile/IncognitoActivity.kt` — app/entry wiring.
-- `app/src/main/java/com/arktosbrowser/mobile/controller/UIController.kt` — WebView-facing UI controller interface.
-- `app/src/main/java/com/arktosbrowser/mobile/dialog/LightningDialogBuilder.kt` — JS dialog builders.
-- `app/src/main/java/com/arktosbrowser/mobile/download/DownloadHandler.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/DownloadCompleteReceiver.kt`, `app/src/main/java/com/arktosbrowser/mobile/download/LightningDownloadListener.kt` — DownloadListener seam + completion verification (CookieManager for retry headers). The rest of `download/` (DownloadHttpProbe, DownloadNaming, DownloadIntegrity, DownloadMetaStore, ContentDispositionFileNameParser, WebAddress, DownloadUtil, DownloadActivity) is engine-neutral — no `android.webkit`.
-- `app/src/main/java/com/arktosbrowser/mobile/extensions/PermissionRequestExtensions.kt` — WebRTC/geolocation permission mapping.
-- `app/src/main/java/com/arktosbrowser/mobile/html/homepage/HomePageFactory.kt`, `app/src/main/java/com/arktosbrowser/mobile/html/incognito/IncognitoPageFactory.kt` — `WebView` content factories.
-- `app/src/main/java/com/arktosbrowser/mobile/popup/PopUpClass.kt` — popup/menu WebView handling.
-- `app/src/main/java/com/arktosbrowser/mobile/preference/UserPreferencesExtensions.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/HomepageSettingsFragment.kt`, `app/src/main/java/com/arktosbrowser/mobile/settings/fragment/PrivacySettingsFragment.kt` — settings→WebSettings apply.
-- `app/src/main/java/com/arktosbrowser/mobile/utils/IntentUtils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/UrlUtils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/Utils.kt`, `app/src/main/java/com/arktosbrowser/mobile/utils/WebUtils.kt` — URL/WebView helpers.
-- `js/` — injected-script loaders (DarkMode/AmpBlock/CookieBlock/TextReflow) — map to `UserScript`.
-- `app/src/main/java/com/arktosbrowser/mobile/translate/TranslateBridge.kt` — `WebViewCompat.addWebMessageListener` postMessage bridge for in-page translation (`window.ArktosTranslate` is a postMessage-only object; registered at tab creation like the `arktosGM` bridge); maps to a `UserScript` + host-messaging pair on the engine interface.
+- `view/WebViewEngine.kt` — `Backend`: process-wide setup
+  (`setDataDirectorySuffix` for the `:incognito` process,
+  `setWebContentsDebuggingEnabled` in debug), `systemUserAgent`,
+  `defaultProfile`/`createProfile`, `createPage`, `createView`,
+  `engineNote` (installed WebView package version).
+- `view/WebViewProfile.kt` — `Profile`: cookie/storage partition over
+  `CookieManager`, `WebStorage`, `WebViewDatabase` + throwaway WebViews
+  for cache/form/SSL clearing.
+- `view/ArktosCookieView.kt` — `Page`: the tab object; owns the real
+  `WebView`, lifecycle, settings apply, and emits the neutral `Page`
+  signals. `asWebView()` is the adapter-local escape hatch for
+  transport/initializer plumbing.
+- `view/ArktosCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock/offline/HTTPS-only seam), errors, downloads; error/interstitial pages emitted via `loadDataWithBaseURL` (upstream `SmartCookieKT.kt` folded in); SEC04 HTTPS-only warning interstitial + proceed-marker consent handled here (decision logic in engine-neutral `network/HttpsOnlyGate.kt`); SEC13 referrer control takes over main-frame GET navigations via `loadUrl` headers (decision logic in engine-neutral `network/ReferrerPolicy.kt`). Emits `Page.onLoadStatusChanged`/`onUrlChanged`.
+- `view/ArktosCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen. Emits `Page.onProgressChanged`/`onTitleChanged`/`onFaviconChanged`.
+- `view/TabInitializer.kt` — `PageInitializer` impls (homepage, incognito, bookmark, download, history, restore, transport).
+- `view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.
+- `view/MixedContentPolicy.kt` — mixed-content mode decision (NEVER_ALLOW default; compatibility mode only via the privacy toggle, never in incognito).
+- `view/UserScriptEngine.kt` — userscript runtime: `WebViewCompat` document-start injection + `WebMessageListener` GM bridge.
+- `view/TranslateBridgeWebView.kt` — the `WebViewCompat.addWebMessageListener` plumbing for `translate/TranslateBridge.kt` (whose core is engine-neutral).
+- `view/WebViewPages.kt` — adapter-local helpers bridging `Page` ↔ WebView specifics.
+- `view/ProxyUtils.kt` — `ProxyController` plumbing (moved out of `utils/`).
+- `view/LightningDownloadListener.kt` — `DownloadListener` seam (moved out of `download/`).
+- `view/PermissionRequestExtensions.kt` — WebRTC/geolocation permission mapping (moved out of `extensions/`).
+- `view/webrtc/` — WebRTC permission model + view.
+- `view/GmConnectPolicy.kt`, `view/RenderingMode.kt`, `view/SearchView.kt`, `view/ArktosCookieViewTitle.kt`, `view/BackgroundDrawable.kt`, `view/find/` — WebView-adjacent helpers that rode along with the adapter subtree.
+- `app/src/test/java/com/arktosbrowser/mobile/view/` — adapter unit tests (`MixedContentPolicyTest`, `NewWindowTransportTest`).
+
+Everything else in `app/src/main` is engine-neutral: `browser/`
+(TabsManager, BrowserPresenter, BrowserActivity), `controller/`,
+`settings/`, `download/`, `utils/`, `html/`, `translate/TranslateBridge.kt`,
+`BrowserApp`, `MainActivity`, `IncognitoActivity`, `js/` loaders — they
+talk to `Page`/`Profile`/`Backend` and the neutral `UrlUtils` helpers
+(`isFileUrl`, `isAboutUrl`, `isValidUrl`, `fileExtensionFromUrl`) — no
+`android.webkit`/`androidx.webkit` imports anywhere outside `view/`.
 
 <!-- engine-audit-whitelist
 app/src/main/java/com/arktosbrowser/mobile/view/
+app/src/test/java/com/arktosbrowser/mobile/view/
 -->
 
 ## Servo applicability notes (carried from desktop .devin/SERVO-SPIKE.md, libservo v0.7.0 survey)

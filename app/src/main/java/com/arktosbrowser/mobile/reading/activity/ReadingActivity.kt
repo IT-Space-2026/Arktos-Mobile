@@ -43,7 +43,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.disposables.Disposable

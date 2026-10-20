@@ -6,9 +6,9 @@ package com.arktosbrowser.mobile.settings.fragment
 import android.content.Intent
 import android.os.Bundle
 import androidx.core.net.toUri
-import androidx.webkit.WebViewCompat
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.html.ChangelogPage
 
 
@@ -17,12 +17,8 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        var webview = resources.getString(R.string.unknown)
-
-        context?.let {
-            WebViewCompat.getCurrentWebViewPackage(it)?.versionName?.let {
-                webview = it
-           }
+        val webview = Engines.backend.engineNote().ifEmpty {
+            resources.getString(R.string.unknown)
         }
 
 

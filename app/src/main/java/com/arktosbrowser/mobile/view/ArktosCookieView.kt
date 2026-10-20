@@ -37,7 +37,17 @@ import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
-import com.arktosbrowser.mobile.download.LightningDownloadListener
+import com.arktosbrowser.mobile.engine.CertificateErrorAction
+import com.arktosbrowser.mobile.engine.CertificateErrorInfo
+import com.arktosbrowser.mobile.engine.ContextMenuInfo
+import com.arktosbrowser.mobile.engine.DownloadRequest
+import com.arktosbrowser.mobile.engine.HistoryEntry
+import com.arktosbrowser.mobile.engine.LifecycleState
+import com.arktosbrowser.mobile.engine.LoadStatus
+import com.arktosbrowser.mobile.engine.Page
+import com.arktosbrowser.mobile.engine.PageAttributes
+import com.arktosbrowser.mobile.engine.PageInitializer
+import com.arktosbrowser.mobile.engine.UserScript
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.NetworkConnectivityModel
@@ -62,7 +72,7 @@ import javax.inject.Inject
 
 class ArktosCookieView(
         private val activity: Activity,
-        tabInitializer: TabInitializer,
+        pageInitializer: PageInitializer,
         val isIncognito: Boolean,
         private val homePageInitializer: HomePageInitializer,
         private val incognitoPageInitializer: IncognitoPageInitializer,
@@ -70,7 +80,7 @@ class ArktosCookieView(
         private val downloadPageInitializer: DownloadPageInitializer,
         private val historyPageInitializer: HistoryPageInitializer,
         private val logger: Logger
-) {
+) : Page {
 
     /**
      * The unique ID of the view.
@@ -198,7 +208,7 @@ class ArktosCookieView(
      *
      * @return the current URL or an empty string.
      */
-    val url: String
+    override val url: String
         get() = resolveTabUrl(webView?.url, arktosCookieWebClient.errorPageOriginalUrl)
 
     /**
@@ -250,7 +260,7 @@ class ArktosCookieView(
         initializePreferences()
 
 
-        tabInitializer.initialize(tab, requestHeaders)
+        pageInitializer.initialize(this, requestHeaders)
 
         networkDisposable = networkConnectivityModel.connectivity()
             .observeOn(mainScheduler)
@@ -282,8 +292,8 @@ class ArktosCookieView(
         }
     }
 
-    private fun reinitialize(tabInitializer: TabInitializer) {
-        webView?.let { tabInitializer.initialize(it, requestHeaders) }
+    private fun reinitialize(pageInitializer: PageInitializer) {
+        webView?.let { pageInitializer.initialize(this, requestHeaders) }
     }
 
     /**
@@ -471,7 +481,7 @@ class ArktosCookieView(
      * error/interstitial page, only its original URL is stored — the WebView history entry is a
      * `data:` URI that must never be persisted (upstream #281).
      */
-    fun saveState(): Bundle = Bundle(ClassLoader.getSystemClassLoader()).also {
+    override fun saveState(): Bundle = Bundle(ClassLoader.getSystemClassLoader()).also {
         if (isShowingErrorPage) {
             it.putString(TabsManager.URL_KEY, url)
         } else {
@@ -498,7 +508,7 @@ class ArktosCookieView(
     /**
      * Notify the WebView to stop the current load.
      */
-    fun stopLoading() {
+    override fun stop() {
         webView?.stopLoading()
     }
 
@@ -636,7 +646,7 @@ class ArktosCookieView(
      * this method will not have an affect as the
      * proxy must start before the load occurs.
      */
-    fun reload() {
+    override fun reload() {
         // Check if configured proxy is available
         if (!proxyUtils.isProxyReady(activity)) {
             // User has been notified
@@ -671,6 +681,142 @@ class ArktosCookieView(
             }
         }
     }
+
+    // ---- engine Page surface -------------------------------------------
+    // The rest of [Page] — members that have no pre-existing counterpart
+    // above. [load] is the raw navigation primitive the initializers and
+    // intent-fallback path use: like the WebView.loadUrl calls it
+    // replaces, it carries the caller's headers verbatim and skips the
+    // proxy/SafeSearch gate (the WebClient backstops still apply).
+
+    override fun load(url: String, headers: Map<String, String>) {
+        webView?.loadUrl(url, headers)
+    }
+
+    override fun loadData(
+        baseUrl: String?,
+        data: String,
+        mimeType: String,
+        encoding: String,
+        historyUrl: String?
+    ) {
+        webView?.loadDataWithBaseURL(baseUrl, data, mimeType, encoding, historyUrl)
+    }
+
+    override fun restoreState(state: Bundle) {
+        webView?.restoreState(state)
+    }
+
+    override fun historyItems(): List<HistoryEntry> =
+        webView?.copyBackForwardList()?.let { list ->
+            List(list.size) { index ->
+                list.getItemAtIndex(index).let {
+                    HistoryEntry(index, it.url.orEmpty(), it.title.orEmpty(), 0L)
+                }
+            }
+        }.orEmpty()
+
+    override fun goToHistoryEntry(entry: HistoryEntry) {
+        webView?.let { it.goBackOrForward(entry.index - it.copyBackForwardList().currentIndex) }
+    }
+
+    override var zoomFactor: Float
+        get() = webView?.scale ?: 1f
+        set(value) {
+            webView?.let {
+                if (it.scale > 0f) it.zoomBy(value / it.scale)
+            }
+        }
+
+    override val scrollPosition: Pair<Float, Float>
+        get() = (webView?.scrollX ?: 0).toFloat() to (webView?.scrollY ?: 0).toFloat()
+
+    override fun findText(subString: String, backwards: Boolean) {
+        webView?.findAllAsync(subString)
+        // findAllAsync selects matches asynchronously, so a backwards
+        // start is best-effort — the first findNext may land before the
+        // async results and become a no-op.
+        if (backwards) webView?.findNext(false)
+    }
+
+    override fun runJavaScript(source: String, callback: (String?) -> Unit) {
+        webView?.evaluateJavascript(source) { callback(it) }
+    }
+
+    override fun insertScript(script: UserScript) {
+        pageScripts.removeAll { it.name == script.name }
+        pageScripts += script
+    }
+
+    override fun removeScript(name: String) {
+        pageScripts.removeAll { it.name == name }
+    }
+
+    override fun scripts(): List<UserScript> = pageScripts.toList()
+
+    override fun download(url: String) {
+        LightningDownloadListener(activity).onDownloadStart(url, userAgent, "", "", 0)
+    }
+
+    override fun clearCache() {
+        webView?.clearCache(true)
+    }
+
+    override val isLoading: Boolean
+        get() = webView != null && progress < 100
+
+    // WebView exposes no recent-audio signal.
+    override val recentlyAudible: Boolean
+        get() = false
+
+    override val isOffTheRecord: Boolean
+        get() = isIncognito
+
+    override fun setPageAttribute(name: String, on: Boolean) {
+        when (name) {
+            PageAttributes.JAVASCRIPT_ENABLED ->
+                webView?.settings?.javaScriptEnabled = on
+            else -> logger.log(TAG, "Unsupported page attribute: $name")
+        }
+    }
+
+    override fun setLifecycleState(state: LifecycleState) {
+        when (state) {
+            LifecycleState.Active -> {
+                onResume()
+                resumeTimers()
+            }
+            LifecycleState.Frozen -> {
+                pauseTimers()
+                onPause()
+            }
+            LifecycleState.Discarded -> onDestroy()
+        }
+        lifecycleState = state
+    }
+
+    override var lifecycleState: LifecycleState = LifecycleState.Active
+        private set
+
+    // WebView does not expose a renderer PID.
+    override fun renderProcessId(): Long = -1L
+
+    // Signals: progress/title/url/load-status/favicon are emitted from
+    // ArktosCookieWebClient and ArktosCookieChromeClient at the existing
+    // callback points; the remainder stay unset until a backend that can
+    // serve them lands.
+    override var onLoadStatusChanged: ((LoadStatus) -> Unit)? = null
+    override var onUrlChanged: ((String) -> Unit)? = null
+    override var onTitleChanged: ((String) -> Unit)? = null
+    override var onProgressChanged: ((Int) -> Unit)? = null
+    override var onFaviconChanged: (() -> Unit)? = null
+    override var onDownloadRequested: ((DownloadRequest) -> Unit)? = null
+    override var onCertificateError: ((CertificateErrorInfo) -> CertificateErrorAction)? = null
+    override var onPermissionRequest: ((String) -> Boolean)? = null
+    override var onContextMenu: ((ContextMenuInfo) -> Unit)? = null
+    override var onCrashed: (() -> Unit)? = null
+
+    private val pageScripts = mutableListOf<UserScript>()
 
     /**
      * Notify the tab to shutdown and destroy
@@ -734,9 +880,10 @@ class ArktosCookieView(
         webView?.setNetworkAvailable(isAvailable)
     }
 
-    fun createWebPagePrint(webView: WebView) {
+    fun createWebPagePrint() {
         /*if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT)
             return;*/
+        val webView = webView ?: return
         val printManager: PrintManager = activity.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val printAdapter: PrintDocumentAdapter = webView.createPrintDocumentAdapter()
         val jobName: String = " Document"
@@ -806,7 +953,8 @@ class ArktosCookieView(
      *
      * @return true if the WebView can go back, false otherwise.
      */
-    fun canGoBack(): Boolean = webView?.canGoBack() == true
+    override val canGoBack: Boolean
+        get() = webView?.canGoBack() == true
 
     /**
      * Determine whether or not the WebView can go
@@ -814,7 +962,12 @@ class ArktosCookieView(
      *
      * @return true if it can go forward, false otherwise.
      */
-    fun canGoForward(): Boolean = webView?.canGoForward() == true
+    override val canGoForward: Boolean
+        get() = webView?.canGoForward() == true
+
+    override fun back() = goBack()
+
+    override fun forward() = goForward()
 
     /**
      * Loads the URL in the WebView. If the proxy settings

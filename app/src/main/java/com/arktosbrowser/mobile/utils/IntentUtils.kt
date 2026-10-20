@@ -5,9 +5,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
-import android.webkit.WebView
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.INTENT_ORIGIN
+import com.arktosbrowser.mobile.engine.Page
 import com.arktosbrowser.mobile.rust.ArktosCore
 import java.net.URISyntaxException
 import java.util.ArrayList
@@ -17,7 +17,7 @@ class IntentUtils(private val activity: Activity) {
     // PORT02 — the ACCEPTED_URI_SCHEMA regex lives in the Rust core
     // (`ArktosCore.acceptedUriScheme`), shared with UrlUtils.
 
-    fun startActivityForUrl(tab: WebView?, url: String): Boolean {
+    fun startActivityForUrl(tab: Page?, url: String): Boolean {
         var intent: Intent = try {
             Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
         } catch (ex: URISyntaxException) {
@@ -59,7 +59,7 @@ class IntentUtils(private val activity: Activity) {
                 }
             }
             ExternalAppLaunchPolicy.Action.LOAD_FALLBACK -> {
-                tab!!.loadUrl(fallbackUrl!!)
+                tab!!.load(fallbackUrl!!)
                 return true
             }
             ExternalAppLaunchPolicy.Action.OPEN_MARKET -> {

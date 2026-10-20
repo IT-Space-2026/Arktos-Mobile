@@ -1,25 +1,28 @@
 package com.arktosbrowser.mobile.engine
 
-// ENG-M01 — engine-neutral browser-engine interface sketch (UNUSED).
-//
-// Groundwork for a future selectable-engine effort, mirroring
+// ENG-M01/ENG-M02 — engine-neutral browser-engine interface, mirroring
 // src/engine/engineinterface.h in IT-Space-2026/arktos (desktop).
-// The WebView host stays the only backend today; a Servo backend may
-// become viable once the desktop ENG03 spike findings are validated
-// against the Android embedding surface.  Nothing in the app
-// references this package yet — it exists only to pin the boundary
-// every backend must implement.  The coupling audit lives in
-// .devin/ENGINE.md.
+//
+// This package is the boundary every backend implements. Today the
+// only backend is the Android WebView adapter in view/ (WebViewEngine
+// + WebViewProfile; ArktosCookieView is the Page). The app registers
+// it through [Engines] and talks to these types — no file outside the
+// adapter may reference the platform webview API (the audit lives in
+// .devin/ENGINE.md, enforced by .devin/check-engine-audit.sh).
 //
 // Design rules (carried over from the desktop sketch):
-//  * Only Kotlin/stdlib types cross the boundary.  An engine-specific
-//    type (WebView, WebResourceRequest, Servo handle) reaching this
-//    file is a smell — wrap it in the backend instead.
+//  * Only Kotlin/stdlib + platform-neutral types cross the boundary.
+//    An engine-specific type (WebView, WebResourceRequest, Servo
+//    handle) reaching this file is a smell — wrap it in the backend.
+//    The platform webview package in this package is a hard violation.
 //  * Callbacks, not suspend/Flow, so the semantics match engines that
 //    report asynchronously on their own threads.
-//  * Everything here is a sketch — names and granularity will move
-//    when the real refactor happens.
+//  * Granularity follows the WebView reality today; names will move
+//    again when a second backend lands.
 
+import android.app.Activity
+import android.content.Context
+import android.os.Bundle
 import android.view.View
 
 // ---- load / navigation -------------------------------------------------
@@ -115,6 +118,21 @@ data class UserScript(
     val forMainFrameOnly: Boolean
 )
 
+// ---- engine-neutral callback types --------------------------------------
+
+// Drop-in stand-in for the WebView ValueCallback type so UI plumbing
+// (file chooser, JS results) never exposes the WebView type. Same
+// shape on purpose: `onReceiveValue(value)`.
+fun interface ValueCallback<in T> {
+    fun onReceiveValue(value: T?)
+}
+
+// Stand-in for WebChromeClient.CustomViewCallback: the engine calls
+// [onCustomViewHidden] when the page leaves fullscreen on its own.
+fun interface CustomViewCallback {
+    fun onCustomViewHidden()
+}
+
 // ---- misc value types --------------------------------------------------
 
 data class FindResult(
@@ -154,6 +172,7 @@ enum class StandardAction {
 }
 
 data class HistoryEntry(
+    val index: Int,
     val url: String,
     val title: String,
     val lastVisitTime: Long
@@ -182,14 +201,43 @@ interface DownloadRequest {
     fun resume()
 }
 
+// ---- named page attributes ----------------------------------------------
+
+// Well-known names for [Page.setPageAttribute]. Backends honour what
+// they can and ignore the rest — the stringly-typed surface exists
+// because engine settings do not line up 1:1.
+object PageAttributes {
+    const val JAVASCRIPT_ENABLED = "javascript.enabled"
+}
+
 // ---- page ---------------------------------------------------------------
 
-// One tab's worth of engine surface.  Today ArktosCookieView is this
-// object informally; an engine refactor would make it implement this
-// interface and add a Servo-backed sibling.
+// Post-construction hook run on a freshly created [Page], e.g. loading
+// the homepage or restoring serialized state. The WebView backend runs
+// it once the underlying view is fully initialized; [headers] are the
+// request headers the load should carry.
+fun interface PageInitializer {
+    fun initialize(page: Page, headers: Map<String, String>)
+}
+
+data class PageRequest(
+    val activity: Activity,
+    val profile: Profile,
+    val initializer: PageInitializer
+)
+
+// One tab's worth of engine surface. ArktosCookieView implements this
+// for the WebView backend.
 interface Page {
 
-    fun load(url: String)
+    fun load(url: String, headers: Map<String, String> = emptyMap())
+    fun loadData(
+        baseUrl: String?,
+        data: String,
+        mimeType: String,
+        encoding: String,
+        historyUrl: String? = null
+    )
     fun stop()
     fun reload()
     val url: String
@@ -201,6 +249,11 @@ interface Page {
 
     fun historyItems(): List<HistoryEntry>
     fun goToHistoryEntry(entry: HistoryEntry)
+
+    // Serialized page state for tab persistence. Engines without a
+    // WebView-style state blob may return an empty bundle.
+    fun saveState(): Bundle
+    fun restoreState(state: Bundle)
 
     var zoomFactor: Float
     val scrollPosition: Pair<Float, Float>
@@ -214,13 +267,16 @@ interface Page {
 
     fun download(url: String)
 
+    // Clear the engine's shared page cache for this page.
+    fun clearCache()
+
     val isLoading: Boolean
     val recentlyAudible: Boolean
     val isOffTheRecord: Boolean
 
     // Named, stringly-typed on purpose: engine settings surfaces do
     // not line up 1:1 (Servo has no per-page JS toggle, e.g.), so the
-    // backend decides what it honours.
+    // backend decides what it honours. See [PageAttributes].
     fun setPageAttribute(name: String, on: Boolean)
 
     fun setLifecycleState(state: LifecycleState)
@@ -231,6 +287,9 @@ interface Page {
 
     // ---- signals -------------------------------------------------------
     // The Kotlin shell wires these like the desktop wires Qt signals.
+    // Signals without a backing WebView hook stay unset on the WebView
+    // backend (cert errors and permission prompts still run through the
+    // existing dialog machinery).
 
     var onLoadStatusChanged: ((LoadStatus) -> Unit)?
     var onUrlChanged: ((String) -> Unit)?
@@ -252,7 +311,11 @@ enum class StorageArea(val flag: Int) {
     LocalStorage(4),
     IndexedDb(8),
     SessionOnly(16),
-    All(0x1F)
+    FormData(32),
+    HttpAuth(64),
+    SslDecisions(128),
+    AppPrivateData(256),
+    All(0x1FF)
 }
 
 data class ProfileOptions(
@@ -262,6 +325,10 @@ data class ProfileOptions(
 
 // What a profile is: a cookie/storage partition + request policy +
 // user agent + script collection.  Incognito tabs = OTR profile.
+//
+// The cookie surface lives here because the profile IS the cookie
+// partition — get/set accept-cookie and per-URL cookie access route
+// through it so callers never touch the engine's cookie manager.
 interface Profile {
     val isOffTheRecord: Boolean
     val storageName: String
@@ -275,6 +342,17 @@ interface Profile {
     fun scripts(): List<UserScript>
 
     fun clear(areas: Set<StorageArea>)
+
+    // Wipe one origin's site data (cookies for the origin + DOM
+    // storage), e.g. the site panel's "clear site data".
+    fun clearSiteData(url: String)
+
+    // Cookie surface -------------------------------------------------------
+
+    var acceptsCookies: Boolean
+    fun getCookie(url: String): String?
+    fun setCookie(url: String, value: String)
+    fun flushCookies()
 
     fun setProfileAttribute(name: String, value: Any?)
 }
@@ -293,14 +371,25 @@ data class Capabilities(
 )
 
 interface Backend {
-    val id: String              // "webview" | "servo" | ...
+    val id: String              // "webview" | "servo" | "gecko" | ...
     val displayName: String     // "Android WebView"
     val capabilities: Capabilities
 
-    fun initialize(): Boolean
+    // Process-wide one-time setup (data-directory suffix, debug
+    // switches). Must run before the first page is created.
+    fun initialize(context: Context): Boolean
+
+    // The UA string the engine would emit with no override — used to
+    // resolve the "default UA" preference outside the adapter.
+    fun systemUserAgent(context: Context): String
+
+    // Process-wide default storage partition. On WebView this is the
+    // shared CookieManager/WebStorage partition; incognito runs in its
+    // own process, so the same object is the incognito partition there.
+    val defaultProfile: Profile
 
     fun createProfile(options: ProfileOptions): Profile
-    fun createPage(profile: Profile): Page
+    fun createPage(request: PageRequest): Page
 
     // Android counterpart of the desktop's createView: hands the
     // platform widget to the UI shell.

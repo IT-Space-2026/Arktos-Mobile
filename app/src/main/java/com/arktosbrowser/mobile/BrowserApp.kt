@@ -6,7 +6,6 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
-import android.webkit.WebView
 import androidx.appcompat.app.AppCompatDelegate
 import com.arktosbrowser.mobile.browser.AppLockState
 import com.arktosbrowser.mobile.browser.SecureWindowPolicy
@@ -18,12 +17,14 @@ import com.arktosbrowser.mobile.di.AppComponent
 import com.arktosbrowser.mobile.di.DaggerAppComponent
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.DeveloperPreferences
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.FileUtils
 import com.arktosbrowser.mobile.utils.MemoryLeakUtils
 import com.arktosbrowser.mobile.utils.installMultiDex
+import com.arktosbrowser.mobile.view.WebViewEngine
 import android.os.StrictMode
 import com.google.android.material.color.DynamicColors
 import io.reactivex.rxjava3.core.Scheduler
@@ -41,6 +42,7 @@ class BrowserApp : Application() {
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
     @Inject internal lateinit var logger: Logger
     @Inject internal lateinit var buildInfo: BuildInfo
+    @Inject internal lateinit var webViewEngine: WebViewEngine
 
     lateinit var applicationComponent: AppComponent
 
@@ -63,12 +65,6 @@ class BrowserApp : Application() {
                     .detectAll()
                     .penaltyLog()
                     .build())
-        }
-
-        if (Build.VERSION.SDK_INT >= 28) {
-            if (getProcessName() == "$packageName:incognito") {
-                WebView.setDataDirectorySuffix("incognito")
-            }
         }
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -98,6 +94,13 @@ class BrowserApp : Application() {
                 .build()
         injector.inject(this)
 
+        // ENG02 — the WebView backend registers itself through the
+        // engine registry; initialize() carries the process-wide
+        // WebView setup (incognito data-directory suffix, dev-tools
+        // flag) and still runs before the first page is created.
+        Engines.install(webViewEngine)
+        webViewEngine.initialize(this)
+
         Single.fromCallable(bookmarkModel::count)
                 .filter { it == 0L }
                 .flatMapCompletable {
@@ -106,9 +109,6 @@ class BrowserApp : Application() {
                 }
                 .subscribeOn(databaseScheduler)
                 .subscribe()
-        if (buildInfo.buildType == BuildType.DEBUG) {
-            WebView.setWebContentsDebuggingEnabled(true)
-        }
 
         registerActivityLifecycleCallbacks(object : MemoryLeakUtils.LifecycleAdapter() {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {

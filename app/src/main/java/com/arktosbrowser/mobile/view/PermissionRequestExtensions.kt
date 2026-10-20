@@ -1,4 +1,4 @@
-package com.arktosbrowser.mobile.extensions
+package com.arktosbrowser.mobile.view
 
 import android.Manifest
 import android.annotation.TargetApi

@@ -85,7 +85,7 @@ NO SUDO — everything user-local.
 | SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | done | 0 | new `security` job: engine-audit + check-manifest-security.py (export/permission allowlists, implicit-export + debuggable lint) + gitleaks 8.30.1 full-history + osv-scanner-action v2.7.0; dependabot.yml covers gradle/cargo/actions; rust/osv-scanner.toml accepts unmaintained basic-toml (build-time askama dep, expires 2027-10) — all gates run locally exit 0, ManifestSecurityTest 4/4 |
 | SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | done | 0 | rusqlite→bundled-sqlcipher-vendored-openssl; ArktosStore.open(path,key) + sqlcipher_export plaintext migration; DatabaseKeyProvider (Keystore AES/GCM-wrapped random 32B — argon2id-of-credential infeasible: credential is hash-only, store opens pre-unlock); unreadable DB quarantined; database domain re-included in backup rules — cargo 146/146, 350 unit tests 0 fail (EncryptedStoreTest 5/5, DatabaseKeyProviderTest 6/6), assembleScMainDebug + engine-audit PASS |
 | SEC16 | Reproducible/verified build investigation — details below | done | 0 | wrapper sha256 + rust-toolchain.toml (1.99.0) + ndkVersion/buildToolsVersion pins + gradle verification-metadata.xml + cargo --locked + RUSTFLAGS remap-path-prefix (142 dep paths normalized in release .so); REPRODUCIBLE.md recipe + residual-gap doc — ReproducibleBuildTest 7/7, 357 unit tests 0 fail, assembleScMainDebug/Release + engine-audit PASS |
-| ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | pending | 0 | — |
+| ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | done | 0 | Backend/Profile/Page live; engine-audit PASS, assembleScMainDebug + unit suite green |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | pending | 0 | — |
 | ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | pending | 0 | — |
 | ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
@@ -757,6 +757,24 @@ Update `.devin/ENGINE.md`: the adapter + WebView-only helpers keep
 `android.webkit` imports; everything else drops them. Verify:
 `check-engine-audit.sh` PASS, `assembleScMainDebug`, unit suite.
 needs:tool:java
+
+Outcome: `engine/BrowserEngine.kt` is the live boundary — `Backend`,
+`Profile`, `Page` + neutral value types (`ValueCallback`,
+`CustomViewCallback`, `PageInitializer`, `PageRequest`, `StorageArea`…);
+`engine/Engines.kt` is the process registry installed by `BrowserApp`
+before first page creation. Adapter in `view/`: `WebViewEngine`
+(Backend — process init, UA, profile/page factories, engineNote),
+`WebViewProfile` (Profile — CookieManager/WebStorage/WebViewDatabase),
+`ArktosCookieView` (Page — navigation/history/JS/lifecycle/signals).
+`TabsManager.newTab` goes through `Engines.backend.createPage`;
+cookies/storage/UA/downloads/URL predicates route through
+`Profile`/`Backend`/neutral `UrlUtils` helpers. WebView-only helpers
+moved into `view/` (ProxyUtils, LightningDownloadListener,
+PermissionRequestExtensions, TranslateBridgeWebView, WebViewPages).
+Zero `android.webkit`/`androidx.webkit` refs outside `view/`.
+Tests: `EnginesTest`, `UrlUtilsEngineNeutralTest` (6 test methods).
+Verify: audit PASS (16 files, all whitelisted), assembleScMainDebug
+clean, unit suite green.
 
 ### ENG03
 Add an `engine` flavor dimension (`webview`, `gecko`) alongside the

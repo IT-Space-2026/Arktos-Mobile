@@ -3,7 +3,7 @@ package com.arktosbrowser.mobile.html
 import android.util.Base64
 import android.util.Log
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.io.ByteArrayOutputStream

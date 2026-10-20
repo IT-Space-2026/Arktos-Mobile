@@ -1,6 +1,6 @@
 package com.arktosbrowser.mobile.view.webrtc
 
-import com.arktosbrowser.mobile.extensions.requiredPermissions
+import com.arktosbrowser.mobile.view.requiredPermissions
 import android.annotation.TargetApi
 import android.os.Build
 import android.webkit.PermissionRequest

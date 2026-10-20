@@ -1,4 +1,4 @@
-package com.arktosbrowser.mobile.utils
+package com.arktosbrowser.mobile.view
 
 import android.app.Activity
 import android.util.Log

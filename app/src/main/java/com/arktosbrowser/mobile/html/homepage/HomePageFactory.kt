@@ -5,7 +5,7 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.Base64
-import android.webkit.URLUtil
+import com.arktosbrowser.mobile.utils.isValidUrl
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.browser.HomepageTypeChoice
@@ -80,7 +80,7 @@ class HomePageFactory @Inject constructor(
                         id("link4click"){ attr("href", shortcuts[3])}
 
                         shortcuts.forEachIndexed { index, element ->
-                            if(!URLUtil.isValidUrl(element)){
+                            if(!isValidUrl(element)){
                                 val icon = createIconByName('?')
                                 val encoded = bitmapToBase64(icon)
 

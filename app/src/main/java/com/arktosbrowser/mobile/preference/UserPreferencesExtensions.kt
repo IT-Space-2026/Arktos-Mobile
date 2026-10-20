@@ -2,8 +2,8 @@ package com.arktosbrowser.mobile.preference
 
 import com.arktosbrowser.mobile.constant.DESKTOP_USER_AGENT
 import com.arktosbrowser.mobile.constant.MOBILE_USER_AGENT
+import com.arktosbrowser.mobile.engine.Engines
 import android.app.Application
-import android.webkit.WebSettings
 
 /**
  * The token the system WebView appends to its default user agent to mark it as
@@ -26,7 +26,7 @@ fun stripWebViewMarker(userAgent: String): String =
 fun UserPreferences.userAgent(application: Application): String =
     stripWebViewMarker(
         when (val choice = userAgentChoice) {
-            1 -> WebSettings.getDefaultUserAgent(application)
+            1 -> Engines.backend.systemUserAgent(application)
             2 -> DESKTOP_USER_AGENT
             3 -> MOBILE_USER_AGENT
             4 -> userAgentString.takeIf(String::isNotEmpty) ?: " "

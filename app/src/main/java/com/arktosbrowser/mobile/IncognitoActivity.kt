@@ -3,11 +3,9 @@ package com.arktosbrowser.mobile
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.view.Menu
-import android.webkit.CookieManager
-import android.webkit.CookieSyncManager
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
+import com.arktosbrowser.mobile.engine.Engines
 import io.reactivex.rxjava3.core.Completable
 
 
@@ -15,16 +13,11 @@ class IncognitoActivity : BrowserActivity() {
 
     override fun provideThemeOverride(): Int? = R.style.Theme_DarkTheme
 
-    @Suppress("DEPRECATION")
     public override fun updateCookiePreference(): Completable = Completable.fromAction {
-        val cookieManager = CookieManager.getInstance()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            CookieSyncManager.createInstance(this@IncognitoActivity)
-        }
-        if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
-            cookieManager.setAcceptCookie(userPreferences.cookiesEnabled)
+        Engines.defaultProfile.acceptsCookies = if (DeviceCapabilities.FULL_INCOGNITO.isSupported) {
+            userPreferences.cookiesEnabled
         } else {
-            cookieManager.setAcceptCookie(userPreferences.incognitoCookiesEnabled)
+            userPreferences.incognitoCookiesEnabled
         }
     }
 

@@ -4,21 +4,15 @@ import android.content.Intent
 import android.os.Build
 import android.view.KeyEvent
 import android.view.Menu
-import android.webkit.CookieManager
-import android.webkit.CookieSyncManager
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
+import com.arktosbrowser.mobile.engine.Engines
 import io.reactivex.rxjava3.core.Completable
 
 
 class MainActivity : BrowserActivity() {
 
-    @Suppress("DEPRECATION")
     public override fun updateCookiePreference(): Completable = Completable.fromAction {
-        val cookieManager = CookieManager.getInstance()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            CookieSyncManager.createInstance(this@MainActivity)
-        }
-        cookieManager.setAcceptCookie(userPreferences.cookiesEnabled)
+        Engines.defaultProfile.acceptsCookies = userPreferences.cookiesEnabled
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

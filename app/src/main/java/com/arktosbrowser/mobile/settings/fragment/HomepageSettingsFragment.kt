@@ -6,7 +6,7 @@
 package com.arktosbrowser.mobile.settings.fragment
 
 import android.os.Bundle
-import android.webkit.URLUtil
+import com.arktosbrowser.mobile.utils.isAboutUrl
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.HomepageTypeChoice
 import com.arktosbrowser.mobile.constant.SCHEME_BLANK
@@ -126,7 +126,7 @@ class HomepageSettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun showCustomHomePagePicker(summaryUpdater: SummaryUpdater) {
-        val currentHomepage: String = if (!URLUtil.isAboutUrl(userPreferences.homepage)) {
+        val currentHomepage: String = if (!userPreferences.homepage.isAboutUrl()) {
             userPreferences.homepage
         } else {
             "https://www.google.com"

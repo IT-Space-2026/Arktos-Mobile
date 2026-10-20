@@ -8,7 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
-import android.webkit.WebView
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.StorageArea
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -31,7 +32,7 @@ import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
-import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.arktosbrowser.mobile.view.ProxyUtils
 import com.arktosbrowser.mobile.utils.WebUtils
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import io.reactivex.rxjava3.core.Completable
@@ -693,10 +694,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun clearCache() {
-        WebView(requireNotNull(activity)).apply {
-            clearCache(true)
-            destroy()
-        }
+        Engines.defaultProfile.clear(setOf(StorageArea.DiskCache))
         deleteCache(requireContext())
         toastMessage?.cancel()
         toastMessage = Toast.makeText(activity, R.string.message_cache_cleared, Toast.LENGTH_LONG)
@@ -759,11 +757,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun clearWebStorage() {
-        WebView(requireNotNull(activity)).apply {
-            clearFormData()
-            clearSslPreferences()
-            destroy()
-        }
+        Engines.defaultProfile.clear(setOf(StorageArea.FormData, StorageArea.SslDecisions))
         context?.let { WebUtils.eraseWebStorage(it) }
 
         toastMessage?.cancel()

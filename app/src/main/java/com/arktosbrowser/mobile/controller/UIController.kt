@@ -13,8 +13,6 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Message
 import android.view.View
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient.CustomViewCallback
 import androidx.annotation.ColorInt
 
 /**
@@ -76,20 +74,25 @@ interface UIController {
 
     /**
      * Notify the controller that it should open the file chooser with the provided callback.
+     * The callback receives the selected [Uri], or null when the chooser is cancelled —
+     * it must be invoked exactly once, as the engine-side callback contract requires.
      */
-    fun openFileChooser(uploadMsg: ValueCallback<Uri>)
+    fun openFileChooser(callback: (Uri?) -> Unit)
 
     /**
      * Notify the controller that it should open the file chooser with the provided callback.
+     * The callback receives the selected [Uri] array, or null when the chooser is cancelled —
+     * it must be invoked exactly once, as the engine-side callback contract requires.
      */
-    fun showFileChooser(filePathCallback: ValueCallback<Array<Uri>>)
+    fun showFileChooser(callback: (Array<Uri>?) -> Unit)
 
     /**
      * Notify the controller that it should display the custom [view] in full-screen to the user.
+     * [callback] is invoked when the page should be told fullscreen was left.
      */
     fun onShowCustomView(
         view: View,
-        callback: CustomViewCallback,
+        callback: () -> Unit,
         requestedOrientation: Int = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     )
 

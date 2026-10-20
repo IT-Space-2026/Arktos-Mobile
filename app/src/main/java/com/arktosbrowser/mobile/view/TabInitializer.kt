@@ -3,7 +3,6 @@ package com.arktosbrowser.mobile.view
 import android.app.Activity
 import android.os.Bundle
 import android.os.Message
-import android.webkit.WebView
 import androidx.appcompat.app.AlertDialog
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.TabsManager
@@ -11,6 +10,8 @@ import com.arktosbrowser.mobile.constant.SCHEME_BOOKMARKS
 import com.arktosbrowser.mobile.constant.SCHEME_HOMEPAGE
 import com.arktosbrowser.mobile.di.DiskScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
+import com.arktosbrowser.mobile.engine.Page
+import com.arktosbrowser.mobile.engine.PageInitializer
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.html.HtmlPageFactory
 import com.arktosbrowser.mobile.html.bookmark.BookmarkPageFactory
@@ -25,25 +26,20 @@ import io.reactivex.rxjava3.kotlin.subscribeBy
 import javax.inject.Inject
 
 /**
- * An initializer that is run on a [ArktosCookieView] after it is created.
+ * An initializer that is run on a [ArktosCookieView] after it is
+ * created. All initializers implement the engine-neutral
+ * [PageInitializer] contract — they see the [Page] interface, not the
+ * underlying WebView.
  */
-interface TabInitializer {
-
-    /**
-     * Initialize the [WebView] instance held by the [ArktosCookieView]. If a url is loaded, the
-     * provided [headers] should be used to load the url.
-     */
-    fun initialize(webView: WebView, headers: Map<String, String>)
-
-}
+typealias TabInitializer = PageInitializer
 
 /**
  * An initializer that loads a [url].
  */
 class UrlInitializer(private val url: String) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
-        webView.loadUrl(url, headers)
+    override fun initialize(page: Page, headers: Map<String, String>) {
+        page.load(url, headers)
     }
 
 }
@@ -58,14 +54,14 @@ class HomePageInitializer @Inject constructor(
     private val bookmarkPageInitializer: BookmarkPageInitializer
 ) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
+    override fun initialize(page: Page, headers: Map<String, String>) {
         val homepage = userPreferences.homepage
 
         when (homepage) {
             SCHEME_HOMEPAGE -> startPageInitializer
             SCHEME_BOOKMARKS -> bookmarkPageInitializer
             else -> UrlInitializer(homepage)
-        }.initialize(webView, headers)
+        }.initialize(page, headers)
     }
 
 }
@@ -80,14 +76,14 @@ class IncognitoPageInitializer @Inject constructor(
         private val bookmarkPageInitializer: BookmarkPageInitializer
 ) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
+    override fun initialize(page: Page, headers: Map<String, String>) {
         val homepage = userPreferences.homepage
 
         when (homepage) {
             SCHEME_HOMEPAGE -> startIncognitoPageInitializer
             SCHEME_BOOKMARKS -> bookmarkPageInitializer
             else -> UrlInitializer(homepage)
-        }.initialize(webView, headers)
+        }.initialize(page, headers)
     }
 
 }
@@ -151,54 +147,54 @@ abstract class HtmlPageFactoryInitializer(
     @MainScheduler private val foregroundScheduler: Scheduler
 ) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
+    override fun initialize(page: Page, headers: Map<String, String>) {
         htmlPageFactory
             .buildPage()
             .subscribeOn(diskScheduler)
             .observeOn(foregroundScheduler)
-            .subscribeBy(onSuccess = { webView.loadUrl(it, headers) })
+            .subscribeBy(onSuccess = { page.load(it, headers) })
     }
 
 }
 
 /**
- * An initializer that sets the [WebView] as the target of the [resultMessage]. Used for
- * `target="_blank"` links.
+ * An initializer that sets the page's backing WebView as the target of
+ * the [resultMessage]. Used for `target="_blank"` links.
  */
 class ResultMessageInitializer(private val resultMessage: Message) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
+    override fun initialize(page: Page, headers: Map<String, String>) {
         // Checked again here (onCreateWindow pre-validates): a missing or wrong
         // payload must abort tab creation so the caller can decline the window
         // request instead of crashing on the cast (upstream #306).
-        val transport = resultMessage.obj as? WebView.WebViewTransport
+        val transport = resultMessage.obj as? android.webkit.WebView.WebViewTransport
             ?: throw IllegalArgumentException("New-window message has no WebViewTransport payload")
-        transport.webView = webView
+        transport.webView = page.asWebView()
         resultMessage.sendToTarget()
     }
 
 }
 
 /**
- * An initializer that restores the [WebView] state using the [bundle]. Bundles holding a saved URL
- * instead of serialized WebView state (e.g. generated error pages, which commit as `data:` URIs)
+ * An initializer that restores the page state using the [bundle]. Bundles holding a saved URL
+ * instead of serialized engine state (e.g. generated error pages, which commit as `data:` URIs)
  * load that URL directly.
  */
 class BundleInitializer(private val bundle: Bundle) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
-        bundle.getString(TabsManager.URL_KEY)?.let { webView.loadUrl(it, headers) }
-            ?: webView.restoreState(bundle)
+    override fun initialize(page: Page, headers: Map<String, String>) {
+        bundle.getString(TabsManager.URL_KEY)?.let { page.load(it, headers) }
+            ?: page.restoreState(bundle)
     }
 
 }
 
 /**
- * An initializer that does not load anything into the [WebView].
+ * An initializer that does not load anything into the page.
  */
 class NoOpInitializer : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) = Unit
+    override fun initialize(page: Page, headers: Map<String, String>) = Unit
 
 }
 
@@ -213,17 +209,17 @@ class PermissionInitializer(
     private val homePageInitializer: HomePageInitializer
 ) : TabInitializer {
 
-    override fun initialize(webView: WebView, headers: Map<String, String>) {
+    override fun initialize(page: Page, headers: Map<String, String>) {
         AlertDialog.Builder(activity).apply {
             setTitle(R.string.title_warning)
             setMessage(R.string.message_blocked_local)
             setCancelable(false)
             setOnDismissListener {
-                homePageInitializer.initialize(webView, headers)
+                homePageInitializer.initialize(page, headers)
             }
             setNegativeButton(android.R.string.cancel, null)
             setPositiveButton(R.string.action_open) { _, _ ->
-                UrlInitializer(url).initialize(webView, headers)
+                UrlInitializer(url).initialize(page, headers)
             }
         }.resizeAndShow()
     }

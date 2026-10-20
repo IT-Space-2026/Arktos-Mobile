@@ -21,7 +21,6 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
-import android.webkit.CookieManager
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.arktosbrowser.mobile.AppTheme
@@ -40,6 +39,8 @@ import com.arktosbrowser.mobile.database.HistoryEntry
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.PageAttributes
 import com.arktosbrowser.mobile.extensions.color
 import com.arktosbrowser.mobile.extensions.copyToClipboard
 import com.arktosbrowser.mobile.rust.ArktosCore
@@ -249,7 +250,7 @@ class PopUpClass {
                 "new_tab" -> uiController!!.newTabButtonClicked() // 0 - New tab
                 "new_private_tab" -> view.context.startActivity(Intent(view.context, IncognitoActivity::class.java)) // 1 - New incognito tab
                 "share" -> IntentUtils(activity).shareUrl(currentUrl, currentView?.title) // 2 - Share
-                "print" -> currentView?.webView?.let { currentView.createWebPagePrint(it) } // 3 - Print
+                "print" -> currentView?.createWebPagePrint() // 3 - Print
                 "history" -> view.context.startActivity(Intent(view.context, HistoryActivity::class.java)) // 4 - History
                 "downloads" -> currentView?.loadDownloadsPage() // 5 - Download
                 "find_in_page" -> activity.findInPage() // 6 - Find in Page
@@ -277,14 +278,14 @@ class PopUpClass {
                 "toggle_javascript" -> {
                     currentView?.let { tab ->
                         val enabled = siteSettings.toggleJavaScript(tab.url)
-                        tab.webView?.settings?.javaScriptEnabled = enabled
+                        tab.setPageAttribute(PageAttributes.JAVASCRIPT_ENABLED, enabled)
                         tab.reload()
                     }
                 }
                 "toggle_cookies" -> {
                     currentView?.let { tab ->
                         val enabled = siteSettings.toggleCookies(tab.url)
-                        CookieManager.getInstance().setAcceptCookie(enabled)
+                        Engines.defaultProfile.acceptsCookies = enabled
                         tab.reload()
                     }
                 }
@@ -333,19 +334,19 @@ class PopUpClass {
                             title = R.string.edit_cookies
                         ) {
 
-                            val cookieManager = CookieManager.getInstance()
-                            if (cookieManager.getCookie(currentTab.url) != null) {
+                            val profile = Engines.defaultProfile
+                            if (profile.getCookie(currentTab.url) != null) {
                                 val builder = MaterialAlertDialogBuilder(activity)
                                 val inflater = activity.layoutInflater
                                 builder.setTitle(R.string.edit_cookies)
                                 val dialogLayout = inflater.inflate(R.layout.dialog_multi_line, null)
                                 val editText = dialogLayout.findViewById<EditText>(R.id.dialog_multi_line)
-                                editText.setText(cookieManager.getCookie(currentTab.url))
+                                editText.setText(profile.getCookie(currentTab.url))
                                 builder.setView(dialogLayout)
                                 builder.setPositiveButton("OK") { dialogInterface, i ->
                                     val cookiesList = editText.text.toString().split(";")
                                     cookiesList.forEach { item ->
-                                        CookieManager.getInstance().setCookie(currentTab.url, item)
+                                        profile.setCookie(currentTab.url, item)
                                     }
                                 }
                                 builder.show()
@@ -357,7 +358,7 @@ class PopUpClass {
                             title = R.string.page_source
 
                         ) {
-                            currentTab.webView?.evaluateJavascript("""(function() {
+                            currentTab.runJavaScript("""(function() {
                         return "<html>" + document.getElementsByTagName('html')[0].innerHTML + "</html>";
                      })()""".trimMargin()) {
                                 // Hacky workaround for weird WebView encoding bug
@@ -376,10 +377,9 @@ class PopUpClass {
                                 builder.setView(dialogLayout)
                                 builder.setPositiveButton("OK") { _, _ ->
                                     editText.setText(editText.text.toString().replace("\'", "\\\'"));
-                                    currentTab.webView?.evaluateJavascript(
-    "document.documentElement.innerHTML = " + org.json.JSONObject.quote(editText.text.toString()) + ";",
-    null
-)
+                                    currentTab.runJavaScript(
+    "document.documentElement.innerHTML = " + org.json.JSONObject.quote(editText.text.toString()) + ";"
+    ) {}
                                 }
                                 builder.show()
                             }
@@ -402,7 +402,7 @@ class PopUpClass {
                             isConditionMet = SiteOverrides.siteHost(currentTab.url) != null
                         ) {
                             val enabled = siteSettings.toggleJavaScript(currentTab.url)
-                            currentTab.webView?.settings?.javaScriptEnabled = enabled
+                            currentTab.setPageAttribute(PageAttributes.JAVASCRIPT_ENABLED, enabled)
                             activity.tabsManager.currentTab?.reload()
                         }
                     ) // 14 - Page Tools
@@ -419,7 +419,7 @@ class PopUpClass {
                 "translate" -> {
                     val target = activity.resources.configuration.locales[0]?.language
                         ?: Locale.getDefault().language
-                    currentView?.webView?.let { translateBridge.translatePage(it, target) }
+                    currentView?.let { translateBridge.translatePage(it, activity, target) }
                 }
                 "open_in_app" -> {
                     intent?.let {

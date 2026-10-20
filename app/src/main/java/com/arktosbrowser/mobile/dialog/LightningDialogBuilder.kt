@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.view.View
-import android.webkit.CookieManager
-import android.webkit.MimeTypeMap
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
@@ -28,6 +26,8 @@ import com.arktosbrowser.mobile.database.history.HistoryRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.download.DownloadHandler
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.PageAttributes
 import com.arktosbrowser.mobile.extensions.copyToClipboard
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.extensions.resizeAndShow
@@ -41,6 +41,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.Reusable
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.kotlin.subscribeBy
+import java.net.URLConnection
 import java.util.Locale
 import java.util.Locale.getDefault
 import javax.inject.Inject
@@ -332,10 +333,11 @@ class LightningDialogBuilder @Inject constructor(
             clipboardManager.copyToClipboard(ArktosCore.stripUrl(url))
         },
         DialogItem(title = R.string.dialog_download_image) {
-            val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                MimeTypeMap.getFileExtensionFromUrl(
-                    imageUrl
-                ).lowercase(getDefault())
+            // Engine-neutral mime lookup: libcore's content-type map
+            // covers the common image types; anything unknown falls
+            // back to image/png like before (MimeTypeMap is WebView API).
+            val mimeType = URLConnection.guessContentTypeFromName(
+                imageUrl.substringBefore('#').substringBefore('?')
             )
 
             if(mimeType != null){
@@ -384,7 +386,7 @@ class LightningDialogBuilder @Inject constructor(
             val enabled = siteSettings.toggleJavaScript(url)
             val tab = uiController.getTabModel().currentTab
             if (tab != null && SiteOverrides.siteHost(tab.url) == SiteOverrides.siteHost(url)) {
-                tab.webView?.settings?.javaScriptEnabled = enabled
+                tab.setPageAttribute(PageAttributes.JAVASCRIPT_ENABLED, enabled)
                 tab.reload()
             }
         },
@@ -397,7 +399,7 @@ class LightningDialogBuilder @Inject constructor(
             isConditionMet = SiteOverrides.siteHost(url) != null
         ) {
             val enabled = siteSettings.toggleCookies(url)
-            CookieManager.getInstance().setAcceptCookie(enabled)
+            Engines.defaultProfile.acceptsCookies = enabled
             val tab = uiController.getTabModel().currentTab
             if (tab != null && SiteOverrides.siteHost(tab.url) == SiteOverrides.siteHost(url)) {
                 tab.reload()

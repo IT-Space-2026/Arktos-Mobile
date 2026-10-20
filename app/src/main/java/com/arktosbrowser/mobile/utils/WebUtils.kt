@@ -1,57 +1,42 @@
 package com.arktosbrowser.mobile.utils
 
 import android.content.Context
-import android.net.Uri
 import android.os.Build
-import android.webkit.CookieManager
-import android.webkit.WebStorage
-import android.webkit.WebView
-import android.webkit.WebViewDatabase
 import androidx.annotation.RequiresApi
 import com.arktosbrowser.mobile.database.history.HistoryRepository
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.Page
+import com.arktosbrowser.mobile.engine.StorageArea
 import io.reactivex.rxjava3.core.Scheduler
 import java.io.File
 
 /**
  * Copyright 8/4/2015 Anthony Restaino
+ *
+ * Engine-facing storage helpers. The cookie/DOM-storage/database
+ * calls delegate to the active engine's default [Profile] so no
+ * platform webview type crosses this file's boundary.
  */
 object WebUtils {
 
     fun clearCookies(context: Context) {
-        CookieManager.getInstance().removeAllCookies(null)
+        Engines.defaultProfile.clear(setOf(StorageArea.Cookies))
     }
 
     fun clearWebStorage() {
-        WebStorage.getInstance().deleteAllData()
+        Engines.defaultProfile.clear(setOf(StorageArea.LocalStorage, StorageArea.IndexedDb))
     }
 
     /**
      * Wipes one origin's site data — the per-site scope of
-     * [eraseWebStorage]. CookieManager has no per-host delete, so the
-     * host's cookie names are re-set with an epoch expiry; DOM
-     * storage goes through [WebStorage.deleteOrigin].
+     * [eraseWebStorage].
      */
     fun clearSiteData(url: String) {
-        val uri = Uri.parse(url)
-        val host = uri.host ?: return
-        val origin = "${uri.scheme}://${uri.host}${if (uri.port > 0) ":${uri.port}" else ""}"
-
-        val cookieManager = CookieManager.getInstance()
-        val cookies = cookieManager.getCookie(url).orEmpty()
-        for (pair in cookies.split(";")) {
-            val name = pair.substringBefore('=').trim()
-            if (name.isNotEmpty()) {
-                cookieManager.setCookie(origin,
-                    "$name=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=$host")
-            }
-        }
-        cookieManager.flush()
-
-        WebStorage.getInstance().deleteOrigin(origin)
+        Engines.defaultProfile.clearSiteData(url)
     }
 
     fun eraseWebStorage(context: Context) {
-        WebStorage.getInstance().deleteAllData()
+        Engines.defaultProfile.clear(setOf(StorageArea.LocalStorage, StorageArea.IndexedDb))
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
             deleteData(context)
@@ -76,15 +61,13 @@ object WebUtils {
         historyRepository.deleteHistory()
             .subscribeOn(databaseScheduler)
             .subscribe()
-        val webViewDatabase = WebViewDatabase.getInstance(context)
-        webViewDatabase.clearFormData()
-        webViewDatabase.clearHttpAuthUsernamePassword()
+        Engines.defaultProfile.clear(setOf(StorageArea.FormData, StorageArea.HttpAuth))
         Utils.trimCache(context)
     }
 
-    fun clearCache(view: WebView?, context: Context) {
-        if (view == null) return
-        view.clearCache(true)
+    fun clearCache(page: Page?, context: Context) {
+        if (page == null) return
+        page.clearCache()
         deleteCache(context)
     }
 

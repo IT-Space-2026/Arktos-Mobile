@@ -2,11 +2,11 @@ package com.arktosbrowser.mobile.browser
 
 import android.app.Activity
 import android.content.Intent
-import android.webkit.URLUtil
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.*
 import com.arktosbrowser.mobile.di.MainScheduler
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.html.bookmark.BookmarkPageFactory
 import com.arktosbrowser.mobile.html.homepage.HomePageFactory
@@ -15,6 +15,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
+import com.arktosbrowser.mobile.utils.isFileUrl
 import com.arktosbrowser.mobile.view.BundleInitializer
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.TabInitializer
@@ -130,7 +131,7 @@ class BrowserPresenter(
             ?.observeOn(mainScheduler)
             ?.subscribe(view::updateSslState)
 
-        val webView = newTab?.webView
+        val engineView = newTab?.let { Engines.backend.createView(it) }
 
         if (newTab == null) {
             view.removeTabView()
@@ -139,7 +140,7 @@ class BrowserPresenter(
                 it.onDestroy()
             }
         } else {
-            if (webView == null) {
+            if (engineView == null) {
                 view.removeTabView()
                 currentTab?.let {
                     it.pauseTimers()
@@ -158,10 +159,10 @@ class BrowserPresenter(
                 newTab.isForegroundTab = true
 
                 view.updateProgress(newTab.progress)
-                view.setBackButtonEnabled(newTab.canGoBack())
-                view.setForwardButtonEnabled(newTab.canGoForward())
+                view.setBackButtonEnabled(newTab.canGoBack)
+                view.setForwardButtonEnabled(newTab.canGoForward)
                 view.updateUrl(newTab.url, false)
-                view.setTabView(webView)
+                view.setTabView(engineView)
                 val index = tabsModel.indexOfTab(newTab)
                 if (index >= 0) {
                     view.notifyTabViewChanged(tabsModel.indexOfTab(newTab))
@@ -223,7 +224,7 @@ class BrowserPresenter(
 
         if (tabsModel.size() == 1
             && currentTab != null
-            && URLUtil.isFileUrl(currentTab.url)
+            && currentTab.url.isFileUrl()
             && currentTab.url == mapHomepageToCurrentUrl()
             && userPreferences.closeOnLastTab
             && !keepAlive) {
@@ -278,7 +279,7 @@ class BrowserPresenter(
         if (tabHashCode != 0 && url != null) {
             tabsModel.getTabForHashCode(tabHashCode)?.loadUrl(url)
         } else if (url != null) {
-            if (URLUtil.isFileUrl(url)) {
+            if (url.isFileUrl()) {
                 intented = currentTab
                 view.showBlockedLocalFileDialog {
                     newTab(UrlInitializer(url), true)

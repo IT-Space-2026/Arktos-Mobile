@@ -7,7 +7,7 @@ import com.arktosbrowser.mobile.browser.activity.ThemableBrowserActivity
 import com.arktosbrowser.mobile.browser.bookmarks.BookmarksDrawerView
 import com.arktosbrowser.mobile.device.BuildInfo
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
-import com.arktosbrowser.mobile.download.LightningDownloadListener
+import com.arktosbrowser.mobile.view.LightningDownloadListener
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.search.SuggestionsAdapter
 import com.arktosbrowser.mobile.settings.activity.SettingsActivity

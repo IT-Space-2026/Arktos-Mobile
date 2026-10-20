@@ -130,6 +130,60 @@ fun String?.isHistoryUrl(): Boolean =
 fun String?.isStartPageUrl(): Boolean =
     this != null && ArktosCore.isStartPageUrl(this)
 
+/**
+ * Engine-neutral replacement for the platform `URLUtil.isFileUrl`
+ * (ENG02): true when the url carries a `file:` scheme, case-insensitive
+ * like the platform helper.
+ */
+fun String?.isFileUrl(): Boolean =
+    this != null && regionMatches(0, "file:", 0, 5, ignoreCase = true)
+
+/**
+ * Engine-neutral replacement for the platform `URLUtil.isAboutUrl`:
+ * true for `about:` pages such as `about:blank`.
+ */
+fun String?.isAboutUrl(): Boolean =
+    this != null && regionMatches(0, "about:", 0, 6, ignoreCase = true)
+
+/**
+ * Engine-neutral replacement for the platform `URLUtil.isValidUrl`.
+ * `javascript:` (whitespace-free), `data:`, `file:` and `about:` urls
+ * are valid like the platform helper; anything else must look like a
+ * network address — an explicit `scheme://host` or a bare host that
+ * contains a dot. The platform's full WEB_URL grammar is stricter than
+ * this approximation in exotic cases, which only affects the homepage
+ * shortcut favicon fallback.
+ */
+fun isValidUrl(url: String?): Boolean {
+    if (url.isNullOrEmpty()) return false
+    if (url.regionMatches(0, "javascript:", 0, 11, ignoreCase = true)) {
+        return url.none(Char::isWhitespace)
+    }
+    if (url.regionMatches(0, "data:", 0, 5, ignoreCase = true)) return true
+    if (url.regionMatches(0, "file:", 0, 5, ignoreCase = true)) return true
+    if (url.regionMatches(0, "about:", 0, 6, ignoreCase = true)) return true
+    val match = NETWORK_URL_SHAPE.matchEntire(url) ?: return false
+    val host = match.groupValues[2].substringBefore(':').substringAfterLast('@')
+    return if (match.groupValues[1].isNotEmpty()) host.isNotEmpty() else host.contains('.')
+}
+
+private val NETWORK_URL_SHAPE =
+    Regex("^([a-zA-Z][a-zA-Z0-9+.-]*://)?([^/?#\\s]+)([/?#].*)?$")
+
+/**
+ * Engine-neutral replacement for the platform `MimeTypeMap
+ * .getFileExtensionFromUrl`: extension (no leading dot, lower-cased) of
+ * the last path segment, with query and fragment stripped. Empty when
+ * the url carries no usable extension.
+ */
+fun fileExtensionFromUrl(url: String): String {
+    val path = url.substringBefore('#').substringBefore('?')
+    val segment = path.substringAfterLast('/')
+    val dot = segment.lastIndexOf('.')
+    if (dot <= 0 || dot == segment.length - 1) return ""
+    return segment.substring(dot + 1).lowercase()
+}
+
 const val QUERY_PLACE_HOLDER = "%s"
 private const val URL_ENCODED_SPACE = "%20"
 private const val WWW_PREFIX = "www."

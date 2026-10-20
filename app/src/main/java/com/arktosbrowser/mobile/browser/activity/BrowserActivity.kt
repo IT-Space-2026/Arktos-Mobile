@@ -34,9 +34,7 @@ import android.view.animation.Animation
 import android.view.animation.Transformation
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.webkit.CookieManager
-import android.webkit.ValueCallback
-import android.webkit.WebChromeClient.CustomViewCallback
+import com.arktosbrowser.mobile.engine.Engines
 import android.widget.*
 import android.widget.AdapterView.OnItemClickListener
 import android.widget.TextView.OnEditorActionListener
@@ -144,9 +142,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var suggestionsAdapter: SuggestionsAdapter? = null
 
     // Callback
-    private var customViewCallback: CustomViewCallback? = null
-    private var uploadMessageCallback: ValueCallback<Uri>? = null
-    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var customViewCallback: (() -> Unit)? = null
+    private var uploadMessageCallback: ((Uri?) -> Unit)? = null
+    private var filePathCallback: ((Array<Uri>?) -> Unit)? = null
 
     // Primitives
     private var isFullScreen: Boolean = false
@@ -545,9 +543,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             toolbarBinding.searchSslStatus.setOnClickListener {
                 val tab = tabsManager.currentTab
                 val url = tab?.url.orEmpty()
-                // CookieManager counts name=value pairs for the page origin —
+                // The profile counts name=value pairs for the page origin —
                 // the same site the desktop panel scopes its cookie row to.
-                val cookieCount = CookieManager.getInstance().getCookie(url)
+                val cookieCount = Engines.defaultProfile.getCookie(url)
                     ?.split(';')?.count { it.contains('=') } ?: 0
                 val detail = Uri.parse(url).host
                     ?.let { ArktosCore.siteRankDetail(it) }
@@ -1097,7 +1095,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 event.isCtrlPressed -> when (event.keyCode) {
                     KeyEvent.KEYCODE_P -> {
                         // Print
-                        tabsManager.currentTab?.webView?.let { tabsManager.currentTab?.createWebPagePrint(it) }
+                        tabsManager.currentTab?.createWebPagePrint()
                         return true
                     }
                     KeyEvent.KEYCODE_F -> {
@@ -1416,7 +1414,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                     globalBlocking = userPreferences.adBlockEnabled,
                     javaScript = siteSettings.javaScriptEnabled(url),
                     cookies = siteSettings.cookiesEnabled(url),
-                    cookieCount = CookieManager.getInstance().getCookie(url)
+                    cookieCount = Engines.defaultProfile.getCookie(url)
                         ?.split(';')?.count { it.contains('=') } ?: 0,
                     sslState = tab.currentSslState()
                 )
@@ -1452,7 +1450,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                     detail.tranco.toLong(),
                     detail.majestic.toLong(),
                     isDarkTheme,
-                    CookieManager.getInstance().getCookie(url)
+                    Engines.defaultProfile.getCookie(url)
                         ?.split(';')?.count { it.contains('=') } ?: 0,
                     userPreferences.adBlockEnabled && !allowListModel.isUrlAllowedAds(url),
                     siteSettings.javaScriptEnabled(url)
@@ -1691,7 +1689,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     protected fun performExitCleanUp() {
         val currentTab = tabsManager.currentTab
         if (userPreferences.clearCacheExit && currentTab != null && !isIncognito()) {
-            WebUtils.clearCache(currentTab.webView, applicationContext)
+            WebUtils.clearCache(currentTab, applicationContext)
             logger.log(TAG, "Cache Cleared")
         }
         if (userPreferences.clearHistoryExitEnabled && !isIncognito()) {
@@ -1804,7 +1802,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 logger.log(TAG, "onBackPressed")
                 if (searchView?.hasFocus() == true) {
                     currentTab.requestFocus()
-                } else if (currentTab.canGoBack()) {
+                } else if (currentTab.canGoBack) {
                     if (!currentTab.isShown) {
                         onHideCustomView()
                     } else {
@@ -1932,7 +1930,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
         val searchUrl = "$searchText$QUERY_PLACE_HOLDER"
         if (currentTab != null) {
-            currentTab.stopLoading()
+            currentTab.stop()
             presenter?.loadUrlInCurrentView(smartUrlFilter(query.trim(), true, searchUrl))
         }
     }
@@ -2195,8 +2193,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
      * param ValueCallback is the message from the WebView indicating a file chooser
      * should be opened
      */
-    override fun openFileChooser(uploadMsg: ValueCallback<Uri>) {
-        uploadMessageCallback = uploadMsg
+    override fun openFileChooser(callback: (Uri?) -> Unit) {
+        uploadMessageCallback = callback
         startActivityForResult(Intent.createChooser(Intent(Intent.ACTION_GET_CONTENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
@@ -2215,7 +2213,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                     intent.data
                 }
 
-                uploadMessageCallback?.onReceiveValue(result)
+                uploadMessageCallback?.invoke(result)
                 uploadMessageCallback = null
             } else {
                 val results: Array<Uri>? = if (resultCode == Activity.RESULT_OK) {
@@ -2229,7 +2227,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                     null
                 }
 
-                filePathCallback?.onReceiveValue(results)
+                filePathCallback?.invoke(results)
                 filePathCallback = null
             }
         } else {
@@ -2237,9 +2235,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
     }
 
-    override fun showFileChooser(filePathCallback: ValueCallback<Array<Uri>>) {
-        this.filePathCallback?.onReceiveValue(null)
-        this.filePathCallback = filePathCallback
+    override fun showFileChooser(callback: (Array<Uri>?) -> Unit) {
+        this.filePathCallback?.invoke(null)
+        this.filePathCallback = callback
 
         // Create the File where the photo should go
         val intentArray: Array<Intent> = try {
@@ -2268,11 +2266,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }, FILE_CHOOSER_REQUEST_CODE)
     }
 
-    override fun onShowCustomView(view: View, callback: CustomViewCallback, requestedOrientation: Int) {
+    override fun onShowCustomView(view: View, callback: () -> Unit, requestedOrientation: Int) {
         val currentTab = tabsManager.currentTab
         if (customView != null) {
             try {
-                callback.onCustomViewHidden()
+                callback()
             } catch (e: Exception) {
                 logger.log(TAG, "Error hiding custom view", e)
             }
@@ -2320,7 +2318,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         if (customView == null || customViewCallback == null || currentTab == null) {
             if (customViewCallback != null) {
                 try {
-                    customViewCallback?.onCustomViewHidden()
+                    customViewCallback?.invoke()
                 } catch (e: Exception) {
                     logger.log(TAG, "Error hiding custom view", e)
                 }
@@ -2354,7 +2352,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         videoView = null
 
         try {
-            customViewCallback?.onCustomViewHidden()
+            customViewCallback?.invoke()
         } catch (e: Exception) {
             logger.log(TAG, "Error hiding custom view", e)
         }
@@ -2382,7 +2380,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     override fun onBackButtonPressed() {
         if (binding.drawerLayout.closeDrawerIfOpen(getTabDrawer())) {
             val currentTab = tabsManager.currentTab
-            if (currentTab?.canGoBack() == true) {
+            if (currentTab?.canGoBack == true) {
                 currentTab.goBack()
             } else if (currentTab != null) {
                 tabsManager.let { presenter?.deleteTab(it.positionOf(currentTab), true) }
@@ -2396,7 +2394,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     override fun onForwardButtonPressed() {
         val currentTab = tabsManager.currentTab
-        if (currentTab?.canGoForward() == true) {
+        if (currentTab?.canGoForward == true) {
             currentTab.goForward()
             closeDrawers(null)
         }
@@ -2609,7 +2607,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         val currentTab = tabsManager.currentTab
         if (currentTab != null) {
             if (currentTab.progress < 100) {
-                currentTab.stopLoading()
+                currentTab.stop()
             } else {
                 currentTab.reload()
             }
