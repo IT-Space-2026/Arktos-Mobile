@@ -6,7 +6,7 @@ The Reading Mode translator requires a compatible translation endpoint. The feat
 
 # Search Suggestions
 
-Arktos Mobile supports search suggestions powered by the selected provider (Google, DuckDuckGo, Baidu or Naver), or none at all. The default is Google; suggestions can be fully disabled in settings. Queries go directly to the chosen provider.
+Arktos Mobile supports search suggestions powered by the selected provider (Google, DuckDuckGo, Baidu or Naver), or none at all. The default is DuckDuckGo; suggestions can be fully disabled in settings. Queries go directly to the chosen provider.
 
 # Third-party content
 

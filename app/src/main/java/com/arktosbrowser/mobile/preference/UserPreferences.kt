@@ -12,6 +12,7 @@ import com.arktosbrowser.mobile.resolve
 import com.arktosbrowser.mobile.preference.delegates.*
 import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.search.SearchEngineProvider
+import com.arktosbrowser.mobile.search.Suggestions
 import com.arktosbrowser.mobile.search.engine.GoogleSearch
 import com.arktosbrowser.mobile.utils.FileUtils
 import com.arktosbrowser.mobile.view.RenderingMode
@@ -475,7 +476,7 @@ class UserPreferences @Inject constructor(
      *
      * @see SearchEngineProvider
      */
-    var searchSuggestionChoice by preferences.intPreference(SEARCH_SUGGESTIONS, 0)
+    var searchSuggestionChoice by preferences.intPreference(SEARCH_SUGGESTIONS, Suggestions.DUCK.index)
 
     /**
      * The index of the ad blocking hosts file source.

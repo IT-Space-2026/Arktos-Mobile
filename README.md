@@ -249,7 +249,7 @@ Please read the license before forking.
 
 ## Online services
 
-Arktos Mobile can optionally use online services to improve the browser. Information about what is stored is available [here](ONLINE.md). The translation endpoint is configurable in settings and the feature is off by default; search suggestions default to Google and can be fully disabled.
+Arktos Mobile can optionally use online services to improve the browser. Information about what is stored is available [here](ONLINE.md). The translation endpoint is configurable in settings and the feature is off by default; search suggestions default to DuckDuckGo and can be fully disabled.
 
 ---
 
