@@ -551,6 +551,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             toolbarBinding.siteShieldButton.setOnClickListener {
                 onSiteShieldClicked()
             }
+            toolbarBinding.siteShieldButton.setOnLongClickListener {
+                onSiteShieldLongClicked()
+            }
             updateSiteShield()
 
             if (isDarkTheme) {
@@ -1296,6 +1299,22 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             }
         )
         showSitePanel(isDarkTheme, callbacks)
+    }
+
+    /** Long-press keeps the old one-tap behavior: flip the site's
+     *  adblock allowlist entry and reload, no panel. */
+    private fun onSiteShieldLongClicked(): Boolean {
+        val url = tabsManager.currentTab?.url ?: return false
+        if (allowListModel.isUrlAllowedAds(url)) {
+            allowListModel.removeUrlFromAllowList(url)
+            snackbar(R.string.dialog_adblock_enable_for_site)
+        } else {
+            allowListModel.addUrlToAllowList(url)
+            snackbar(R.string.dialog_adblock_disable_for_site)
+        }
+        tabsManager.currentTab?.reload()
+        updateSiteShield()
+        return true
     }
 
     override fun tabChanged(tab: ArktosCookieView) {
