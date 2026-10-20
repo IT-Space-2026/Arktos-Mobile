@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatDelegate
+import com.arktosbrowser.mobile.browser.AppLockState
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
 import com.arktosbrowser.mobile.device.BuildInfo
@@ -105,6 +106,20 @@ class BrowserApp : Application() {
         }
 
         registerActivityLifecycleCallbacks(object : MemoryLeakUtils.LifecycleAdapter() {
+            override fun onActivityStarted(activity: Activity) {
+                startedActivityCount++
+            }
+
+            override fun onActivityStopped(activity: Activity) {
+                if (--startedActivityCount <= 0) {
+                    startedActivityCount = 0
+                    // SEC01 — last activity stopped = the app is fully
+                    // backgrounded; the app-lock re-lock countdown runs
+                    // from this point.
+                    AppLockState.onAppBackgrounded()
+                }
+            }
+
             override fun onActivityDestroyed(activity: Activity) {
                 logger.log(TAG, "Cleaning up after the Android framework")
                 MemoryLeakUtils.clearNextServedView(activity, this@BrowserApp)
@@ -117,6 +132,8 @@ class BrowserApp : Application() {
     /**
      * Create the [BuildType] from the [BuildConfig].
      */
+    private var startedActivityCount = 0
+
     private fun createBuildInfo() = BuildInfo(when {
         BuildConfig.DEBUG -> BuildType.DEBUG
         else -> BuildType.RELEASE

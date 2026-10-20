@@ -50,6 +50,25 @@ class UserPreferences @Inject constructor(
 
     var passwordChoiceLock by preferences.enumPreference(PASSWORD_LOCK, PasswordChoice.NONE)
     var passwordTextLock by preferences.stringPreference(USE_PASSWORD_LOCK, "")
+
+    /**
+     * SEC01 — browser-wide app lock. PIN/password credentials are
+     * stored as an argon2id hash in [passwordTextLock]; the legacy
+     * `passwordLock=custom` toggle is migrated to
+     * [AppLockMethod.PASSWORD] below.
+     */
+    var appLockMethod by preferences.enumPreference(APP_LOCK_METHOD, AppLockMethod.NONE)
+
+    /** Minutes of background time before the lock re-engages; 0 = immediate. */
+    var appLockRelockMinutes by preferences.intPreference(APP_LOCK_DELAY_MIN, 0)
+
+    init {
+        if (passwordChoiceLock == PasswordChoice.CUSTOM &&
+            appLockMethod == AppLockMethod.NONE
+        ) {
+            appLockMethod = AppLockMethod.PASSWORD
+        }
+    }
     /**
      * True if Web RTC is enabled in the browser, false otherwise.
      */
@@ -560,6 +579,8 @@ private const val PASSWORD = "password"
 private const val USE_PASSWORD = "usePassword"
 private const val USE_PASSWORD_LOCK = "usePasswordLock"
 private const val PASSWORD_LOCK = "passwordLock"
+private const val APP_LOCK_METHOD = "appLockMethod"
+private const val APP_LOCK_DELAY_MIN = "appLockDelayMin"
 private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val COOKIE_BLOCK = "blockCookieDialogs"

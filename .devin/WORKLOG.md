@@ -56,3 +56,5 @@ All remaining .java converted: StringBuilderUtils, WebUtils, DrawableUtils, Memo
 ## LICENSE01 — licenses + README (2026-10-19)
 
 About→Licenses synced to real deps: dropped snacktory (removed with Rust readability), added sora-editor (LGPL-2.1), OkHttp, vendored I2P helper, UniFFI (MPL-2.0), Rust crates (MIT/Apache). README gained desktop-style Source structure + Third-party components; Acknowledgements untouched. Post-J2K audit commit also landed (crash dumps → private storage, dead code purge).
+- SEC01 done: browser-wide app lock — PIN/password/biometric methods, re-lock timer (immediate/1/5/10/custom) via AppLockState monotonic clock; gate on cold start + resume.
+- SEC02 done: BackupCrypto (PBKDF2→AES-256-GCM, ARKBAK format) + encrypted export/restore rows; database domain excluded from Auto Backup.

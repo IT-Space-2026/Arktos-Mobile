@@ -7,14 +7,17 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
+import android.text.InputType
 import android.webkit.WebView
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.biometric.BiometricManager
 import com.arktosbrowser.mobile.DeviceCapabilities
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.AppLockMethod
 import com.arktosbrowser.mobile.browser.JavaScriptChoice
-import com.arktosbrowser.mobile.browser.PasswordChoice
 import com.arktosbrowser.mobile.browser.ProxyChoice
 import com.arktosbrowser.mobile.database.history.HistoryRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
@@ -118,11 +121,16 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 }
         )
 
-        val stringArrayPassword = resources.getStringArray(R.array.password_set_array)
         clickableDynamicPreference(
                 preference = SETTINGS_APP_LOCK,
-                summary = stringArrayPassword[userPreferences.passwordChoiceLock.value],
-                onClick = ::showPasswordPicker
+                summary = appLockMethodSummary(userPreferences.appLockMethod),
+                onClick = ::showAppLockPicker
+        )
+
+        clickableDynamicPreference(
+                preference = SETTINGS_APP_LOCK_DELAY,
+                summary = appLockDelaySummary(userPreferences.appLockRelockMinutes),
+                onClick = ::showLockDelayPicker
         )
 
         clickablePreference(preference = SETTINGS_CLEARCACHE, onClick = this::clearCacheDialog)
@@ -236,58 +244,152 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
 
     }
 
-    private fun PasswordChoice.toSummary(): String {
-        val stringArray = resources.getStringArray(R.array.password_set_array)
-        return when (this) {
-            PasswordChoice.NONE -> stringArray[0]
-            PasswordChoice.CUSTOM -> stringArray[1]
-        }
+    private fun appLockMethodSummary(method: AppLockMethod): String = when (method) {
+        AppLockMethod.NONE -> resources.getString(R.string.none)
+        AppLockMethod.PIN -> resources.getString(R.string.method_pin)
+        AppLockMethod.PASSWORD -> resources.getString(R.string.method_password)
+        AppLockMethod.BIOMETRIC -> resources.getString(R.string.method_biometric)
     }
 
-    private fun showPasswordPicker(summaryUpdater: SummaryUpdater) {
+    private fun appLockDelaySummary(minutes: Int): String =
+        if (minutes <= 0) {
+            resources.getString(R.string.lock_after_immediately)
+        } else {
+            resources.getString(R.string.lock_after_minutes, minutes)
+        }
+
+    private fun showAppLockPicker(summaryUpdater: SummaryUpdater) {
         BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.enter_password)
-            val stringArray = resources.getStringArray(R.array.password_set_array)
-            val values = PasswordChoice.values().map {
-                Pair(it, when (it) {
-                    PasswordChoice.NONE -> stringArray[0]
-                    PasswordChoice.CUSTOM -> resources.getString(R.string.enter_password)
-                })
-            }
-            withSingleChoiceItems(values, userPreferences.passwordChoiceLock) {
-                updatePasswordChoice(it, activity as Activity, summaryUpdater)
+            setTitle(R.string.app_lock)
+            val values = AppLockMethod.values()
+                .map { Pair(it, appLockMethodSummary(it)) }
+            withSingleChoiceItems(values, userPreferences.appLockMethod) {
+                updateAppLockMethod(it, activity as Activity, summaryUpdater)
             }
             setPositiveButton(R.string.action_ok, null)
         }
     }
 
-    private fun updatePasswordChoice(choice: PasswordChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
-        if (choice == PasswordChoice.CUSTOM) {
-            showPasswordTextPicker(activity, summaryUpdater)
+    private fun updateAppLockMethod(
+        choice: AppLockMethod,
+        activity: Activity,
+        summaryUpdater: SummaryUpdater
+    ) {
+        when (choice) {
+            AppLockMethod.NONE -> {
+                userPreferences.appLockMethod = AppLockMethod.NONE
+                userPreferences.passwordTextLock = ""
+            }
+            // PIN/password only commit once the credential itself is
+            // set — same ordering rule as the proxy host dialog.
+            AppLockMethod.PIN -> showCredentialSetDialog(activity, summaryUpdater, pin = true)
+            AppLockMethod.PASSWORD -> showCredentialSetDialog(activity, summaryUpdater, pin = false)
+            AppLockMethod.BIOMETRIC -> {
+                val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                if (BiometricManager.from(activity).canAuthenticate(authenticators)
+                    == BiometricManager.BIOMETRIC_SUCCESS
+                ) {
+                    userPreferences.appLockMethod = AppLockMethod.BIOMETRIC
+                } else {
+                    toastMessage?.cancel()
+                    toastMessage = Toast.makeText(
+                        activity,
+                        R.string.biometric_unavailable,
+                        Toast.LENGTH_SHORT
+                    )
+                    toastMessage?.show()
+                }
+            }
         }
-        else{
-            summaryUpdater.updateSummary(resources.getString(R.string.none))
-        }
-
-        userPreferences.passwordChoiceLock = choice
-        summaryUpdater.updateSummary(choice.toSummary())
+        summaryUpdater.updateSummary(appLockMethodSummary(userPreferences.appLockMethod))
     }
 
-    private fun showPasswordTextPicker(activity: Activity, summaryUpdater: SummaryUpdater) {
+    private fun showCredentialSetDialog(
+        activity: Activity,
+        summaryUpdater: SummaryUpdater,
+        pin: Boolean
+    ) {
         val v = activity.layoutInflater.inflate(R.layout.password, null)
-        val passwordText = v.findViewById<TextView>(R.id.password)
+        val passwordText = v.findViewById<EditText>(R.id.password)
+        if (pin) {
+            passwordText.inputType = InputType.TYPE_CLASS_NUMBER or
+                InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        }
 
         // PORT02 — the stored value is an argon2id hash now, so the
         // field can't be prefilled; an empty submission keeps the
-        // existing password.
+        // existing credential and method.
         BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.enter_password)
+            setTitle(if (pin) R.string.set_pin else R.string.enter_password)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
                 val passwordCode = passwordText.text.toString()
-                if (passwordCode.isNotEmpty()) {
-                    userPreferences.passwordTextLock = ArktosCore.hashPassword(passwordCode)
+                if (passwordCode.isEmpty()) {
+                    return@setPositiveButton
                 }
+                if (pin && (passwordCode.length < 4 || !passwordCode.all(Char::isDigit))) {
+                    toastMessage?.cancel()
+                    toastMessage = Toast.makeText(
+                        activity,
+                        R.string.pin_too_short,
+                        Toast.LENGTH_SHORT
+                    )
+                    toastMessage?.show()
+                    return@setPositiveButton
+                }
+                userPreferences.passwordTextLock = ArktosCore.hashPassword(passwordCode)
+                userPreferences.appLockMethod =
+                    if (pin) AppLockMethod.PIN else AppLockMethod.PASSWORD
+                summaryUpdater.updateSummary(
+                    appLockMethodSummary(userPreferences.appLockMethod)
+                )
+            }
+        }
+    }
+
+    private fun showLockDelayPicker(summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.lock_after)
+            val presets = listOf(0, 1, 5, 10)
+            val values = presets.map { Pair(it, appLockDelaySummary(it)) } +
+                Pair(-1, resources.getString(R.string.lock_after_custom))
+            val checked = if (userPreferences.appLockRelockMinutes in presets) {
+                userPreferences.appLockRelockMinutes
+            } else {
+                -1
+            }
+            withSingleChoiceItems(values, checked) {
+                if (it == -1) {
+                    showCustomLockDelayDialog(activity as Activity, summaryUpdater)
+                } else {
+                    userPreferences.appLockRelockMinutes = it
+                    summaryUpdater.updateSummary(appLockDelaySummary(it))
+                }
+            }
+            setPositiveButton(R.string.action_ok, null)
+        }
+    }
+
+    private fun showCustomLockDelayDialog(activity: Activity, summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showEditText(
+            activity,
+            R.string.lock_after,
+            R.string.lock_after_custom,
+            R.string.action_ok
+        ) { text ->
+            val minutes = text.trim().toIntOrNull()
+            if (minutes == null || minutes !in 1..1440) {
+                toastMessage?.cancel()
+                toastMessage = Toast.makeText(
+                    activity,
+                    R.string.lock_after_invalid,
+                    Toast.LENGTH_SHORT
+                )
+                toastMessage?.show()
+            } else {
+                userPreferences.appLockRelockMinutes = minutes
+                summaryUpdater.updateSummary(appLockDelaySummary(minutes))
             }
         }
     }
@@ -638,6 +740,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"
+        private const val SETTINGS_APP_LOCK_DELAY = "app_lock_delay"
         private const val SETTINGS_PROXY = "proxy"
         private const val SETTINGS_USER_AGENT = "agent"
         private const val SETTINGS_JAVASCRIPT = "cb_javascript"

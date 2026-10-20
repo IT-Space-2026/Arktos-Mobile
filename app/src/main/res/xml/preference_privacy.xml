@@ -136,7 +136,12 @@
         <Preference
             android:key="app_lock"
             android:singleLineTitle="false"
+            android:summary="@string/app_lock_summary"
             android:title="@string/app_lock"/>
+        <Preference
+            android:key="app_lock_delay"
+            android:singleLineTitle="false"
+            android:title="@string/lock_after"/>
         <Preference
             android:key="clear_cache"
             android:singleLineTitle="false"

@@ -589,7 +589,33 @@
 
     <string name="page_source">Edit page source</string>
 
-    <string name="app_lock">Set app password</string>
+    <string name="app_lock">App lock</string>
+    <string name="app_lock_summary">Require authentication to open the browser</string>
+    <string name="lock_after">Re-lock after</string>
+    <string name="lock_after_immediately">Immediately</string>
+    <string name="lock_after_custom">Custom…</string>
+    <string name="lock_after_invalid">Enter a number of minutes between 1 and 1440</string>
+    <string name="lock_after_minutes">%1$d min</string>
+    <string name="enter_pin">Enter PIN</string>
+    <string name="set_pin">Set a PIN</string>
+    <string name="pin_too_short">PIN must be at least 4 digits</string>
+    <string name="unlock_to_continue">Unlock to continue</string>
+    <string name="locked">The browser is locked</string>
+    <string name="unlock">Unlock</string>
+    <string name="biometric_unavailable">Biometric authentication is not available on this device</string>
+    <string name="method_pin">PIN</string>
+    <string name="method_password">Password</string>
+    <string name="method_biometric">Biometric</string>
+    <string name="export_backup_encrypted">Encrypted backup</string>
+    <string name="import_backup_encrypted">Restore encrypted backup</string>
+    <string name="backup_password">Backup password</string>
+    <string name="backup_password_confirm">Confirm backup password</string>
+    <string name="backup_passwords_differ">Passwords do not match</string>
+    <string name="backup_password_empty">Enter a backup password</string>
+    <string name="backup_decrypt_error">Wrong password or corrupted backup</string>
+    <string name="backup_category">Encrypted backup</string>
+    <string name="backup_export_done">Encrypted backup saved</string>
+    <string name="backup_import_done">Backup restored</string>
 
     <string name="show_ssl">Show SSL warning dialogs</string>
     <string name="warn">Only change this if you know what you\'re doing!</string>
