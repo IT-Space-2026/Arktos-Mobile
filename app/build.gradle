@@ -119,6 +119,8 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.mockito:mockito-core:5.24.0'
     testImplementation 'org.mockito.kotlin:mockito-kotlin:6.4.0'
+    // Real org.json for the unit-test JVM — android.jar ships stubs.
+    testImplementation 'org.json:json:20250517'
 
     // The @aar JNA artifact only ships Android natives; unit tests run
     // on the host JVM and need the desktop jar's libjnidispatch.

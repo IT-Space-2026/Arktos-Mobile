@@ -47,6 +47,7 @@ import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.SslWarningGate
 import com.arktosbrowser.mobile.ssl.SslWarningPreferences
+import com.arktosbrowser.mobile.translate.TranslateBridge
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.utils.ERROR_PAGE_ORIGIN
 import com.arktosbrowser.mobile.utils.IntentUtils
@@ -134,6 +135,7 @@ class ArktosCookieWebClient(
     @Inject internal lateinit var invertPageJs: InvertPage
     @Inject internal lateinit var darkMode: DarkMode
     @Inject internal lateinit var translatePage: TranslatePage
+    @Inject internal lateinit var translateBridge: TranslateBridge
     @Inject internal lateinit var noAMP: BlockAMP
     @Inject internal lateinit var cookieBlock: CookieBlock
     @Inject internal lateinit var setWidenView: SetWidenViewport

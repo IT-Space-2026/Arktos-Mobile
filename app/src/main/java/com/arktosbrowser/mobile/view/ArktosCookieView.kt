@@ -241,6 +241,7 @@ class ArktosCookieView(
             arktosCookieWebClient.userScriptEngine.register(this) { url ->
                 uiController.handleNewTab(LightningDialogBuilder.NewTab.FOREGROUND, url)
             }
+            arktosCookieWebClient.translateBridge.register(this)
 
             setDownloadListener(LightningDownloadListener(activity))
             setOnTouchListener(TouchListener())
