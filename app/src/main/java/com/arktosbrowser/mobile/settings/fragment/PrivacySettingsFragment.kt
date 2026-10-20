@@ -134,6 +134,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 onClick = ::showLockDelayPicker
         )
 
+        switchPreference(
+                preference = SETTINGS_PANIC_TRIGGER,
+                isChecked = userPreferences.panicTriggerEnabled,
+                onCheckChange = { userPreferences.panicTriggerEnabled = it }
+        )
+
         clickablePreference(preference = SETTINGS_CLEARCACHE, onClick = this::clearCacheDialog)
         clickablePreference(preference = SETTINGS_CLEARHISTORY, onClick = this::clearHistoryDialog)
         clickablePreference(preference = SETTINGS_CLEARCOOKIES, onClick = this::clearCookiesDialog)
@@ -756,6 +762,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"
         private const val SETTINGS_APP_LOCK_DELAY = "app_lock_delay"
+        private const val SETTINGS_PANIC_TRIGGER = "panic_trigger"
         private const val SETTINGS_PROXY = "proxy"
         private const val SETTINGS_USER_AGENT = "agent"
         private const val SETTINGS_JAVASCRIPT = "cb_javascript"

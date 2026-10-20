@@ -154,6 +154,12 @@
             android:key="app_lock_delay"
             android:singleLineTitle="false"
             android:title="@string/lock_after"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="panic_trigger"
+            android:singleLineTitle="false"
+            android:summary="@string/panic_trigger_summary"
+            android:title="@string/panic_trigger"/>
         <Preference
             android:key="clear_cache"
             android:singleLineTitle="false"
