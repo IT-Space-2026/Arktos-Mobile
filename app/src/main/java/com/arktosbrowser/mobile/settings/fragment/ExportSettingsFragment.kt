@@ -31,6 +31,7 @@ import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.extensions.toast
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.utils.BackupCrypto
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.Utils.close
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -106,6 +107,9 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         clickablePreference(preference = SETTINGS_SETTINGS_IMPORT) { showImportSettingsDialog() }
 
         clickablePreference(preference = SETTINGS_DELETE_SETTINGS, onClick = this::clearSettings)
+
+        clickablePreference(preference = SETTINGS_BACKUP_EXPORT) { showEncryptedExportDialog() }
+        clickablePreference(preference = SETTINGS_BACKUP_IMPORT) { showEncryptedImportDialog() }
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -501,6 +505,192 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         }
     }
 
+    // ------------------------------------------------------------------
+    // SEC02 — encrypted backup archive
+    //
+    // Android Auto Backup copies files verbatim and cannot run a
+    // password prompt, so the password-protected restore path lives
+    // here: settings JSONL + bookmark JSONL wrapped in one JSON payload
+    // sealed by BackupCrypto (PBKDF2 → AES-256-GCM).
+    // ------------------------------------------------------------------
+
+    private fun showEncryptedExportDialog() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, "ArktosBackup.abk")
+        }
+        backupExportFilePicker.launch(intent)
+    }
+
+    private val backupExportFilePicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val uri = result.data?.data
+            if (uri == null) {
+                showError(R.string.bookmark_export_failure)
+                return@registerForActivityResult
+            }
+            showBackupPasswordDialog { password ->
+                exportEncryptedBackup(uri, password)
+            }
+        }
+
+    /** Two-field password prompt; the dialog stays open on mismatch. */
+    private fun showBackupPasswordDialog(onPassword: (String) -> Unit) {
+        val activity = activity ?: return
+        val v = activity.layoutInflater.inflate(R.layout.dialog_backup_password, null)
+        val passwordField = v.findViewById<android.widget.EditText>(R.id.backup_password)
+        val confirmField = v.findViewById<android.widget.EditText>(R.id.backup_password_confirm)
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.backup_password)
+            .setView(v)
+            .setPositiveButton(R.string.action_ok, null)
+            .setNegativeButton(R.string.action_cancel, null)
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val password = passwordField.text.toString()
+            when {
+                password.isEmpty() ->
+                    passwordField.error = getString(R.string.backup_password_empty)
+                password != confirmField.text.toString() ->
+                    confirmField.error = getString(R.string.backup_passwords_differ)
+                else -> {
+                    dialog.dismiss()
+                    onPassword(password)
+                }
+            }
+        }
+    }
+
+    private fun exportEncryptedBackup(uri: android.net.Uri, password: String) {
+        exportSubscription?.dispose()
+        exportSubscription = bookmarkRepository.getAllBookmarksSorted()
+            .subscribeOn(databaseScheduler)
+            .flatMap { list ->
+                Single.fromCallable {
+                    val bookmarksJson = ByteArrayOutputStream().also { bos ->
+                        BookmarkExporter.exportBookmarksToFile(list, bos).blockingAwait()
+                    }.toString(Charsets.UTF_8.name())
+
+                    JSONObject()
+                        .put("v", 1)
+                        .put("settings", collectSettingsJsonl())
+                        .put("bookmarks", bookmarksJson)
+                        .toString()
+                }
+            }
+            .map { BackupCrypto.encrypt(it.toByteArray(Charsets.UTF_8), password) }
+            .flatMapCompletable { blob ->
+                Completable.fromAction {
+                    // "wt" truncates the placeholder doc CREATE_DOCUMENT made;
+                    // application context survives fragment detach.
+                    val stream = application.contentResolver.openOutputStream(uri, "wt")
+                        ?: throw IOException("can't open backup destination")
+                    stream.use { it.write(blob) }
+                }
+            }
+            .observeOn(mainScheduler)
+            .subscribeBy(
+                onComplete = { activity?.snackbar(getString(R.string.backup_export_done)) },
+                onError = {
+                    logger.log(TAG, "onError: exporting encrypted backup", it)
+                    showError(R.string.bookmark_export_failure)
+                }
+            )
+    }
+
+    /** Typed settings entries as JSONL — same format as settings export. */
+    private fun collectSettingsJsonl(): String {
+        val userPref = application.getSharedPreferences("settings", 0)
+        return userPref.all.entries.joinToString("\n") { entry ->
+            val (type, value) = when (val v = entry.value) {
+                is Int -> "int" to v
+                is Long -> "long" to v
+                is Float -> "float" to v.toDouble()
+                is Boolean -> "bool" to v
+                else -> "string" to v.toString()
+            }
+            JSONObject()
+                .put("key", entry.key)
+                .put("type", type)
+                .put("value", value)
+                .toString()
+        }
+    }
+
+    private fun showEncryptedImportDialog() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        backupImportFilePicker.launch(intent)
+    }
+
+    private val backupImportFilePicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val uri = result.data?.data ?: return@registerForActivityResult
+            val activity = activity ?: return@registerForActivityResult
+            val v = activity.layoutInflater.inflate(R.layout.password, null)
+            val passwordField = v.findViewById<android.widget.EditText>(R.id.password)
+            MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.backup_password)
+                .setView(v)
+                .setPositiveButton(R.string.action_ok) { _, _ ->
+                    importEncryptedBackup(uri, passwordField.text.toString())
+                }
+                .setNegativeButton(R.string.action_cancel, null)
+                .show()
+        }
+
+    private fun importEncryptedBackup(uri: android.net.Uri, password: String) {
+        importSubscription?.dispose()
+        importSubscription = Single.fromCallable {
+            val blob = application.contentResolver.openInputStream(uri)
+                ?.use { it.readBytes() }
+                ?: throw BackupCrypto.BackupCryptoException("unreadable backup file")
+            val payload = JSONObject(
+                String(BackupCrypto.decrypt(blob, password), Charsets.UTF_8)
+            )
+            val bookmarks = legacyBookmarkImporter.importBookmarks(
+                ByteArrayInputStream(
+                    payload.optString("bookmarks").toByteArray(Charsets.UTF_8)
+                )
+            )
+            val settings = payload.optString("settings").lineSequence()
+                .filter { it.isNotBlank() }
+                .map { parseSettingsEntry(JSONObject(it)) }
+                .toList()
+            bookmarks to settings
+        }
+            .flatMap { (bookmarks, settings) ->
+                bookmarkRepository.addBookmarkList(bookmarks)
+                    .andThen(Single.just(bookmarks.size to settings))
+            }
+            .subscribeOn(databaseScheduler)
+            .observeOn(mainScheduler)
+            .subscribeBy(
+                onSuccess = { (_, settings) ->
+                    // Merge into the existing prefs rather than clearing —
+                    // a partial archive can't wipe the live settings.
+                    val editor = application
+                        .getSharedPreferences("settings", 0).edit()
+                    settings.forEach { applyEntry(editor, it) }
+                    editor.apply()
+                    activity?.snackbar(getString(R.string.backup_import_done))
+                },
+                onError = {
+                    logger.log(TAG, "onError: importing encrypted backup", it)
+                    showError(R.string.backup_decrypt_error)
+                }
+            )
+    }
+
     private fun showImportBookmarksDialog() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -577,5 +767,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_SETTINGS_EXPORT = "export_settings"
         private const val SETTINGS_SETTINGS_IMPORT = "import_settings"
         private const val SETTINGS_DELETE_SETTINGS = "clear_settings"
+        private const val SETTINGS_BACKUP_EXPORT = "export_backup_encrypted"
+        private const val SETTINGS_BACKUP_IMPORT = "import_backup_encrypted"
     }
 }

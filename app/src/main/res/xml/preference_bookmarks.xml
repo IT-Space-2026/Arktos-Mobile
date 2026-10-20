@@ -50,4 +50,15 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/backup_category">
+        <Preference
+            android:key="export_backup_encrypted"
+            android:singleLineTitle="false"
+            android:title="@string/export_backup_encrypted"/>
+        <Preference
+            android:key="import_backup_encrypted"
+            android:singleLineTitle="false"
+            android:title="@string/import_backup_encrypted"/>
+    </PreferenceCategory>
+
 </PreferenceScreen>

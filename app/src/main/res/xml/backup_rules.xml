@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Auto Backup rules for API 30 and below (fullBackupContent).
-     Databases carry arktos.db — history, bookmarks, downloads,
-     allowlist, userscripts, adblock subscriptions all live in the
-     Rust store. Shared prefs carry every setting. Files are included
-     minus regenerable bulk (downloaded rank lists, adblock caches,
-     generated pages) that would exhaust the 25MB quota. -->
+     SEC02 — the database domain is excluded: arktos.db holds history,
+     bookmarks, downloads and userscripts and Auto Backup would ship it
+     to the cloud provider in plaintext. The password-protected restore
+     path is the in-app encrypted backup (Settings → Import/Export →
+     Encrypted backup). Shared prefs carry only settings + argon2id
+     credential hashes — no content — so they stay included. Files are
+     included minus regenerable bulk (downloaded rank lists, adblock
+     caches, generated pages) that would exhaust the 25MB quota. -->
 <full-backup-content>
-    <include domain="database" path="." />
     <include domain="sharedpref" path="." />
     <include domain="file" path="." />
     <exclude domain="file" path="site-rank" />

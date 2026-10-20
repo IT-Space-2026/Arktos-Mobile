@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Data extraction rules for API 31+: same set as backup_rules.xml,
-     applied to both cloud backup and device-to-device transfer. -->
+     applied to both cloud backup and device-to-device transfer. The
+     database domain is excluded for both — browsing data only leaves
+     the device via the password-encrypted in-app backup archive. -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="database" path="." />
         <include domain="sharedpref" path="." />
         <include domain="file" path="." />
         <exclude domain="file" path="site-rank" />
@@ -14,7 +15,6 @@
         <exclude domain="root" path="app_webview" />
     </cloud-backup>
     <device-transfer>
-        <include domain="database" path="." />
         <include domain="sharedpref" path="." />
         <include domain="file" path="." />
         <exclude domain="file" path="site-rank" />

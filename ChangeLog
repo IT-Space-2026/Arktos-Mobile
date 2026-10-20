@@ -178,3 +178,16 @@ Settings audit (every screen verified end-to-end):
 - Parental controls: shared no-password flag that could hard-lock the
   section removed, every password field now masks input, retry no
   longer stacks dialogs (SETA05).
+
+Security:
+- Browser-wide app lock: choose PIN, password, or biometric unlock in
+  Settings → Privacy; re-lock timing configurable (immediately,
+  1/5/10 minutes, or a custom minute count) driven by a monotonic
+  background clock — the gate re-arms on cold start and after the
+  window elapses (SEC01).
+- Encrypted backup: Settings → Import/Export gains password-protected
+  backup archives (PBKDF2 → AES-256-GCM, versioned ARKBAK format)
+  covering bookmarks + settings, restorable only with the password.
+  Auto Backup's database inclusion was removed at the same time so
+  history/bookmarks/downloads no longer ship to the cloud in
+  plaintext (SEC02).

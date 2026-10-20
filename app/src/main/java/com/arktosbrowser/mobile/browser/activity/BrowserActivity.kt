@@ -23,6 +23,7 @@ import android.os.Handler
 import android.os.Message
 import android.preference.PreferenceManager
 import android.provider.MediaStore
+import android.text.InputType
 import android.util.DisplayMetrics
 import android.util.Log
 import android.util.TypedValue
@@ -42,6 +43,8 @@ import android.widget.TextView.OnEditorActionListener
 import androidx.annotation.ColorInt
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -162,6 +165,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var findResult: FindResults? = null
 
     private val appLockGate = AppLockGate()
+
+    private var appLockShowing = false
 
     private var prefs: SharedPreferences? = null
 
@@ -612,49 +617,140 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         }
 
-        if(userPreferences.passwordChoiceLock == PasswordChoice.CUSTOM){
-            val customLayoutBinding = DialogAppLockBinding.inflate(layoutInflater)
+        maybeShowAppLockGate()
+    }
 
-            // FIXB07 (upstream #302): a mistyped password used to kill
-            // the app with no feedback, which read as a crash. The
-            // prompt now stays open with an inline error and retries;
-            // Cancel remains the explicit way out.
-            val dialog: AlertDialog = AlertDialog.Builder(this)
-                .setView(customLayoutBinding.root)
-                .setCancelable(false)
-                .setPositiveButton(resources.getString(R.string.action_ok), null)
-                .setNegativeButton(resources.getString(R.string.action_cancel)) { _, _ ->
-                    this.finishAffinity()
-                }
-                .create()
+    /**
+     * SEC01 — browser-wide app-lock gate. Shown on cold start and
+     * again from [onResume] once the re-lock window elapsed while the
+     * app was backgrounded.
+     */
+    private fun maybeShowAppLockGate() {
+        if (appLockShowing) {
+            return
+        }
+        if (!AppLockState.needsUnlock(
+                userPreferences.appLockMethod,
+                userPreferences.appLockRelockMinutes
+            )
+        ) {
+            return
+        }
+        when (userPreferences.appLockMethod) {
+            AppLockMethod.PIN -> showCredentialLockDialog(pin = true)
+            AppLockMethod.PASSWORD -> showCredentialLockDialog(pin = false)
+            AppLockMethod.BIOMETRIC -> showBiometricLock()
+            AppLockMethod.NONE -> Unit
+        }
+    }
 
-            customLayoutBinding.textFieldText.doOnTextChanged { _, _, _, _ ->
-                customLayoutBinding.textField.error = null
+    private fun showCredentialLockDialog(pin: Boolean) {
+        appLockShowing = true
+        val customLayoutBinding = DialogAppLockBinding.inflate(layoutInflater)
+
+        if (pin) {
+            customLayoutBinding.enterPassword.setText(R.string.enter_pin)
+            customLayoutBinding.textField.hint = resources.getString(R.string.enter_pin)
+            customLayoutBinding.textFieldText.inputType =
+                InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        }
+
+        // FIXB07 (upstream #302): a mistyped password used to kill
+        // the app with no feedback, which read as a crash. The
+        // prompt now stays open with an inline error and retries;
+        // Cancel remains the explicit way out.
+        val dialog: AlertDialog = AlertDialog.Builder(this)
+            .setView(customLayoutBinding.root)
+            .setCancelable(false)
+            .setPositiveButton(resources.getString(R.string.action_ok), null)
+            .setNegativeButton(resources.getString(R.string.action_cancel)) { _, _ ->
+                this.finishAffinity()
             }
+            .create()
 
-            dialog.show()
+        customLayoutBinding.textFieldText.doOnTextChanged { _, _, _, _ ->
+            customLayoutBinding.textField.error = null
+        }
 
-            // Overriding after show() stops the button auto-dismissing
-            // the dialog on a failed attempt.
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                // PORT02 — stored value is an `arktos:v1:` argon2id
-                // hash; a legacy plaintext match upgrades in place.
-                when (val result = appLockGate.check(
-                    userPreferences.passwordTextLock,
-                    customLayoutBinding.textFieldText.text.toString()
-                )) {
-                    is AppLockGate.Result.Unlocked -> {
-                        result.upgradedHash?.let { userPreferences.passwordTextLock = it }
-                        dialog.dismiss()
-                    }
-                    AppLockGate.Result.Retry -> {
-                        customLayoutBinding.textField.error =
-                            resources.getString(R.string.wrong_password)
-                        customLayoutBinding.textFieldText.text?.clear()
-                    }
+        dialog.show()
+
+        // Overriding after show() stops the button auto-dismissing
+        // the dialog on a failed attempt.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            // PORT02 — stored value is an `arktos:v1:` argon2id
+            // hash; a legacy plaintext match upgrades in place.
+            when (val result = appLockGate.check(
+                userPreferences.passwordTextLock,
+                customLayoutBinding.textFieldText.text.toString()
+            )) {
+                is AppLockGate.Result.Unlocked -> {
+                    result.upgradedHash?.let { userPreferences.passwordTextLock = it }
+                    AppLockState.onUnlocked()
+                    appLockShowing = false
+                    dialog.dismiss()
+                }
+                AppLockGate.Result.Retry -> {
+                    customLayoutBinding.textField.error =
+                        resources.getString(R.string.wrong_password)
+                    customLayoutBinding.textFieldText.text?.clear()
                 }
             }
         }
+    }
+
+    private fun showBiometricLock() {
+        appLockShowing = true
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult
+                ) {
+                    AppLockState.onUnlocked()
+                    appLockShowing = false
+                }
+
+                override fun onAuthenticationError(code: Int, errString: CharSequence) {
+                    logger.log(TAG, "biometric lock error $code: $errString")
+                    when (code) {
+                        BiometricPrompt.ERROR_USER_CANCELED,
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                        BiometricPrompt.ERROR_CANCELED -> showBiometricCancelledDialog()
+                        else -> showBiometricCancelledDialog()
+                    }
+                }
+            }
+        )
+        val builder = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(resources.getString(R.string.app_lock))
+            .setSubtitle(resources.getString(R.string.unlock_to_continue))
+        if (Build.VERSION.SDK_INT >= 30) {
+            // DEVICE_CREDENTIAL gives the OS-level PIN/pattern fallback
+            // inside the same prompt; a negative button isn't allowed
+            // alongside it.
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+        } else {
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG
+            )
+            builder.setNegativeButtonText(resources.getString(R.string.action_cancel))
+        }
+        prompt.authenticate(builder.build())
+    }
+
+    /** The biometric prompt was dismissed without unlocking. */
+    private fun showBiometricCancelledDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.app_lock)
+            .setMessage(R.string.locked)
+            .setCancelable(false)
+            .setPositiveButton(R.string.unlock) { _, _ -> showBiometricLock() }
+            .setNegativeButton(R.string.action_cancel) { _, _ -> finishAffinity() }
+            .show()
     }
 
     private fun getBookmarksContainerId(): Int = if (swapBookmarksAndTabs) {
@@ -1739,6 +1835,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
         tabsManager.resumeAll()
         initializePreferences()
+
+        // SEC01 — re-lock once the configured background window has
+        // elapsed; on a cold start the gate was already raised in
+        // onCreate and `appLockShowing` suppresses a second prompt.
+        maybeShowAppLockGate()
 
 
         if(!userPreferences.bottomBar){

@@ -86,6 +86,15 @@ SmartCookieWeb#314).
   hosts-file parsing, intent-scheme checks, tab/reader color math and
   the app-lock + parental-control passwords (Argon2id with in-place
   upgrade from legacy plaintext) run in the Rust core too
+- Browser-wide app lock — PIN, password, or biometric unlock (system
+  credential fallback on API 30+) with a configurable re-lock window
+  (immediately, 1/5/10 minutes, or a custom minute count) that re-arms
+  after the app sits in the background
+- Password-encrypted backups — Settings → Import/Export can seal
+  bookmarks + settings into an `ARKBAK` archive (PBKDF2 key
+  derivation → AES-256-GCM) that restores only with the password;
+  Android Auto Backup no longer carries the browsing database, so
+  history/bookmarks/downloads never leave the device in plaintext
 - In-app changelog — Settings → About → Changelog (or
   `arktos://changelog` in the URL bar) renders the repo `ChangeLog`
   styled like the other internal pages; after an update it opens once

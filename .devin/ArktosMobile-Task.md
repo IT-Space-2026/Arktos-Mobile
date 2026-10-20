@@ -69,6 +69,22 @@ NO SUDO — everything user-local.
 | J2K01 | Convert remaining .java files to Kotlin — details below | done | 0 | 11 files converted (9 utils/exporter + Vertical/HorizontalItemAnimator); 0 .java files remain; 232 unit tests 0 fail, assembleScMainDebug + engine-audit PASS | needs:tool:java — 12 files left (animators, utils glue); MurmurHash/WebAddress already went to Rust on rust-work |
 | RENAM01 | Rename residual SmartCookie* identifiers to Arktos* — details below | done | 0 | SmartCookieView/WebClient/ChromeClient/ViewTitle → ArktosCookie* (files, classes, fields, TAG/log strings, proguard keep rule); ENGINE.md + LIMITATIONS.md paths, rust provenance comments; upstream SmartCookieWeb citations + external smartcookieweb_ytdl id and legacy-domain probes kept — ArktosCookieRenameTest 4/4, 225 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
 | CHLOG01 | Changelog: repo file + in-app page — details below | done | 0 | root ChangeLog (desktop format) + assets/changelog.html (aurora style, arktos-dark) + arktos://changelog chrome URL served from assets + Settings→About entry + one-shot on versionCode bump — cargo 122/122, ChangelogPageTest 7/7 (235 total 0 fail), assembleScMainDebug + engine-audit PASS |
+| SEC01 | Browser-wide app lock: PIN/password/biometric + re-lock timer — details below | done | 0 | AppLockMethod enum (NONE/PIN/PASSWORD/BIOMETRIC) + appLockRelockMinutes pref (immediate/1/5/10/custom) + AppLockState monotonic background clock via BrowserApp activity-count callbacks; gate in BrowserActivity onCreate+onResume, biometric via androidx.biometric:biometric:1.1.0; legacy passwordLock=custom migrated to PASSWORD; Privacy settings method + re-lock pickers — AppLockStateTest 7/7 |
+| SEC02 | Password-encrypted in-app backup + plaintext DB excluded from Auto Backup — details below | done | 0 | BackupCrypto (PBKDF2-600k → AES-256-GCM, versioned ARKBAK blob, JVM-testable) + Encrypted backup/Restore rows in Import-Export settings reusing typed-settings JSONL + legacy bookmark importer; database domain dropped from backup_rules/data_extraction_rules — BackupCryptoTest 6/6 |
+| SEC03 | Strict mixed-content in normal browsing — details below | pending | 0 | — |
+| SEC04 | HTTPS-only mode toggle with warning interstitial — details below | pending | 0 | — |
+| SEC05 | Migrate TranslateBridge off addJavascriptInterface — details below | pending | 0 | — |
+| SEC06 | Enforce userscript @connect for GM_xmlhttpRequest — details below | pending | 0 | — |
+| SEC07 | FLAG_SECURE for incognito + optional whole-app toggle — details below | pending | 0 | — |
+| SEC08 | Tapjacking protection on sensitive dialogs — details below | pending | 0 | — |
+| SEC09 | Audit exported components + incoming intent validation — details below | pending | 0 | — |
+| SEC10 | Release R8/minify + resource shrinking — details below | pending | 0 | — |
+| SEC11 | Download risk warnings (executable ext, MIME mismatch) — details below | pending | 0 | — |
+| SEC12 | IDN/homograph punycode warning in URL bar — details below | pending | 0 | — |
+| SEC13 | Referrer-trim privacy toggle — details below | pending | 0 | — |
+| SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | pending | 0 | — |
+| SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | pending | 0 | — |
+| SEC16 | Reproducible/verified build investigation — details below | pending | 0 | — |
 
 ## Task details
 
@@ -471,3 +487,143 @@ Outcome / notes (2026-10-19):
   engine-audit PASS. Manual click-through not possible (no device);
   intent→tab path follows the existing HistoryActivity
   VIEW+setPackage pattern.
+
+### SEC01
+Browser-wide app lock (user request): PIN, password, or biometric
+authentication to open the browser, separate from the parental-control
+lock. Re-lock timing: immediate, 1 min, 5 min, 10 min, or a custom
+minute count.
+
+Landed: `AppLockMethod` enum + `appLockMethod`/`appLockRelockMinutes`
+prefs (legacy `passwordLock=custom` migrates to PASSWORD, keeping the
+argon2id hash), `AppLockState` monotonic (elapsedRealtime) background
+clock driven by a started-activity counter in `BrowserApp`, the gate
+in `BrowserActivity` onCreate + onResume, BiometricPrompt via
+androidx.biometric:biometric:1.1.0 (BIOMETRIC_STRONG|DEVICE_CREDENTIAL
+on API 30+), method + re-lock pickers on the Privacy screen.
+
+Outcome notes:
+- Incognito runs in its own process → its own AppLockState, so it
+  re-prompts independently.
+- Unlock state is process-lifetime only; process death always re-locks.
+- Recovery: the existing "clear app data to reset" string still applies —
+  there is deliberately no recovery bypass.
+
+### SEC02
+Encrypted backup (user request): "if it goes to backup you can restore
+if you have the password". Android Auto Backup copies files verbatim
+and cannot run a password prompt, so two moves were made:
+
+1. `database` domain removed from `backup_rules.xml` +
+   `data_extraction_rules.xml` — arktos.db (history, bookmarks,
+   downloads, userscripts) no longer ships plaintext to the cloud /
+   device-transfer. Shared prefs stay included (settings + argon2id
+   hashes only, no content).
+2. In-app password-protected backup: `BackupCrypto` (utils/) seals a
+   `{"v":1,"settings":<jsonl>,"bookmarks":<jsonl>}` payload with
+   PBKDF2WithHmacSHA256 (600k iters) → AES-256-GCM; `ARKBAK`+version
+   magic. Two rows on the Import/Export screen: "Encrypted backup"
+   (SAF create + confirm-password dialog) and "Restore encrypted
+   backup" (SAF open + password dialog). Wrong password → GCM tag
+   failure → generic error. Restore merges settings (no wipe).
+
+Outcome notes:
+- The password is never persisted; there is no recovery for a
+  forgotten backup password.
+- Follow-on: SEC15 encrypts the live store at rest, which would let
+  Auto Backup carry ciphertext again.
+
+### SEC03
+Normal browsing still uses `MIXED_CONTENT_COMPATIBILITY_MODE`
+(`view/ArktosCookieView.kt`); only incognito uses NEVER_ALLOW. Switch
+normal mode to `MIXED_CONTENT_NEVER_ALLOW`, or add a privacy switch if
+compat mode is still needed for legacy sites. Engine touchpoint →
+update ENGINE.md. needs:tool:java
+
+### SEC04
+Add an HTTPS-only mode: `forceHTTPSenabled` currently upgrades
+opportunistically; a strict mode should block cleartext http
+navigations with a warning/interstitial page (the UI01 error-page
+infra can host it) rather than silently upgrading. WebView touchpoint
+→ ENGINE.md. needs:tool:java
+
+### SEC05
+`translate/TranslateBridge.kt` exposes `addJavascriptInterface` to
+pages. Migrate to `WebViewCompat.addWebMessageListener` +
+`WebMessagePort` like the userscript GM bridge, so no JS-interface
+object is reachable from page JavaScript. WebView touchpoint →
+ENGINE.md. needs:tool:java
+
+### SEC06
+`GM_xmlhttpRequest` in the userscript engine reaches any host through
+the proxy-aware OkHttp client. Enforce the userscript's declared
+`@connect` domains; scripts without any `@connect` should get no
+cross-origin XHR (or an install-time warning). Rust side: the parser
+already captures @connect — the check belongs in the Kotlin GM bridge
+host filter. needs:tool:java
+
+### SEC07
+`FLAG_SECURE` on the incognito activity window (blocks screenshots and
+recents thumbnails of private pages) plus an optional whole-app toggle
+in Privacy settings. Apply in onCreate before setContentView; keep it
+off in regular mode by default so screenshots keep working.
+needs:tool:java
+
+### SEC08
+Tapjacking: set `filterTouchesWhenObscured` (or FLAG_SECURE) on the
+password/lock dialogs, proxy host dialog, and download-confirm dialogs
+so overlay apps can't inject taps. needs:tool:java
+
+### SEC09
+Audit every `android:exported="true"` component in the manifest:
+confirm each really needs to be reachable, validate incoming
+actions/extras (open-url intents, panic trigger), and drop exported
+where internal-only. needs:tool:java
+
+### SEC10
+Check release buildType: enable `minifyEnabled` (R8) +
+`shrinkResources` if absent; keep the existing proguard keep rules
+(JNA/uniffi). Verify a release build still runs the Rust core.
+needs:tool:java
+
+### SEC11
+Download risk warnings: flag executable/scriptable extensions
+(.apk/.exe/.js/.bat/.msi etc.) and MIME-vs-extension mismatches before
+the download is enqueued; the FIXB01 probe already detects
+html-served-as-file — extend that pattern. needs:tool:java
+
+### SEC12
+IDN/homograph protection: detect confusable Unicode hosts at
+display-time and show punycode (or a warning badge) in the URL bar —
+Rust-side `idna`/confusable check would fit the port pattern.
+needs:tool:java
+
+### SEC13
+Referrer control: toggle to strip/trim Referer on top-level
+navigations (same-origin only, or full strip). WebView can't set
+Referrer-Policy directly — apply at shouldOverrideUrlLoading/
+loadUrl headers where supported. WebView touchpoint → ENGINE.md.
+needs:tool:java
+
+### SEC14
+CI security gates in `.github/workflows/android.yml`: dependency
+vulnerability scan (osv-scanner or Dependabot config for Gradle +
+Cargo.lock), secret scan (gitleaks/trufflehog), and an
+exported-component/permission lint step (or reuse
+check-engine-audit.sh as the gate pattern). needs:tool:java only if
+verification builds are run.
+
+### SEC15
+Encrypted store at rest: arktos.db is plaintext SQLite today — anyone
+with the file reads full history/bookmarks. Options: SQLCipher via
+rusqlite `bundled-sqlcipher-vendored-openssl` (key = argon2id of the
+app-lock credential; fallback Keystore-wrapped random key when no
+password lock), or field-level AES-GCM on sensitive columns. When this
+lands, Auto Backup can re-include the database domain because the
+backup itself would be ciphertext. needs:tool:java, needs:tool:cargo-ndk
+
+### SEC16
+Reproducible/verified builds: pin toolchain versions, lockfile
+verification (Cargo.lock + Gradle verification-metadata), strip
+nondeterminism (build timestamps), document the recipe — groundwork
+for F-Droid inclusion.

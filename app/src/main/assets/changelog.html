@@ -230,6 +230,13 @@
             <li>Tab sessions restore in order, save-state failures are handled, and a corrupt session can't leave the browser with zero tabs.</li>
             <li>RxJava 3 migration, targetSdk 35, deprecated news feed removed.</li>
         </ul>
+
+        <h3>Security</h3>
+        <ul>
+            <li>Browser-wide app lock — PIN, password, or biometric unlock, with a configurable re-lock timer (immediately, 1/5/10 min, or custom).</li>
+            <li>Password-encrypted backup archives (PBKDF2 + AES-256-GCM) in Settings → Import/Export; restore needs the password.</li>
+            <li>Auto Backup no longer carries the browsing database in plaintext — history/bookmarks/downloads only leave the device via the encrypted archive.</li>
+        </ul>
     </div>
 
 </body>
