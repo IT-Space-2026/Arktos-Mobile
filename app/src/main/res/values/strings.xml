@@ -471,6 +471,8 @@
     <string name="secure_windows_summary">Block screenshots and recents thumbnails in every window (always on in incognito)</string>
     <string name="show_punycode">Show punycode domains</string>
     <string name="show_punycode_summary">Display internationalized domains in the URL bar in their xn-- (punycode) form to expose lookalike phishing domains</string>
+    <string name="incognito_notification_visible">Private tabs on lock screen</string>
+    <string name="incognito_notification_visible_summary">Show the "private tabs running" notification while the device is locked (hidden by default)</string>
     <string name="referrer_policy">Referrer policy</string>
     <string name="referrer_policy_default">Default</string>
     <string name="referrer_policy_same_origin">Same origin only</string>

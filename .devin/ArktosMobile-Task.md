@@ -892,7 +892,7 @@ DONE (2026-10-20). What landed:
   exercised — no emulator in this env.
 | INCOG01 | Wipe incognito partition on session end/fresh start — details below | done | 0 | IncognitoPartition wipe on session end (performExitCleanUp+onDestroy) + fresh start (engine initialize); real dir is app_webview_incognito; gecko OTR = private mode + clearData; 5 tests + assemble both flavors + engine-audit PASS |
 | INCOG02 | Include incognito profile in panicClean — details below | done | 0 | IncognitoPartition.panicWipe kills :incognito pid (ActivityManager lookup + Process.killProcess) then deletes partition dirs from main; panicClean also cancels the private-tabs notification (id exported as NOTIFICATION_ID); 3 new tests, 400 unit tests/flavor 0 fail, assemble both flavors + engine-audit PASS |
-| INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | pending | 0 | — |
+| INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | done | 0 | visibilityFor(VISIBILITY_SECRET default/PRIVATE opt-in) + incognitoNotificationVisible pref + Privacy→Security switch; O+ channel lockscreenVisibility is system-locked so show() delete+recreates on mismatch — 5 tests + assemble both flavors + engine-audit PASS |
 | INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | pending | 0 | — |
 
 ### INCOG01
@@ -987,6 +987,32 @@ locked. Add `setVisibility(NotificationCompat.VISIBILITY_SECRET)` and
 a Privacy settings switch (e.g. `incognitoNotificationVisible`) so
 users who want the reminder can keep it; default = hidden from lock
 screen. needs:tool:java
+
+Done 2026-10-20:
+
+- `UserPreferences.incognitoNotificationVisible` (default false) +
+  switch "Private tabs on lock screen" under Privacy→Security
+  (`incognito_notification_visible` screen key).
+- `IncognitoNotification` takes a `showOnLockScreen: () -> Boolean`
+  provider (re-read on every `show()` so a settings change applies to
+  the next posted reminder). `visibilityFor` maps it to
+  `VISIBILITY_SECRET` (off) / `VISIBILITY_PRIVATE` (on — honours the
+  device's own lock-screen-notification level rather than forcing
+  `PUBLIC`).
+- O+ wrinkle: builder `setVisibility` is ignored on O+ — visibility
+  lives on the channel, and `NotificationChannel.lockscreenVisibility`
+  is "only modifiable by the system and notification ranker" once the
+  channel exists. `show()` therefore compares the persisted channel's
+  `lockscreenVisibility` and delete+re-creates it on mismatch (pure
+  `channelNeedsRecreate` seam); a null channel (user deleted/blocked
+  it) is never resurrected. This also migrates pre-existing installs
+  whose channel carries the platform default.
+- Tests: `IncognitoNotificationTest` (5) — visibility mapping both
+  ways, recreate on mismatch, keep on match, no-resurrect on null.
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
+  both `testScMain*DebugUnitTest` suites green, engine-audit PASS.
+  Runtime check (lock screen redaction on device) needs an emulator —
+  not run in this env.
 
 ### INCOG04
 The URL/search bar in the incognito window lacks

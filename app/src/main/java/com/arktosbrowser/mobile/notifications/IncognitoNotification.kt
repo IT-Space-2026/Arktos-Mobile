@@ -16,10 +16,15 @@ import androidx.core.os.BuildCompat
 /**
  * A notification helper that displays the current number of tabs open in a notification as a
  * warning. When the notification is pressed, the incognito browser will open.
+ *
+ * INCOG03 — the reminder is kept off the lock screen by default
+ * ([NotificationCompat.VISIBILITY_SECRET]); users who want it there can
+ * opt in via the Privacy setting that backs [showOnLockScreen].
  */
 class IncognitoNotification(
     private val context: Context,
-    private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager,
+    private val showOnLockScreen: () -> Boolean
 ) {
 
     private val channelId = "channel_incognito"
@@ -35,7 +40,23 @@ class IncognitoNotification(
         val channelName = context.getString(R.string.notification_incognito_running_description)
         val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
         channel.enableVibration(false)
+        channel.lockscreenVisibility = visibilityFor(showOnLockScreen())
         notificationManager.createNotificationChannel(channel)
+    }
+
+    /**
+     * On O+ the lock-screen visibility lives on the channel, and a
+     * channel's visibility is locked to the system once created — so a
+     * preference change can only take effect by deleting and
+     * re-creating it.
+     */
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun syncChannelVisibility() {
+        val current = notificationManager.getNotificationChannel(channelId)?.lockscreenVisibility
+        if (channelNeedsRecreate(current, showOnLockScreen())) {
+            notificationManager.deleteNotificationChannel(channelId)
+            createNotificationChannel()
+        }
     }
 
     /**
@@ -46,6 +67,9 @@ class IncognitoNotification(
      */
     fun show(number: Int) {
         require(number > 0)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            syncChannelVisibility()
+        }
         val incognitoIntent = IncognitoActivity.createIntent(context)
 
         val flags = if (BuildCompat.isAtLeastS()) {
@@ -62,6 +86,7 @@ class IncognitoNotification(
             .setAutoCancel(false)
             .setColor(ThemeUtils.getAccentColor(context))
             .setOngoing(true)
+            .setVisibility(visibilityFor(showOnLockScreen()))
             .build()
 
         notificationManager.notify(NOTIFICATION_ID, incognitoNotification)
@@ -79,6 +104,28 @@ class IncognitoNotification(
          * process that posted it is already gone.
          */
         const val NOTIFICATION_ID = 1
+
+        /**
+         * INCOG03 — lock-screen exposure of the private-tabs reminder.
+         * `VISIBILITY_SECRET` keeps it off the lock screen entirely;
+         * `VISIBILITY_PRIVATE` shows it in full when the device's
+         * lock-screen-notification setting allows.
+         */
+        fun visibilityFor(showOnLockScreen: Boolean): Int =
+            if (showOnLockScreen) {
+                NotificationCompat.VISIBILITY_PRIVATE
+            } else {
+                NotificationCompat.VISIBILITY_SECRET
+            }
+
+        /**
+         * True when the persisted channel's lock-screen visibility
+         * doesn't match the preference and must be re-created.
+         * A null [currentVisibility] means the channel is absent
+         * (deleted/blocked by the user) — it is not resurrected.
+         */
+        fun channelNeedsRecreate(currentVisibility: Int?, showOnLockScreen: Boolean): Boolean =
+            currentVisibility != null && currentVisibility != visibilityFor(showOnLockScreen)
     }
 
 }

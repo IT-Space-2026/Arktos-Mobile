@@ -252,6 +252,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 onCheckChange = { userPreferences.showPunycodeEnabled = it }
         )
 
+        switchPreference(
+                preference = SETTINGS_INCOGNITO_NOTIFICATION,
+                isChecked = userPreferences.incognitoNotificationVisible,
+                onCheckChange = { userPreferences.incognitoNotificationVisible = it }
+        )
+
         clickableDynamicPreference(
                 preference = SETTINGS_REFERRER_POLICY,
                 summary = referrerModeSummary(userPreferences.referrerMode),
@@ -793,6 +799,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_BLOCK_MIXED_CONTENT = "block_mixed_content"
         private const val SETTINGS_SECURE_WINDOWS = "secure_windows"
         private const val SETTINGS_SHOW_PUNYCODE = "show_punycode"
+        private const val SETTINGS_INCOGNITO_NOTIFICATION = "incognito_notification_visible"
         private const val SETTINGS_REFERRER_POLICY = "referrer_policy"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"

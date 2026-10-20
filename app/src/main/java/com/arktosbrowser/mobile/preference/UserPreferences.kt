@@ -169,6 +169,15 @@ class UserPreferences @Inject constructor(
     var showPunycodeEnabled by preferences.booleanPreference(SHOW_PUNYCODE, true)
 
     /**
+     * INCOG03 — true to let the persistent "private tabs running"
+     * notification appear on the lock screen. Defaults false so the
+     * reminder stays hidden ([NotificationCompat.VISIBILITY_SECRET])
+     * while the device is locked; see
+     * [com.arktosbrowser.mobile.notifications.IncognitoNotification].
+     */
+    var incognitoNotificationVisible by preferences.booleanPreference(INCOGNITO_NOTIFICATION_VISIBLE, false)
+
+    /**
      * SEC13 — referrer policy for top-level page navigations:
      * [ReferrerPolicy.Mode.SAME_ORIGIN] sends the Referer only when the
      * navigation stays on the source page's origin, [ReferrerPolicy.Mode.STRIP]
@@ -632,6 +641,7 @@ private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
 private const val SECURE_WINDOWS = "secureWindows"
 private const val SHOW_PUNYCODE = "showPunycode"
+private const val INCOGNITO_NOTIFICATION_VISIBLE = "incognitoNotificationVisible"
 private const val REFERRER_MODE = "referrerMode"
 private const val PANIC_TRIGGER = "panicTrigger"
 private const val COOKIE_BLOCK = "blockCookieDialogs"

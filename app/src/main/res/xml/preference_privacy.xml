@@ -123,6 +123,12 @@
             android:key="show_punycode"
             android:summary="@string/show_punycode_summary"
             android:title="@string/show_punycode"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:singleLineTitle="false"
+            android:key="incognito_notification_visible"
+            android:summary="@string/incognito_notification_visible_summary"
+            android:title="@string/incognito_notification_visible"/>
         <Preference
             android:key="referrer_policy"
             android:singleLineTitle="false"

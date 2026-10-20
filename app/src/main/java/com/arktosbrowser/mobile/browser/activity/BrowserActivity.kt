@@ -324,7 +324,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         DynamicColors.applyIfAvailable(this)
 
         if (isIncognito()) {
-            incognitoNotification = IncognitoNotification(this, notificationManager)
+            incognitoNotification = IncognitoNotification(this, notificationManager) {
+                userPreferences.incognitoNotificationVisible
+            }
         }
         tabsManager.addTabNumberChangedListener {
             if (isIncognito()) {
