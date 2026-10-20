@@ -355,7 +355,6 @@
     <string name="bookmark">Žyma pridėta</string>
     <string name="error_title">O trupiniai! &lt;br&gt; Šios svetainės negalima įkelti.</string>
     <string name="error_reload">Perkrauti iš naujo</string>
-    <string name="https_title">O trupiniai! &lt;br&gt; Ši svetainė nepalaiko HTTPS ir įgalinta HTTP blokavimas.</string>
     <string name="malware_title">O trupiniai! &lt;br&gt; Atrodo, kad šioje svetainėje yra kenkėjiškų programų.</string>
     <string name="malware_message">Jei tai klaida, susisiekite su github.com/IT-Space-2026/Arktos-Mobile/issues.</string>
     <string name="blocked_title">O trupiniai! &lt;br&gt; Svetainės nustatymai buvo užblokuoti.</string>

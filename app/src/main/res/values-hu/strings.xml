@@ -343,7 +343,6 @@
     <string name="bookmark">Könyvjelző hozzáadva</string>
     <string name="error_title">Ó morzsákat! &lt;br&gt; Az oldal nem tölthető be.</string>
     <string name="error_reload">Reload</string>
-    <string name="https_title">Ó morzsákat! &lt;br&gt; Ez a webhely nem támogatja a HTTPS-t, és a HTTP blokkolása engedélyezve van.</string>
     <string name="malware_title">Ó morzsákat! &lt;br&gt; Úgy tűnik, hogy az oldal rosszindulatú.</string>
     <string name="malware_message">Vegye fel a kapcsolatot a github.com/IT-Space-2026/Arktos-Mobile/issues címen, ha ez egy hiba.</string>
     <string name="blocked_title">Ó morzsákat! &lt;br&gt; Az oldal le van tiltva a beállításokban.</string>

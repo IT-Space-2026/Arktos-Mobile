@@ -365,7 +365,6 @@
     <string name="bookmark">تمت إضافة الإشارة المرجعية</string>
     <string name="error_title">لا يمكن تحميل هذا الموقع. &lt;br&gt;.</string>
     <string name="error_reload">إعادة تحميل</string>
-    <string name="https_title">أوه! &lt;br&gt; هذا الموقع لا يدعم HTTPS وحظر HTTP مفعل.</string>
     <string name="malware_title">يا إلهي! &lt;br&gt; هذا الموقع يبدو وكأنه برامج ضارة.</string>
     <string name="malware_message">تواصل مع github.com/IT-Space-2026/Arktos-Mobile/issues إذا كان هذا خطأ.</string>
     <string name="blocked_title">أوه! &lt;br&gt; تم حظر هذا الموقع في الإعدادات.</string>

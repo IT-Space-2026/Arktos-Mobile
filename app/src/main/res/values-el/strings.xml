@@ -352,7 +352,6 @@
     <string name="bookmark">Προσθήκη σελιδοδείκτη</string>
     <string name="error_title">Ω ψίχουλα! &lt;br&gt; Αυτός ο ιστότοπος δεν μπορεί να φορτωθεί.</string>
     <string name="error_reload">Φορτώνω πάλι</string>
-    <string name="https_title">Ω ψίχουλα! &lt;br&gt; Αυτός ο ιστότοπος δεν υποστηρίζει το HTTPS και το μπλοκ HTTP είναι ενεργοποιημένο.</string>
     <string name="malware_title">Ω ψίχουλα! &lt;br&gt; Αυτός ο ιστότοπος φαίνεται να είναι κακόβουλο λογισμικό.</string>
     <string name="malware_message">Επικοινωνήστε με την github.com/IT-Space-2026/Arktos-Mobile/issues εάν αυτό είναι λάθος.</string>
     <string name="blocked_title">Ω ψίχουλα! &lt;br&gt; Αυτός ο ιστότοπος έχει αποκλειστεί στις ρυθμίσεις.</string>

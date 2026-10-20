@@ -361,7 +361,6 @@
     <string name="bookmark">Dodano zakładkę</string>
     <string name="error_title">Och, okruchy! &lt;br&gt; Tej strony nie można załadować.</string>
     <string name="error_reload">Przeładować</string>
-    <string name="https_title">Och, okruchy! &lt;br&gt; Ta strona nie obsługuje HTTPS i blokowany HTTP jest włączony.</string>
     <string name="malware_title">Och, okruchy! &lt;br&gt; Ta witryna wydaje się być złośliwym oprogramowaniem.</string>
     <string name="malware_message">Skontaktuj się z github.com/IT-Space-2026/Arktos-Mobile/issues, jeśli to pomyłka.</string>
     <string name="blocked_title">Och, okruchy! &lt;br&gt; Ta strona została zablokowana w ustawieniach.</string>

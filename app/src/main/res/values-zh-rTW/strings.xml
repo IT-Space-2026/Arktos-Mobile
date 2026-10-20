@@ -376,7 +376,6 @@
     <string name="error_title">哦，碎！ &lt;br&gt;無法加載該網站。</string>
     <string name="error_reload">刷新</string>
 
-    <string name="https_title">哦，碎！ &lt;br&gt;該站點不支持HTTPS，並且已啟用阻止HTTP。</string>
 
     <string name="malware_title">哦，碎！ &lt;br&gt;該網站似乎是惡意軟件。</string>
     <string name="malware_message">如果這是錯誤的，請聯繫github.com/IT-Space-2026/Arktos-Mobile/issues。</string>

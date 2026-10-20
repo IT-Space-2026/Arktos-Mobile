@@ -361,7 +361,6 @@
     <string name="bookmark">Marcador adicionado</string>
     <string name="error_title">&lt;br&gt; Não foi possível carregar o site.</string>
     <string name="error_reload">Recarregar</string>
-    <string name="https_title">&lt;br&gt; O site não tem suporte a HTTPS e o acesso a sites HTTP está bloqueado nas definições.</string>
     <string name="malware_title">&lt;br&gt; Parece que este site tem malware.</string>
     <string name="malware_message">Contacte github.com/IT-Space-2026/Arktos-Mobile/issues se achar que isto não está correto.</string>
     <string name="blocked_title">&lt;br&gt; Este site está bloqueado nas definições</string>

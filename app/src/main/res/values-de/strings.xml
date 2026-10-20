@@ -359,7 +359,6 @@
     <string name="bookmark">Lesezeichen hinzugefügt</string>
     <string name="error_title">Oh, Krümel! &lt;br&gt; Diese Seite kann nicht geladen werden.</string>
     <string name="error_reload">Neu laden</string>
-    <string name="https_title">Oh, Krümel! &lt;br&gt; Diese Site unterstützt HTTPS nicht und die HTTP-Blockierung ist aktiviert.</string>
     <string name="malware_title">Oh, Krümel! &lt;br&gt; Diese Website scheint Malware zu sein.</string>
     <string name="malware_message">Wenden Sie sich an github.com/IT-Space-2026/Arktos-Mobile/issues, wenn dies ein Fehler ist.</string>
     <string name="blocked_title">Oh, Krümel! &lt;br&gt; Diese Seite wurde in den Einstellungen blockiert.</string>

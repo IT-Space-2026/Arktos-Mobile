@@ -363,7 +363,6 @@
     <string name="bookmark">Záložka přidána</string>
     <string name="error_title">Ale rozdrobit! &lt;br&gt; Tento web nelze načíst.</string>
     <string name="error_reload">Reload</string>
-    <string name="https_title">Oh crumbs! &lt;br&gt; Tato stránka nepodporuje HTTPS a blokování HTTP je povoleno.</string>
     <string name="malware_title">Ale rozdrobit! &lt;br&gt; Tato stránka se zdá být malware.</string>
     <string name="malware_message">Pokud se jedná o chybu, kontaktujte github.com/IT-Space-2026/Arktos-Mobile/issues.</string>
     <string name="blocked_title">Ale rozdrobit! &lt;br&gt; Tato stránka byla zablokována v nastavení.</string>

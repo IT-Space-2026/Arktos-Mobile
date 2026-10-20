@@ -359,7 +359,6 @@
     <string name="bookmark">Segnalibro aggiunto</string>
     <string name="error_title">Oh rabbia! &lt;br&gt; Quel sito non può essere caricato.</string>
     <string name="error_reload">Ricarica</string>
-    <string name="https_title">Oh rabbia! &lt;br&gt; Quel sito non supporta HTTPS e il blocco HTTP è abilitato.</string>
     <string name="malware_title">Oh rabbia! &lt;br&gt; Quel sito sembra essere un malware.</string>
     <string name="malware_message">Contatta github.com/IT-Space-2026/Arktos-Mobile/issues se questo è uno sbaglio.</string>
     <string name="blocked_title">Oh rabbia! &lt;br&gt; Quel sito è stato bloccato nelle impostazioni.</string>

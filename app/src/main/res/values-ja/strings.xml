@@ -342,7 +342,6 @@
     <string name="bookmark">ブックマークを追加しました</string>
     <string name="error_title">パンくず！ &lt;br&gt;そのサイトはロードできません。</string>
     <string name="error_reload">リロード</string>
-    <string name="https_title">パンくず！ &lt;br&gt;そのサイトはHTTPSをサポートしておらず、HTTPのブロックが有効になっています。</string>
     <string name="malware_title">パンくず！ &lt;br&gt;そのサイトはマルウェアのようです。</string>
     <string name="malware_message">これが間違いである場合は、support github.com/IT-Space-2026/Arktos-Mobile/issuesにお問い合わせください。</string>
     <string name="blocked_title">パンくず！ &lt;br&gt;そのサイトは設定でブロックされています。</string>

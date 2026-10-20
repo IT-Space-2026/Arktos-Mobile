@@ -350,7 +350,6 @@
     <string name="bookmark">نشانگاه افزوده شد</string>
     <string name="error_title">Oh crumbs! &lt;br&gt; That site can\'t be loaded.</string>
     <string name="error_reload">بازآوری</string>
-    <string name="https_title">Oh crumbs! &lt;br&gt; That site doesn\'t support HTTPS and block HTTP is enabled.</string>
     <string name="malware_title">Oh crumbs! &lt;br&gt; That site appears to be malware.</string>
     <string name="malware_message">اگر این یک خرابی‌ست با github.com/IT-Space-2026/Arktos-Mobile/issues تماس بگیرید.</string>
     <string name="blocked_title">Oh crumbs! &lt;br&gt; That site has been blocked in settings.</string>

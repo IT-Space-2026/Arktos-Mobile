@@ -352,7 +352,6 @@
     <string name="bookmark">Bladwijzer toegevoegd</string>
     <string name="error_title">Oh kruimels! &lt;br&gt; Die site kan niet worden geladen.</string>
     <string name="error_reload">vernieuwen</string>
-    <string name="https_title">Oh kruimels! &lt;br&gt; Die site ondersteunt HTTPS niet en HTTP blokkeren is ingeschakeld.</string>
     <string name="malware_title">Oh kruimels! &lt;br&gt; Die site lijkt malware te zijn.</string>
     <string name="malware_message">Neem contact op met github.com/IT-Space-2026/Arktos-Mobile/issues als dit een vergissing is.</string>
     <string name="blocked_title">Oh kruimels! &lt;br&gt; Die site is geblokkeerd in de instellingen.</string>

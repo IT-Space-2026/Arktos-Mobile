@@ -128,6 +128,12 @@ class UserPreferences @Inject constructor(
 
     var preferHTTPSenabled by preferences.booleanPreference(PREFER_HTTPS, false)
 
+    /**
+     * SEC04 — strict HTTPS-only mode: cleartext `http://` navigations
+     * are answered with a warning interstitial (upgrade / go back /
+     * proceed) rather than being silently upgraded. See
+     * [com.arktosbrowser.mobile.network.HttpsOnlyGate].
+     */
     var forceHTTPSenabled by preferences.booleanPreference(FORCE_HTTPS, false)
 
     /**

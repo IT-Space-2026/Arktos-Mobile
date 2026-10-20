@@ -376,7 +376,6 @@
     <string name="error_title">부스러기! &lt;br&gt; 해당 사이트를로드 할 수 없습니다.</string>
     <string name="error_reload">새로 고침</string>
 
-    <string name="https_title">부스러기! &lt;br&gt; 해당 사이트는 HTTPS를 지원하지 않으며 HTTP 차단이 활성화되어 있습니다.</string>
 
     <string name="malware_title">부스러기! &lt;br&gt; 해당 사이트는 악성 코드 인 것으로 보입니다.</string>
     <string name="malware_message">실수 인 경우 github.com/IT-Space-2026/Arktos-Mobile/issues에 문의하십시오.</string>

@@ -364,7 +364,6 @@
     <string name="bookmark">Yer imi eklendi</string>
     <string name="error_title">Hay aksi! &lt;br&gt; Bu site yüklenemiyor.</string>
     <string name="error_reload">Yeniden yükle</string>
-    <string name="https_title">Hay aksi! &lt;br&gt; Bu site HTTPS\'yi desteklemiyor ve HTTP engelleme etkinleştirildi.</string>
     <string name="malware_title">Hay aksi! &lt;br&gt; Bu sitenin kötü amaçlı yazılım olduğu anlaşılıyor.</string>
     <string name="malware_message">Bu bir hata ise github.com/IT-Space-2026/Arktos-Mobile/issues ile iletişime geçin.</string>
     <string name="blocked_title">Hay aksi! &lt;br&gt; Bu site ayarlarda engellendi.</string>

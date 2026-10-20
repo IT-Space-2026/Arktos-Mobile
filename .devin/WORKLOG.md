@@ -59,3 +59,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - SEC01 done: browser-wide app lock — PIN/password/biometric methods, re-lock timer (immediate/1/5/10/custom) via AppLockState monotonic clock; gate on cold start + resume.
 - SEC02 done: BackupCrypto (PBKDF2→AES-256-GCM, ARKBAK format) + encrypted export/restore rows; database domain excluded from Auto Backup.
 - 2026-10-20 SEC03: mixed-content strict by default — MixedContentPolicy + blockMixedContentEnabled privacy switch (incognito always NEVER_ALLOW); ArktosCookieView applies policy — MixedContentPolicyTest 4/4, assembleScMainDebug + engine-audit PASS
+- 2026-10-20 SEC04: strict HTTPS-only mode — cleartext navs get warning interstitial instead of silent upgrade; proceed consent via marker URL — cargo 132/132, HttpsOnlyGateTest 7/7 (260 total), assembleScMainDebug + engine-audit PASS

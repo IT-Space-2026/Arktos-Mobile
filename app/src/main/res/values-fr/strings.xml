@@ -361,7 +361,6 @@
     <string name="bookmark">Favori ajouté</string>
     <string name="error_title">Miettes alors ! &lt;br&gt; Impossible de charger la page.</string>
     <string name="error_reload">Recharger</string>
-    <string name="https_title">Miettes alors ! &lt;br&gt; Ce site n’offre pas de connexion HTTPS, et vous avez bloqué les sites HTTP.</string>
     <string name="malware_title">Miettes alors ! &lt;br&gt; Ce site semble être un malware.</string>
     <string name="malware_message">S’il s’agit d’une erreur, veuillez le signaler à github.com/IT-Space-2026/Arktos-Mobile/issues (en anglais)</string>
     <string name="blocked_title">Miettes alors ! &lt;br&gt; Ce site est bloqué dans les paramètres.</string>

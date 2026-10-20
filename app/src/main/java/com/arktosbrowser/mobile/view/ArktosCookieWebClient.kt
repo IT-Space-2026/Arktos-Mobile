@@ -40,6 +40,7 @@ import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.ConnectivityGate
+import com.arktosbrowser.mobile.network.HttpsOnlyGate
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SafeSearch
@@ -93,6 +94,20 @@ class ArktosCookieWebClient(
     private var badsslList: MutableList<String> = ArrayList()
     private val httpsUpgradedHosts = mutableSetOf<String>()
     private var badsslErrors: MutableList<SslError> = ArrayList<SslError>()
+
+    /**
+     * SEC04 — hosts the user explicitly proceeded to from the
+     * HTTPS-only warning; session-scoped, like [httpsUpgradedHosts].
+     */
+    private val cleartextAllowedHosts = mutableSetOf<String>()
+
+    /**
+     * The cleartext URL the HTTPS-only interstitial is currently shown
+     * for, or null. Doubles as the consent gate: the [HttpsOnlyGate]
+     * proceed marker is honored only while a warning is up, so page
+     * JavaScript can't self-whitelist a cleartext host.
+     */
+    private var httpsInterstitialUrl: String? = null
 
     private val titleBlocked = activity.getString(R.string.blocked_title)
     private val reloadBlocked = activity.getString(R.string.error_reload)
@@ -210,6 +225,50 @@ class ArktosCookieWebClient(
             "window.location.href = '" + url + "';"
         )
 
+    /**
+     * SEC04 — the HTTPS-only warning interstitial HTML. Offering the
+     * upgrade as the primary button keeps the old force-HTTPS benefit
+     * (one tap to HTTPS) while blocking is what strict mode promised;
+     * "Proceed anyway" goes through [HttpsOnlyGate.proceedUrl] so
+     * cleartext consent is always explicit.
+     */
+    private fun httpsOnlyWarningPage(cleartextUrl: String): String {
+        httpsInterstitialUrl = cleartextUrl
+        return ArktosCore.buildHttpsWarningPage(
+            blockPageColor(),
+            activity.getString(R.string.https_only_title),
+            "NET::ERR_CLEARTEXT_NOT_PERMITTED",
+            cleartextUrl,
+            activity.getString(R.string.https_only_hint),
+            activity.getString(R.string.https_only_upgrade),
+            HttpsOnlyGate.upgradedUrl(cleartextUrl),
+            activity.getString(R.string.proceed),
+            HttpsOnlyGate.proceedUrl(cleartextUrl),
+            activity.getString(R.string.go_back))
+    }
+
+    /**
+     * Serves the HTTPS-only warning as a generated page — used by the
+     * navigation paths that can't answer the request with a response
+     * ([shouldOverrideUrlLoading], and the onPageStarted backstop for
+     * main-frame loads that bypass interception like POST submits).
+     * The committed URL becomes a generated page, so
+     * [errorPageOriginalUrl] keeps reporting the real address.
+     */
+    private fun showHttpsOnlyWarning(view: WebView, cleartextUrl: String) {
+        if (userPreferences.resolvedTheme(activity) == AppTheme.LIGHT ||
+                userPreferences.resolvedTheme(activity) == AppTheme.ARKTOS_LIGHT) {
+            color = ""
+        }
+        // The interstitial's buttons run JS — enable it for the
+        // warning even on sites where scripting is off; the next page
+        // start reapplies the per-site value.
+        view.settings.javaScriptEnabled = true
+        errorPageOriginalUrl = cleartextUrl
+        view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, httpsOnlyWarningPage(cleartextUrl), "text/html; charset=utf-8", "UTF-8", null)
+        view.invalidate()
+    }
+
     private fun emptyResponse(): WebResourceResponse =
         WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(emptyResponseByteArray))
 
@@ -266,6 +325,14 @@ class ArktosCookieWebClient(
                     && ConnectivityGate.isNetworkPageRequest(requestUrl)
                     && !connectivityGate.isConnected()) {
                     blockedPageResponse(offlineErrorPage(requestUrl))
+                } else if (request.isForMainFrame
+                    && HttpsOnlyGate.isCleartextNavigation(
+                        requestUrl, userPreferences.forceHTTPSenabled, cleartextAllowedHosts)) {
+                    // SEC04 — strict HTTPS-only: answering the request
+                    // with the warning page means no cleartext bytes
+                    // ever leave the device, and the committed URL
+                    // stays the real http:// address.
+                    blockedPageResponse(httpsOnlyWarningPage(requestUrl))
                 } else {
                     super.shouldInterceptRequest(view, request)
                 }
@@ -544,6 +611,12 @@ class ArktosCookieWebClient(
         if (url != errorPageOriginalUrl && !url.isGeneratedPageUrl()) {
             errorPageOriginalUrl = null
         }
+        // The HTTPS-only consent marker is only armed while its
+        // warning is displayed — any other committed navigation
+        // disarms it (SEC04).
+        if (url != httpsInterstitialUrl && !url.isGeneratedPageUrl()) {
+            httpsInterstitialUrl = null
+        }
 
         // Forced SafeSearch backstop (upstream #327): any navigation that
         // reached a search engine without the strict parameter — redirects
@@ -582,27 +655,29 @@ class ArktosCookieWebClient(
             }
         }
 
-        if ((userPreferences.forceHTTPSenabled || userPreferences.preferHTTPSenabled) && url.startsWith("http://")) {
-            val host = Uri.parse(url).host.orEmpty()
+        if (userPreferences.forceHTTPSenabled && url.startsWith("http://")
+                && HttpsOnlyGate.hostOf(url) !in cleartextAllowedHosts) {
+            // SEC04 — strict HTTPS-only mode warns instead of silently
+            // upgrading. shouldInterceptRequest already answered the
+            // request with the interstitial (url == httpsInterstitialUrl);
+            // the generated-page serve is the backstop for main-frame
+            // loads that bypass interception, e.g. POST submissions.
+            if (url != httpsInterstitialUrl) {
+                showHttpsOnlyWarning(view, url)
+            } else {
+                // Interception-served warning — its buttons need JS
+                // even on sites where scripting is off.
+                view.settings.javaScriptEnabled = true
+            }
+        } else if (userPreferences.preferHTTPSenabled && url.startsWith("http://")) {
+            val host = HttpsOnlyGate.hostOf(url)
             if (host !in httpsUpgradedHosts) {
                 //Upgrade to HTTPS once per host; if the site has no HTTPS the
                 //page fails to load and the user retries the original URL,
                 //which then falls through without re-upgrading (no ping-pong).
                 httpsUpgradedHosts += host
-                view.loadUrl(url.replaceFirst("http://", "https://"))
+                view.loadUrl(HttpsOnlyGate.upgradedUrl(url))
                 return
-            } else if (userPreferences.forceHTTPSenabled) {
-                view.settings.javaScriptEnabled = true
-                if(userPreferences.resolvedTheme(activity) == AppTheme.LIGHT ||
-                        userPreferences.resolvedTheme(activity) == AppTheme.ARKTOS_LIGHT){
-                    color = ""
-                }
-                val title = activity.getString(R.string.https_title)
-                val reload = activity.getString(R.string.error_reload)
-                errorPageOriginalUrl = url
-                view.loadDataWithBaseURL(ERROR_PAGE_ORIGIN, buildErrorPage(color, title, "NET::ERR_HTTPS_NOT_SUPPORTED", activity.getString(R.string.error_page_hint), reload, true), "text/html; charset=utf-8", "UTF-8", null)
-                view.invalidate()
-                view.settings.javaScriptEnabled = siteSettings.javaScriptEnabled(url)
             }
         }
 
@@ -873,6 +948,24 @@ class ArktosCookieWebClient(
         shouldOverrideLoading(view, url) || super.shouldOverrideUrlLoading(view, url)
 
     private fun shouldOverrideLoading(view: WebView, url: String): Boolean {
+        // SEC04 — "Proceed anyway" on the HTTPS-only interstitial rides
+        // this marker so cleartext consent is explicit. Honoring it only
+        // while its warning is displayed (httpsInterstitialUrl) keeps
+        // page JS from self-whitelisting a host; the marker is swallowed
+        // either way so it can never navigate.
+        val proceedTarget = HttpsOnlyGate.parseProceedUrl(url)
+        if (proceedTarget != null) {
+            val warned = httpsInterstitialUrl
+            httpsInterstitialUrl = null
+            if (proceedTarget == warned) {
+                HttpsOnlyGate.hostOf(proceedTarget)
+                    .takeIf { it.isNotEmpty() }
+                    ?.let(cleartextAllowedHosts::add)
+                view.loadUrl(proceedTarget)
+            }
+            return true
+        }
+
         // Check if configured proxy is available
         if (!proxyUtils.isProxyReady(activity)) {
             // User has been notified
@@ -887,6 +980,14 @@ class ArktosCookieWebClient(
         val safeUrl = SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced)
         if (safeUrl != url) {
             if (headers.isEmpty()) view.loadUrl(safeUrl) else view.loadUrl(safeUrl, headers)
+            return true
+        }
+
+        // SEC04 — in strict mode a cleartext navigation is stopped here
+        // and answered with the warning page: form POSTs and some script
+        // navigations never reach shouldInterceptRequest.
+        if (HttpsOnlyGate.isCleartextNavigation(url, userPreferences.forceHTTPSenabled, cleartextAllowedHosts)) {
+            showHttpsOnlyWarning(view, url)
             return true
         }
 

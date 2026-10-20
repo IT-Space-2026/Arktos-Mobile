@@ -29,6 +29,7 @@ import com.arktosbrowser.mobile.uniffi.acceptedUriScheme as uniffiAcceptedUriSch
 import com.arktosbrowser.mobile.uniffi.adblockPresets
 import com.arktosbrowser.mobile.uniffi.buildBlockPage as uniffiBuildBlockPage
 import com.arktosbrowser.mobile.uniffi.buildErrorPage as uniffiBuildErrorPage
+import com.arktosbrowser.mobile.uniffi.buildHttpsWarningPage as uniffiBuildHttpsWarningPage
 import com.arktosbrowser.mobile.uniffi.changelogAssetName as uniffiChangelogAssetName
 import com.arktosbrowser.mobile.uniffi.composeSearchUrl as uniffiComposeSearchUrl
 import com.arktosbrowser.mobile.uniffi.contentDispositionFilename as uniffiContentDispositionFilename
@@ -330,6 +331,27 @@ object ArktosCore {
         showButton: Boolean,
         reloadCode: String = "window.history.back();"
     ): String = uniffiBuildErrorPage(color, title, error, hint, reload, showButton, reloadCode)
+
+    /**
+     * SEC04 — the HTTPS-only warning interstitial HTML: [httpsUrl] is
+     * the upgrade button's target and [proceedUrl] the consent-marker
+     * URL behind "proceed anyway".
+     */
+    fun buildHttpsWarningPage(
+        color: String,
+        title: String,
+        error: String,
+        blockedUrl: String,
+        hint: String,
+        httpsLabel: String,
+        httpsUrl: String,
+        proceedLabel: String,
+        proceedUrl: String,
+        goBackLabel: String
+    ): String = uniffiBuildHttpsWarningPage(
+        color, title, error, blockedUrl, hint,
+        httpsLabel, httpsUrl, proceedLabel, proceedUrl, goBackLabel
+    )
 
     /** `Utils.buildBlockPage` (PORT02) — the block interstitial HTML. */
     fun buildBlockPage(
