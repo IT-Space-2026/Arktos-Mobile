@@ -4,19 +4,16 @@ package com.arktosbrowser.mobile.reading.activity
 
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
-import android.os.AsyncTask
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener
+import android.speech.tts.UtteranceProgressListener
 import android.text.Html
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.TextUtils
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.text.style.URLSpan
@@ -30,24 +27,24 @@ import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.lifecycleScope
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.di.MainScheduler
-import com.arktosbrowser.mobile.di.NetworkScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import com.arktosbrowser.mobile.view.ProxyUtils
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.reactivex.rxjava3.core.Scheduler
-import io.reactivex.rxjava3.disposables.Disposable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -56,55 +53,39 @@ import okhttp3.Call
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import org.json.JSONException
-import org.json.JSONObject
 import org.jsoup.Jsoup
-import java.io.*
+import java.io.File
+import java.io.IOException
 import java.net.Proxy
 import java.net.URL
-import java.text.BreakIterator
-import java.util.*
+import java.util.Locale
 import javax.inject.Inject
 
 
 class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
-    @JvmField
-    var mTitle: TextView? = null
 
-    @JvmField
-    var mBody: TextView? = null
+    private lateinit var titleView: TextView
+    private lateinit var bodyView: TextView
 
-    @JvmField
     @Inject
-    var mUserPreferences: UserPreferences? = null
-
-    @JvmField
-    @Inject
-    @NetworkScheduler
-    var mNetworkScheduler: Scheduler? = null
-
-    @JvmField
-    @Inject
-    @MainScheduler
-    var mMainScheduler: Scheduler? = null
+    lateinit var userPreferences: UserPreferences
 
     private var tts: TextToSpeech? = null
-    private var mInvert = false
+    private var invertColors = false
     private var reading = false
-    private var mUrl: String? = null
-    private var file: Boolean = false
-    private var mTextSize = 0
-    private var mProgressDialog: ProgressDialog? = null
-    private val mPageLoaderSubscription: Disposable? = null
-    private val originalHtml: String? = null
+    private var currentUrl: String? = null
+    private var fromFile = false
+    private var textSizeIndex = 0
+    private var progressDialog: AlertDialog? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         this.injector.inject(this)
         overridePendingTransition(R.anim.slide_in_from_right, R.anim.fade_out_scale)
-        mInvert = mUserPreferences!!.invertColors
+        invertColors = userPreferences.invertColors
         tts = TextToSpeech(this, this)
         val color: Int
-        val theme = mUserPreferences!!.resolvedTheme(this)
-        if (mInvert) {
+        val theme = userPreferences.resolvedTheme(this)
+        if (invertColors) {
             if (!theme.isDark) {
                 setTheme(R.style.Theme_SettingsTheme_Black)
             } else {
@@ -123,25 +104,18 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         super.onCreate(savedInstanceState)
         setContentView(R.layout.reading_view)
-        mBody = findViewById(R.id.textViewBody)
-        mTitle = findViewById(R.id.textViewTitle)
+        bodyView = findViewById(R.id.textViewBody)
+        titleView = findViewById(R.id.textViewTitle)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
-        if (supportActionBar != null) supportActionBar!!.setDisplayHomeAsUpEnabled(true)
-        mTextSize = mUserPreferences!!.readingTextSize
-        mBody!!.textSize = getTextSize(mTextSize)
-        mTitle!!.text = getString(R.string.untitled)
-        mBody!!.text = getString(R.string.loading)
-        mTitle!!.visibility = View.INVISIBLE
-        mBody!!.visibility = View.INVISIBLE
-        val intent = intent
-        try {
-            if (!loadPage(intent)) {
-                //setText(getString(R.string.untitled), getString(R.string.loading_failed));
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        textSizeIndex = userPreferences.readingTextSize
+        bodyView.textSize = getTextSize(textSizeIndex)
+        titleView.text = getString(R.string.untitled)
+        bodyView.text = getString(R.string.loading)
+        titleView.visibility = View.INVISIBLE
+        bodyView.visibility = View.INVISIBLE
+        loadPage(intent)
     }
 
     @SuppressLint("RestrictedApi")
@@ -149,85 +123,73 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         menuInflater.inflate(R.menu.reading, menu)
 
         if (menu is MenuBuilder) {
-            val m: MenuBuilder = menu
-            m.setOptionalIconsVisible(true)
+            menu.setOptionalIconsVisible(true)
         }
 
         return super.onCreateOptionsMenu(menu)
     }
 
-    private inner class LoadData : AsyncTask<Void?, Void?, Void?>() {
-        var extractedContentHtml: String? = null
-        var extractedContentHtmlWithUtf8Encoding: String? = null
-        var extractedContentPlainText: String? = null
-        var title: String? = null
-        var byline: String? = null
-        var excerpt: String? = null
+    /**
+     * Fetch + extract the readable article off the main thread — the
+     * coroutine successor of the old `LoadData : AsyncTask`
+     * (deprecated since API 30). Lifecycle-bound: leaving the
+     * activity cancels the work.
+     */
+    private fun loadArticle() {
+        val url = currentUrl ?: return
+        lifecycleScope.launch {
+            val article = withContext(Dispatchers.IO) {
+                try {
+                    // Route the fetch through the configured proxy — a
+                    // bare URL.openStream() would bypass Tor/I2P/manual
+                    // proxying.
+                    val proxy = ProxyUtils.connectionProxy(userPreferences)
+                    val pageUrl = URL(url)
+                    val htmlData = pageUrl.openConnection(proxy).inputStream
+                        .bufferedReader()
+                        .use { it.readText() }
+                    // PORT01 — extraction lives in the Rust core
+                    // (dom_smoothie); url is just needed to resolve
+                    // relative urls.
+                    ArktosCore.extractReadableArticle(url, htmlData)
+                } catch (e: IOException) {
+                    Log.e(TAG, "reader fetch failed for $url", e)
+                    null
+                }
+            }
 
-
-        override fun onPostExecute(aVoid: Void?) {
-            val html: String? = extractedContentHtmlWithUtf8Encoding?.replace("image copyright".toRegex(), resources.getString(R.string.reading_mode_image_copyright) + " ")?.replace("image caption".toRegex(), resources.getString(R.string.reading_mode_image_caption) + " ")?.replace("￼".toRegex(), "")
             try {
+                val html = article?.content
+                    ?.replace("image copyright".toRegex(),
+                        resources.getString(R.string.reading_mode_image_copyright) + " ")
+                    ?.replace("image caption".toRegex(),
+                        resources.getString(R.string.reading_mode_image_caption) + " ")
+                    ?.replace("￼".toRegex(), "")
                 val doc = Jsoup.parse(html ?: "")
                 for (element in doc.select("img")) {
                     element.remove()
                 }
-                setText(title, doc.outerHtml())
-                dismissProgressDialog()
+                setText(article?.title, doc.outerHtml())
+            } catch (e: Exception) {
+                titleView.alpha = 1.0f
+                titleView.visibility = View.VISIBLE
+                titleView.text = resources.getString(R.string.title_error)
             }
-            catch (e: Exception){
-                mTitle!!.alpha = 1.0f
-                mTitle!!.visibility = View.VISIBLE
-                mTitle?.text = resources.getString(R.string.title_error)
-                dismissProgressDialog()
-            }
-        }
-
-        override fun doInBackground(vararg params: Void?): Void? {
-            try {
-                // Route the fetch through the configured proxy — the raw
-                // URL.openStream() would bypass Tor/I2P/manual proxying.
-                val proxy = mUserPreferences?.let { ProxyUtils.connectionProxy(it) }
-                    ?: Proxy.NO_PROXY
-                val google = URL(mUrl)
-                val line = BufferedReader(InputStreamReader(
-                    if (proxy == Proxy.NO_PROXY) google.openStream()
-                    else google.openConnection(proxy).getInputStream()))
-                var input: String?
-                val stringBuffer = StringBuffer()
-                while (line.readLine().also { input = it } != null) {
-                    stringBuffer.append(input)
-                }
-                line.close()
-                val htmlData = stringBuffer.toString()
-                // PORT01 — extraction lives in the Rust core
-                // (dom_smoothie); url is just needed to resolve
-                // relative urls.
-                val article = ArktosCore.extractReadableArticle(mUrl!!, htmlData)
-                extractedContentHtml = article?.content
-                extractedContentHtmlWithUtf8Encoding = article?.content
-                extractedContentPlainText = article?.textContent
-                title = article?.title
-                byline = article?.byline
-                excerpt = article?.excerpt
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-            return null
+            dismissProgressDialog()
         }
     }
 
-    protected fun makeLinkClickable(strBuilder: SpannableStringBuilder, span: URLSpan?) {
+    private fun makeLinkClickable(strBuilder: SpannableStringBuilder, span: URLSpan) {
         val start: Int = strBuilder.getSpanStart(span)
         val end: Int = strBuilder.getSpanEnd(span)
         val flags: Int = strBuilder.getSpanFlags(span)
         val linkColor = ThemeUtils.getAccentColor(this)
         val clickable: ClickableSpan = object : ClickableSpan() {
             override fun onClick(widget: View) {
-                mTitle!!.text = getString(R.string.untitled)
-                mBody!!.text = getString(R.string.loading)
-                mUrl = span?.url
-                LoadData().execute()
+                titleView.text = getString(R.string.untitled)
+                bodyView.text = getString(R.string.loading)
+                currentUrl = span.url
+                loadArticle()
             }
 
             override fun updateDrawState(ds: android.text.TextPaint) {
@@ -241,78 +203,65 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         strBuilder.removeSpan(span)
     }
 
-    protected fun setTextViewHTML(text: TextView, html: String?) {
-        val sequence: CharSequence = Html.fromHtml(html)
+    private fun setTextViewHTML(text: TextView, html: String?) {
+        val sequence: CharSequence = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
         val strBuilder = SpannableStringBuilder(sequence)
         val urls: Array<URLSpan> = strBuilder.getSpans(0, sequence.length, URLSpan::class.java)
         for (span in urls) {
             makeLinkClickable(strBuilder, span)
         }
-        text.setText(strBuilder)
+        text.text = strBuilder
         text.movementMethod = LinkMovementMethod.getInstance()
     }
 
-    @Throws(IOException::class)
     private fun loadPage(intent: Intent?): Boolean {
         if (intent == null) {
             return false
         }
-        mUrl = intent.getStringExtra(LOAD_READING_URL)
-        file = intent.getBooleanExtra(LOAD_FILE, false)
-        if (mUrl == null) {
+        currentUrl = intent.getStringExtra(LOAD_READING_URL)
+        fromFile = intent.getBooleanExtra(LOAD_FILE, false)
+        val url = currentUrl ?: return false
+        if (fromFile) {
+            setText(url, loadFile(this, url))
             return false
         }
-        else if (file){
-                setText(mUrl, loadFile(this, mUrl))
-                return false
-            }
-        if (supportActionBar != null) {
-            supportActionBar!!.title = ArktosCore.domainName(mUrl ?: "")
-        }
-        mProgressDialog = ProgressDialog(this@ReadingActivity)
-        mProgressDialog!!.setProgressStyle(ProgressDialog.STYLE_SPINNER)
-        mProgressDialog!!.setCancelable(false)
-        mProgressDialog!!.isIndeterminate = true
-        mProgressDialog!!.setMessage(getString(R.string.loading))
-        mProgressDialog!!.show()
-        setDialogSize(this@ReadingActivity, mProgressDialog!!)
-        LoadData().execute()
+        supportActionBar?.title = ArktosCore.domainName(url)
+        showProgressDialog()
+        loadArticle()
         return true
     }
 
+    private fun showProgressDialog() {
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(R.layout.dialog_progress)
+            .setCancelable(false)
+            .show()
+        progressDialog = dialog
+        setDialogSize(this, dialog)
+    }
+
     private fun dismissProgressDialog() {
-        if (mProgressDialog != null && mProgressDialog!!.isShowing) {
-            mProgressDialog!!.dismiss()
-            mProgressDialog = null
-        }
+        progressDialog?.takeIf { it.isShowing }?.dismiss()
+        progressDialog = null
     }
 
     private fun setText(title: String?, body: String?) {
-        if (mTitle == null || mBody == null) return
-        if (mTitle!!.visibility == View.INVISIBLE) {
-            mTitle!!.alpha = 1.0f
-            mTitle!!.visibility = View.VISIBLE
-            setTextViewHTML(mTitle!!, title)
-            //mTitle!!.text = title
-        } else {
-            mTitle!!.text = title
-            setTextViewHTML(mTitle!!, title)
+        if (titleView.visibility == View.INVISIBLE) {
+            titleView.alpha = 1.0f
+            titleView.visibility = View.VISIBLE
         }
-        if (mBody!!.visibility == View.INVISIBLE) {
-            mBody!!.alpha = 1.0f
-            mBody!!.visibility = View.VISIBLE
-            setTextViewHTML(mBody!!, body)
-        } else {
-            setTextViewHTML(mBody!!, body)
+        setTextViewHTML(titleView, title)
+        if (bodyView.visibility == View.INVISIBLE) {
+            bodyView.alpha = 1.0f
+            bodyView.visibility = View.VISIBLE
         }
+        setTextViewHTML(bodyView, body)
     }
 
     override fun onDestroy() {
-        if (mProgressDialog != null && mProgressDialog!!.isShowing) {
-            mProgressDialog!!.dismiss()
-            mProgressDialog = null
-        }
+        dismissProgressDialog()
         tts?.stop()
+        tts?.shutdown()
         super.onDestroy()
     }
 
@@ -324,25 +273,20 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     fun translate(lang: String?) {
-        if (mUserPreferences?.translationEndpoint.isNullOrBlank()) {
+        if (userPreferences.translationEndpoint.isBlank()) {
             Toast.makeText(this@ReadingActivity, resources.getString(R.string.error), Toast.LENGTH_LONG).show()
             return
         }
         val client = OkHttpClient()
 
-        val spanned = mBody!!.text as Spanned
+        val spanned = bodyView.text as Spanned
 
-        mProgressDialog = ProgressDialog(this@ReadingActivity)
-        mProgressDialog!!.setProgressStyle(ProgressDialog.STYLE_SPINNER)
-        mProgressDialog!!.setCancelable(false)
-        mProgressDialog!!.isIndeterminate = true
-        mProgressDialog!!.setMessage(getString(R.string.loading))
-        mProgressDialog!!.show()
+        showProgressDialog()
 
         val formBody: RequestBody = ArktosCore.translateRequestBody(
-            listOf(Html.toHtml(spanned)), "auto", lang ?: "en"
+            listOf(Html.toHtml(spanned, Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL)), "auto", lang ?: "en"
         ).toRequestBody("application/json".toMediaType())
-        val translateUrl = mUserPreferences?.translationEndpoint.orEmpty()
+        val translateUrl = userPreferences.translationEndpoint
         val request = Request.Builder()
                 .url(ArktosCore.translateUrl(translateUrl))
                 .addHeader("Accept", "application/json")
@@ -350,9 +294,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+                Log.e(TAG, "reader translate failed", e)
                 runOnUiThread {
-                    mProgressDialog!!.hide()
+                    dismissProgressDialog()
                     Toast.makeText(this@ReadingActivity, resources.getString(R.string.error), Toast.LENGTH_LONG).show()
                 }
             }
@@ -362,7 +306,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     runOnUiThread {
-                        mProgressDialog!!.hide()
+                        dismissProgressDialog()
                         Toast.makeText(
                             this@ReadingActivity,
                             resources.getString(R.string.error),
@@ -375,8 +319,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     runOnUiThread {
                         try {
                             val translated = ArktosCore.parseTranslateResponse(values).first()
-                            mBody!!.text = Html.fromHtml(translated)
-                            mProgressDialog!!.hide()
+                            bodyView.text =
+                                Html.fromHtml(translated, Html.FROM_HTML_MODE_COMPACT)
+                            dismissProgressDialog()
                         } catch (ignored: Exception) {
                         }
                     }
@@ -388,9 +333,9 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.invert_item -> {
-                mUserPreferences!!.invertColors = !mInvert
-                if (mUrl != null) {
-                    launch(this, mUrl!!, file)
+                userPreferences.invertColors = !invertColors
+                currentUrl?.let {
+                    launch(this, it, fromFile)
                     finish()
                 }
             }
@@ -400,8 +345,8 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val arrayAdapter = ArrayAdapter<String>(this@ReadingActivity, android.R.layout.select_dialog_singlechoice)
                 arrayAdapter.addAll("English", "Français", "Português", "Português do Brasil", "Italiano")
                 val languages = arrayOf("en", "fr", "pt-pt", "pt-br", "it")
-                builderSingle.setNegativeButton("cancel") { dialog: DialogInterface, which: Int -> dialog.dismiss() }
-                builderSingle.setAdapter(arrayAdapter) { dialog: DialogInterface?, which: Int -> translate(languages[which]) }
+                builderSingle.setNegativeButton("cancel") { dialog: DialogInterface, _: Int -> dialog.dismiss() }
+                builderSingle.setAdapter(arrayAdapter) { _: DialogInterface?, which: Int -> translate(languages[which]) }
                 builderSingle.show()
             }
             R.id.text_size_item -> {
@@ -409,64 +354,64 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val bar = view.findViewById<SeekBar>(R.id.text_size_seekbar)
                 bar.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
                     override fun onProgressChanged(view: SeekBar, size: Int, user: Boolean) {
-                        mBody!!.textSize = getTextSize(size)
+                        bodyView.textSize = getTextSize(size)
                     }
 
                     override fun onStartTrackingTouch(arg0: SeekBar) {}
                     override fun onStopTrackingTouch(arg0: SeekBar) {}
                 })
                 bar.max = 5
-                bar.progress = mTextSize
+                bar.progress = textSizeIndex
                 val builder = MaterialAlertDialogBuilder(this)
                         .setView(view)
                         .setTitle(R.string.size)
-                        .setPositiveButton(android.R.string.ok) { dialog: DialogInterface?, arg1: Int ->
-                            mTextSize = bar.progress
-                            mBody!!.textSize = getTextSize(mTextSize)
-                            mUserPreferences!!.readingTextSize = bar.progress
+                        .setPositiveButton(android.R.string.ok) { _: DialogInterface?, _: Int ->
+                            textSizeIndex = bar.progress
+                            bodyView.textSize = getTextSize(textSizeIndex)
+                            userPreferences.readingTextSize = bar.progress
                         }
                 val dialog: Dialog = builder.show()
                 setDialogSize(this, dialog)
             }
             R.id.download -> {
-                saveFile(this, Html.toHtml(mBody!!.text as Spanned), mTitle?.text.toString())
+                saveFile(this, Html.toHtml(bodyView.text as Spanned, Html.TO_HTML_PARAGRAPH_LINES_INDIVIDUAL), titleView.text.toString())
             }
             R.id.open -> {
                 val builderSingle = MaterialAlertDialogBuilder(this@ReadingActivity)
                 builderSingle.setTitle(resources.getString(R.string.action_open) + ":")
                 val arrayAdapter = ArrayAdapter<String>(this@ReadingActivity, android.R.layout.select_dialog_singlechoice)
 
-                val arr: Array<String> = filesDir.list()
-                val l = ArrayList<String>()
-                for (i in arr) {
-                    if (i.endsWith(".txt")) {
-                        l.add(i.replaceFirst("....$".toRegex(), ""))
-                        arrayAdapter.add(i.replaceFirst("....$".toRegex(), ""))
-                    }
-                }
+                val saved = savedReadingFiles()
+                saved.forEach { arrayAdapter.add(it) }
 
-                builderSingle.setPositiveButton(resources.getString(R.string.action_cancel)) { dialog: DialogInterface, which: Int -> dialog.dismiss() }
-                builderSingle.setNegativeButton(resources.getString(R.string.action_delete)) { dialog: DialogInterface, which: Int -> dialog.dismiss(); deleteDialog() }
-                builderSingle.setAdapter(arrayAdapter) { dialog: DialogInterface?, which: Int -> setTextViewHTML(mBody!!, loadFile(this, l[which])); mTitle?.text = l[which]; file = true; mUrl = l[which] }
+                builderSingle.setPositiveButton(resources.getString(R.string.action_cancel)) { dialog: DialogInterface, _: Int -> dialog.dismiss() }
+                builderSingle.setNegativeButton(resources.getString(R.string.action_delete)) { dialog: DialogInterface, _: Int -> dialog.dismiss(); deleteDialog() }
+                builderSingle.setAdapter(arrayAdapter) { _: DialogInterface?, which: Int ->
+                    setTextViewHTML(bodyView, loadFile(this, saved[which]))
+                    titleView.text = saved[which]
+                    fromFile = true
+                    currentUrl = saved[which]
+                }
                 builderSingle.show()
             }
             R.id.tts -> {
                 if (reading) {
-                    tts!!.stop()
+                    tts?.stop()
                     reading = !reading
                 }
-                if(mBody!!.selectionEnd < 1){
+                if (bodyView.selectionEnd < 1) {
                     Toast.makeText(this, resources.getString(R.string.select_translate_text), Toast.LENGTH_LONG).show()
                     return false
                 }
-                val source = mBody!!.text.substring(mBody!!.selectionStart, mBody!!.selectionEnd)
+                val source = bodyView.text.substring(bodyView.selectionStart, bodyView.selectionEnd)
                 if (source == "") {
                     Toast.makeText(this, resources.getString(R.string.select_tts_text), Toast.LENGTH_LONG).show()
                     return false
                 }
                 reading = !reading
-                val text: String = source
-                if (reading) tts!!.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+                if (reading) {
+                    tts?.speak(source, TextToSpeech.QUEUE_FLUSH, null, TTS_UTTERANCE_ID)
+                }
                 invalidateOptionsMenu()
             }
             else -> finish()
@@ -474,90 +419,94 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return super.onOptionsItemSelected(item)
     }
 
-    fun deleteDialog(){
+    fun deleteDialog() {
         val builderSingle = MaterialAlertDialogBuilder(this@ReadingActivity)
         builderSingle.setTitle(resources.getString(R.string.action_delete) + ":")
         val arrayAdapter = ArrayAdapter<String>(this@ReadingActivity, android.R.layout.select_dialog_singlechoice)
 
-        val arr: Array<String> = filesDir.list()
-        val l = ArrayList<String>()
-        for (i in arr) {
-            if (i.endsWith(".txt")) {
-                l.add(i.replaceFirst("....$".toRegex(), ""))
-                arrayAdapter.add(i.replaceFirst("....$".toRegex(), ""))
-            }
-        }
+        val saved = savedReadingFiles()
+        saved.forEach { arrayAdapter.add(it) }
 
-        builderSingle.setAdapter(arrayAdapter) { dialog: DialogInterface?, which: Int ->  delete(l[which]) }
+        builderSingle.setAdapter(arrayAdapter) { _: DialogInterface?, which: Int -> delete(saved[which]) }
 
-        builderSingle.setPositiveButton(resources.getString(R.string.action_cancel)) { dialog: DialogInterface, which: Int -> dialog.dismiss() }
+        builderSingle.setPositiveButton(resources.getString(R.string.action_cancel)) { dialog: DialogInterface, _: Int -> dialog.dismiss() }
         builderSingle.show()
     }
 
+    /**
+     * Saved reading pages are `<name>.txt` files in internal storage;
+     * the dialog shows them extension-free.
+     */
+    private fun savedReadingFiles(): List<String> =
+        filesDir.list { _, name -> name.endsWith(".txt") }
+            ?.map { it.removeSuffix(".txt") }
+            ?: emptyList()
+
     fun saveFile(context: Context, text: String?, name: String?): Boolean {
         return try {
-            val fos: FileOutputStream = context.openFileOutput(name + ".txt", Context.MODE_PRIVATE)
-            val out: Writer = OutputStreamWriter(fos)
-            out.write(text)
-            out.close()
+            context.openFileOutput("$name.txt", Context.MODE_PRIVATE)
+                .writer()
+                .use { it.write(text) }
             true
         } catch (e: IOException) {
-            e.printStackTrace()
+            Log.e(TAG, "failed saving reading page $name", e)
             false
         }
     }
 
-    fun delete(name: String?): Boolean{
-        val dir = filesDir
-        val file = File(dir, name + ".txt")
-        val deleted = file.delete()
-        return deleted
+    fun delete(name: String?): Boolean {
+        return File(filesDir, "$name.txt").delete()
     }
 
     fun loadFile(context: Context, name: String?): String? {
         return try {
-            val fis: FileInputStream = context.openFileInput(name + ".txt")
-
-            fis.bufferedReader().use { it.readText() }
+            context.openFileInput("$name.txt")
+                .bufferedReader()
+                .use { it.readText() }
         } catch (e: IOException) {
-            e.printStackTrace()
+            Log.e(TAG, "failed loading reading page $name", e)
             null
         }
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result: Int = tts!!.setLanguage(Locale.US)
+            val result: Int = tts?.setLanguage(Locale.US)
+                ?: TextToSpeech.LANG_NOT_SUPPORTED
 
-            tts!!.setOnUtteranceCompletedListener(OnUtteranceCompletedListener {
-                runOnUiThread {
-                    reading = false
-                    invalidateOptionsMenu()
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String) {}
+                override fun onError(utteranceId: String) {}
+                override fun onDone(utteranceId: String) {
+                    runOnUiThread {
+                        reading = false
+                        invalidateOptionsMenu()
+                    }
                 }
             })
 
             if (result == TextToSpeech.LANG_MISSING_DATA
                     || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("TTS", "Language is not supported")
+                Log.e(TAG, "TTS language is not supported")
             }
         } else {
-            Log.e("TTS", "Initilization Failed")
+            Log.e(TAG, "TTS initialization failed")
         }
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         val item = menu.findItem(R.id.tts)
-        if (reading) {
-            item.title = resources.getString(R.string.stop_tts)
-        } else {
-            item.title = resources.getString(R.string.tts)
-        }
+        item?.title = resources.getString(
+            if (reading) R.string.stop_tts else R.string.tts
+        )
         return super.onPrepareOptionsMenu(menu)
     }
 
     companion object {
+        private const val TAG = "ReadingActivity"
         private const val LOAD_READING_URL = "ReadingUrl"
         private const val LOAD_FILE = "FileUrl"
+        private const val TTS_UTTERANCE_ID = "arktos-reading"
 
         /**
          * Launches this activity with the necessary URL argument.
