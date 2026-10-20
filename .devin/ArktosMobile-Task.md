@@ -863,3 +863,22 @@ the subresource limitation; ENG05 follow-up: GeckoEngine should inject
 DNT/Sec-GPC on *all* requests via a WebExtension
 webRequest.onBeforeSendHeaders — WebView can't reach full coverage.
 needs:tool:java
+| MOD09 | AnimatedProgressBar — 302-line custom animator, verify or slim — details below | pending | 0 | — |
+| MOD10 | micro-cleanup of !!-flagged untouched helpers — details below | pending | 0 | — |
+
+### MOD09
+`browser/progress/AnimatedProgressBar.kt` (302 lines) is the last
+untouched file with real logic — a hand-rolled ValueAnimator progress
+bar duplicated from an AOSP-era pattern. Review whether a plain
+ProgressBar + ObjectAnimator (or the platform's content-progress
+behavior) replaces it; if the custom bezier easing is load-bearing for
+the design, keep the file but trim dead paths. Check callers in
+BrowserActivity/TabsView before changing the API.
+needs:tool:java
+
+### MOD10
+The only untouched files with stale patterns: `di/DiExtensions.kt`,
+`preference/delegates/StringPreference.kt`, `utils/DeviceUtils.kt`
+contain `!!` and J2K-era null handling (<40 lines each). Tidy them —
+no behavior change, no test churn needed beyond the suite staying
+green. needs:tool:java
