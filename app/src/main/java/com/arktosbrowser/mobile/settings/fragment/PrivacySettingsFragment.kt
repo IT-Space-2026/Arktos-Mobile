@@ -263,20 +263,8 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     private fun updatePasswordChoice(choice: PasswordChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
         if (choice == PasswordChoice.CUSTOM) {
             showPasswordTextPicker(activity, summaryUpdater)
-
-            val prefs: SharedPreferences = activity.getSharedPreferences("com.arktosbrowser.mobile", Context.MODE_PRIVATE)
-
-            val editor: SharedPreferences.Editor = prefs.edit()
-            editor.putBoolean("noPassword", false)
-            editor.apply()
         }
         else{
-            val prefs: SharedPreferences = activity.getSharedPreferences("com.arktosbrowser.mobile", Context.MODE_PRIVATE)
-
-            val editor: SharedPreferences.Editor = prefs.edit()
-            editor.putBoolean("noPassword", true)
-            editor.apply()
-
             summaryUpdater.updateSummary(resources.getString(R.string.none))
         }
 
