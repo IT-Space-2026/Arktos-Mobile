@@ -188,6 +188,17 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 setPositiveButton(R.string.action_ok) { _, _ ->
                     var text = getDownload.text.toString()
                     text = FileUtils.addNecessarySlashes(text)
+                    // The TextWatcher only recolored invalid paths — the
+                    // value was saved anyway and downloads silently
+                    // failed. Reject unwritable targets outright.
+                    if (!FileUtils.isWriteAccessAvailable(text)) {
+                        Toast.makeText(
+                            activity,
+                            R.string.download_location_invalid,
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@setPositiveButton
+                    }
                     userPreferences.downloadDirectory = text
                     summaryUpdater.updateSummary(text)
                 }
@@ -237,16 +248,15 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
 
             setSingleChoiceItems(chars, n) { _, which ->
                 val searchEngine = searchEngineList[which]
-
-                // Store the search engine preference
                 val preferencesIndex = searchEngineProvider.mapSearchEngineToPreferenceIndex(searchEngine)
-                userPreferences.searchChoice = preferencesIndex
 
                 if (searchEngine is CustomSearch) {
-                    // Show the URL picker
-                    showCustomSearchDialog(searchEngine, summaryUpdater)
+                    // Commit the Custom choice only once a valid URL is
+                    // confirmed — otherwise canceling the dialog leaves
+                    // search permanently broken on a stale template.
+                    showCustomSearchDialog(searchEngine, preferencesIndex, summaryUpdater)
                 } else {
-                    // Set the new search engine summary
+                    userPreferences.searchChoice = preferencesIndex
                     summaryUpdater.updateSummary(getSearchEngineSummary(searchEngine))
                 }
             }
@@ -254,7 +264,11 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         }
     }
 
-    private fun showCustomSearchDialog(customSearch: CustomSearch, summaryUpdater: SummaryUpdater) {
+    private fun showCustomSearchDialog(
+        customSearch: CustomSearch,
+        preferencesIndex: Int,
+        summaryUpdater: SummaryUpdater
+    ) {
         activity?.let {
             BrowserDialog.showEditText(
                     it,
@@ -263,7 +277,17 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                     userPreferences.searchUrl,
                     R.string.action_ok
             ) { searchUrl ->
-                userPreferences.searchUrl = searchUrl
+                // The query is appended by the use-site
+                // ("$queryUrl$QUERY_PLACE_HOLDER") — the stored template
+                // is just the search prefix (e.g. "...&q="). Require
+                // https so searches never go out unencrypted.
+                val trimmed = searchUrl.trim()
+                if (!trimmed.startsWith("https://")) {
+                    Toast.makeText(it, R.string.custom_search_invalid, Toast.LENGTH_LONG).show()
+                    return@showEditText
+                }
+                userPreferences.searchUrl = trimmed
+                userPreferences.searchChoice = preferencesIndex
                 summaryUpdater.updateSummary(getSearchEngineSummary(customSearch))
             }
 
