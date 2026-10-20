@@ -101,6 +101,9 @@
     <string name="action_find">Find in page</string>
     <string name="download_pending">Starting download\u2026</string>
     <string name="download_server_returned_page">The server sent a web page instead of the file.</string>
+    <string name="download_warning_executable">This file is an application or installer. It can make changes to your device if opened.</string>
+    <string name="download_warning_scriptable">This file contains scripts that can run commands or change settings.</string>
+    <string name="download_warning_mismatch">The file name does not match the content type the server reported — it may be disguised.</string>
     <string name="cannot_download">Can only download HTTP or HTTPS URLs.</string>
     <string name="problem_download">Invalid URL encountered, cannot download</string>
     <string name="problem_location_download">Cannot download to the specified location</string>
@@ -452,6 +455,8 @@
     <string name="allpage">Apply theme to web pages (beta)</string>
     <string name="block_mixed_content">Block mixed content</string>
     <string name="block_mixed_content_summary">Stop HTTPS sites from loading insecure HTTP content (always on in incognito)</string>
+    <string name="panic_trigger">Panic trigger</string>
+    <string name="panic_trigger_summary">Let panic-button apps wipe the browsing session (any installed app can send this intent)</string>
     <string name="secure_windows">Secure windows</string>
     <string name="secure_windows_summary">Block screenshots and recents thumbnails in every window (always on in incognito)</string>
     <string name="forcehttps">Block non-HTTPS sites</string>

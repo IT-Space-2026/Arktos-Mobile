@@ -143,6 +143,14 @@ class UserPreferences @Inject constructor(
     var blockMixedContentEnabled by preferences.booleanPreference(BLOCK_MIXED_CONTENT, true)
 
     /**
+     * SEC09 — true to honour the Guardian-Project panic TRIGGER intent
+     * (external panic-button apps wipe the session). Any installed app
+     * can send it, so users without a panic app can close that surface
+     * here.
+     */
+    var panicTriggerEnabled by preferences.booleanPreference(PANIC_TRIGGER, true)
+
+    /**
      * SEC07 — true to set `FLAG_SECURE` on every app window, blocking
      * screenshots and recents thumbnails app-wide. Incognito windows
      * are always secured regardless of this toggle; see
@@ -605,6 +613,7 @@ private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
 private const val SECURE_WINDOWS = "secureWindows"
+private const val PANIC_TRIGGER = "panicTrigger"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"
 private const val TRANCO_LIST_ENABLED = "trancoListEnabled"

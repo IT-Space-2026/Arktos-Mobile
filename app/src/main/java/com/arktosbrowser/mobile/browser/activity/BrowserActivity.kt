@@ -614,7 +614,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         val launchedFromHistory = intent != null && intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
 
-        if (intent?.action == INTENT_PANIC_TRIGGER) {
+        if (intent?.action == INTENT_PANIC_TRIGGER
+            && userPreferences.panicTriggerEnabled
+        ) {
             setIntent(null)
             panicClean()
         } else {
