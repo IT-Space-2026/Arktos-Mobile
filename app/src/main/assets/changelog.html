@@ -191,6 +191,7 @@
             <li>Multi-list adblock subscriptions with a desktop-style filter &amp; rank list manager under Privacy settings.</li>
             <li>Tranco + Majestic site-rank lists, consent-gated, powering site-rank features.</li>
             <li>App-lock and parental passwords hashed with argon2id, upgrading legacy entries in place.</li>
+            <li>Store schema v3 adds userscript run-at/no-frames columns and GM_*Value persistence.</li>
         </ul>
 
         <h3>Fixes carried over from upstream SmartCookieWeb issues</h3>
@@ -206,12 +207,28 @@
             <li>App-lock prompt survives a mistyped password (#302); per-site JavaScript/cookie quick-toggles (#305).</li>
             <li>Dedicated 'No internet connection' page when offline (#323); forced SafeSearch for parental controls (#327).</li>
             <li>Translation rebuilt on a configurable LibreTranslate-compatible endpoint (#300).</li>
+            <li>WebView Safe Browsing channel disabled; reader-mode and proxy bypass leaks fixed.</li>
+            <li>Userscript engine rebuilt on document-start injection with a real GM bridge — @run-at/@exclude/@require honoured, GM_xmlhttpRequest and GM.* APIs implemented.</li>
         </ul>
 
         <h3>Interface</h3>
         <ul>
             <li>Error, block, start and incognito pages restyled to the Arktos desktop look — aurora wave, card layout, dark variants.</li>
             <li>This changelog — readable in-app here and maintained in the repo root ChangeLog file.</li>
+            <li>Arktos light/dark brand themes in the picker; 'Follow system' resolves to them.</li>
+            <li>Site shield in the toolbar opens a per-site privacy panel; the padlock reflects the site's verdict.</li>
+            <li>Bookmark favicons resolve directly from each host — no third-party icon service.</li>
+            <li>Tabs drawer header offers close-all / close-others; closing the last tab leaves a fresh default tab instead of exiting.</li>
+            <li>'Close browser' sits under Settings in the page menu; menu rows hide when no page can act on them.</li>
+        </ul>
+
+        <h3>Settings &amp; stability</h3>
+        <ul>
+            <li>Every settings screen audited: dead toggles wired up or removed, validation added where bad input could persist (download path, manual proxy, custom search URL — https only).</li>
+            <li>Import/export rebuilt on the Storage Access Framework: typed settings round-trip, content-sniffed bookmark formats, working tab backup/restore.</li>
+            <li>Parental-control lockout fixed; all password fields now mask input.</li>
+            <li>Tab sessions restore in order, save-state failures are handled, and a corrupt session can't leave the browser with zero tabs.</li>
+            <li>RxJava 3 migration, targetSdk 35, deprecated news feed removed.</li>
         </ul>
     </div>
 
