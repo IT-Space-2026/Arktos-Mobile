@@ -46,7 +46,9 @@ SmartCookieWeb#314).
 ## Features
 
 - Modern, clean UI
-- < 5MB download
+- ~13MB per-device download (~24MB universal APK — the bundled
+  `libarktos.so` Rust core dominates; ABI splits keep per-device
+  installs small)
 - Tons of settings
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
