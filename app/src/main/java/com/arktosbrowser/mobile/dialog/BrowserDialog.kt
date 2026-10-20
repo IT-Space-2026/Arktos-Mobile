@@ -199,12 +199,18 @@ object BrowserDialog {
 
     /**
      * Show the custom dialog with the custom builder arguments applied.
+     * SEC08 — pass a [TapjackingGuard.Surface] other than GENERIC for
+     * dialogs an overlay app must not be able to tap through.
      */
-    fun showCustomDialog(activity: Activity?, block: MaterialAlertDialogBuilder.(Activity) -> Unit) {
+    fun showCustomDialog(
+        activity: Activity?,
+        surface: TapjackingGuard.Surface = TapjackingGuard.Surface.GENERIC,
+        block: MaterialAlertDialogBuilder.(Activity) -> Unit
+    ) {
         activity?.let {
             MaterialAlertDialogBuilder(activity).apply {
                 block(it)
-                resizeAndShow()
+                TapjackingGuard.protect(resizeAndShow(), surface)
             }
         }
     }

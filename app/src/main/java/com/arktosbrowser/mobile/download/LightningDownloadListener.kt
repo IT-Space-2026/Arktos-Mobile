@@ -22,6 +22,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -136,6 +137,7 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
                     dialogClickListener
                 ).show()
             setDialogSize(mActivity, dialog)
+            TapjackingGuard.protect(dialog, TapjackingGuard.Surface.DOWNLOAD_CONFIRM)
             logger!!.log(TAG, "Downloading: $fileName")
         } else {
             Toast.makeText(

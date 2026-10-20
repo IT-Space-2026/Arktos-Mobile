@@ -27,6 +27,7 @@ import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.extensions.toast
 import com.arktosbrowser.mobile.log.Logger
@@ -550,6 +551,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
             .setPositiveButton(R.string.action_ok, null)
             .setNegativeButton(R.string.action_cancel, null)
             .show()
+        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.BACKUP_PASSWORD)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val password = passwordField.text.toString()
             when {
@@ -638,7 +640,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
             val activity = activity ?: return@registerForActivityResult
             val v = activity.layoutInflater.inflate(R.layout.password, null)
             val passwordField = v.findViewById<android.widget.EditText>(R.id.password)
-            MaterialAlertDialogBuilder(activity)
+            val dialog = MaterialAlertDialogBuilder(activity)
                 .setTitle(R.string.backup_password)
                 .setView(v)
                 .setPositiveButton(R.string.action_ok) { _, _ ->
@@ -646,6 +648,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                 }
                 .setNegativeButton(R.string.action_cancel, null)
                 .show()
+            TapjackingGuard.protect(dialog, TapjackingGuard.Surface.BACKUP_PASSWORD)
         }
 
     private fun importEncryptedBackup(uri: android.net.Uri, password: String) {

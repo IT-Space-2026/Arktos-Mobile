@@ -15,6 +15,7 @@ import com.arktosbrowser.mobile.browser.SiteBlockChoice
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
@@ -100,6 +101,7 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
 
         val dialog = editorDialog.show()
         setDialogSize(requireContext(), dialog)
+        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.PARENTAL_GATE)
 
         // Button override keeps one dialog alive across attempts —
         // the old flow re-invoked passwordDialog() per wrong guess,
@@ -228,7 +230,7 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
         // PORT02 — the stored value is an argon2id hash now, so the
         // field can't be prefilled; an empty submission keeps the
         // existing password.
-        BrowserDialog.showCustomDialog(activity) {
+        BrowserDialog.showCustomDialog(activity, TapjackingGuard.Surface.CREDENTIAL_SET) {
             setTitle(R.string.enter_password)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->

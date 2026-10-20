@@ -78,6 +78,7 @@ import com.arktosbrowser.mobile.di.*
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.extensions.*
 import com.arktosbrowser.mobile.html.bookmark.BookmarkPageFactory
 import com.arktosbrowser.mobile.html.history.HistoryPageFactory
@@ -683,6 +684,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         dialog.show()
+        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.APP_LOCK)
 
         // Overriding after show() stops the button auto-dismissing
         // the dialog on a failed attempt.
@@ -754,13 +756,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     /** The biometric prompt was dismissed without unlocking. */
     private fun showBiometricCancelledDialog() {
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.app_lock)
             .setMessage(R.string.locked)
             .setCancelable(false)
             .setPositiveButton(R.string.unlock) { _, _ -> showBiometricLock() }
             .setNegativeButton(R.string.action_cancel) { _, _ -> finishAffinity() }
             .show()
+        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.APP_LOCK)
     }
 
     private fun getBookmarksContainerId(): Int = if (swapBookmarksAndTabs) {
