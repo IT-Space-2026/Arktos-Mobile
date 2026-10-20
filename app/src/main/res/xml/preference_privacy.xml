@@ -117,6 +117,12 @@
             android:key="secure_windows"
             android:summary="@string/secure_windows_summary"
             android:title="@string/secure_windows"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:singleLineTitle="false"
+            android:key="show_punycode"
+            android:summary="@string/show_punycode_summary"
+            android:title="@string/show_punycode"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/privacy_data_category">
         <SwitchPreference

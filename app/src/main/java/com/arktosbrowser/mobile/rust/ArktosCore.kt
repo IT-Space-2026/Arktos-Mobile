@@ -43,6 +43,8 @@ import com.arktosbrowser.mobile.uniffi.fileExtension as uniffiFileExtension
 import com.arktosbrowser.mobile.uniffi.formatDataSize as uniffiFormatDataSize
 import com.arktosbrowser.mobile.uniffi.guessFileName as uniffiGuessFileName
 import com.arktosbrowser.mobile.uniffi.hashPassword as uniffiHashPassword
+import com.arktosbrowser.mobile.uniffi.idnDisplay as uniffiIdnDisplay
+import com.arktosbrowser.mobile.uniffi.IdnDisplay
 import com.arktosbrowser.mobile.uniffi.importLegacyBookmarks as uniffiImportLegacyBookmarks
 import com.arktosbrowser.mobile.uniffi.isBookmarkUrl as uniffiIsBookmarkUrl
 import com.arktosbrowser.mobile.uniffi.isChangelogUrl as uniffiIsChangelogUrl
@@ -305,6 +307,15 @@ object ArktosCore {
 
     /** `Utils.getDomainName` — display-only domain extraction (PORT02). */
     fun domainName(url: String): String = uniffiDomainName(url)
+
+    /**
+     * SEC12 — IDN/homograph display info: [IdnDisplay.isIdn] flags a
+     * host carrying non-ASCII characters or `xn--` A-labels;
+     * [IdnDisplay.asciiUrl] is the URL with its host in punycode form
+     * (input unchanged when the host needs no rewrite). Display-only —
+     * never feed the result back into navigation or storage.
+     */
+    fun idnDisplay(url: String): IdnDisplay = uniffiIdnDisplay(url)
 
     /**
      * Desktop-parity copy-link cleaning (urlstrip module): removes

@@ -9,6 +9,7 @@
 mod blocklist;
 mod bookmarks;
 mod download;
+mod idn;
 mod misc;
 mod netscape;
 mod pages;
