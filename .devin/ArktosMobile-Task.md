@@ -893,7 +893,7 @@ DONE (2026-10-20). What landed:
 | INCOG01 | Wipe incognito partition on session end/fresh start — details below | done | 0 | IncognitoPartition wipe on session end (performExitCleanUp+onDestroy) + fresh start (engine initialize); real dir is app_webview_incognito; gecko OTR = private mode + clearData; 5 tests + assemble both flavors + engine-audit PASS |
 | INCOG02 | Include incognito profile in panicClean — details below | done | 0 | IncognitoPartition.panicWipe kills :incognito pid (ActivityManager lookup + Process.killProcess) then deletes partition dirs from main; panicClean also cancels the private-tabs notification (id exported as NOTIFICATION_ID); 3 new tests, 400 unit tests/flavor 0 fail, assemble both flavors + engine-audit PASS |
 | INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | done | 0 | visibilityFor(VISIBILITY_SECRET default/PRIVATE opt-in) + incognitoNotificationVisible pref + Privacy→Security switch; O+ channel lockscreenVisibility is system-locked so show() delete+recreates on mismatch — 5 tests + assemble both flavors + engine-audit PASS |
-| INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | pending | 0 | — |
+| INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | done | 0 | IncognitoImePolicy.imeOptions ORs the flag onto layout options when isIncognito(), applied at SearchView init in BrowserActivity — 4 tests + assemble both flavors + engine-audit PASS |
 
 ### INCOG01
 `setDataDirectorySuffix("incognito")` (WebViewEngine.initialize)
@@ -1020,6 +1020,25 @@ The URL/search bar in the incognito window lacks
 the keyboard's learned dictionary. Set the flag on the search field
 when isIncognito() is true (web-page fields are engine-controlled,
 out of scope). needs:tool:java
+
+Done 2026-10-20:
+
+- New `browser/IncognitoImePolicy.kt`: `imeOptions(base, isIncognito)`
+  ORs `IME_FLAG_NO_PERSONALIZED_LEARNING` onto the layout-declared
+  options for incognito, untouched otherwise (same seam style as
+  SecureWindowPolicy/MixedContentPolicy — the `EditorInfo` constant
+  is compile-time so it stays JVM-testable).
+- Applied first inside the `searchView` apply block in
+  `BrowserActivity.initialize` (`imeOptions` read back from the
+  toolbar_content.xml `actionGo` value, flag added on top).
+- `res/layout/search.xml` turned out to be a dead layout (only
+  ToolbarContentBinding is inflated) — left alone.
+- Tests: `IncognitoImePolicyTest` (4) — flag added, pre-existing bits
+  preserved, normal browsing untouched, already-set flag idempotent.
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
+  both `testScMain*DebugUnitTest` green, engine-audit PASS. Runtime
+  check (keyboard actually honoring the flag) needs a device — not
+  run in this env.
 | SEC17 | Sec-GPC header alongside DNT + coverage docs — details below | pending | 0 | — |
 
 ### SEC17

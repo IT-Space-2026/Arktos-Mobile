@@ -545,6 +545,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         // create the search EditText in the ToolBar
         searchView = customView.findViewById<SearchView>(R.id.search).apply {
+            // INCOG04 — incognito typing stays out of the keyboard's
+            // learned dictionary.
+            imeOptions = IncognitoImePolicy.imeOptions(imeOptions, isIncognito())
             toolbarBinding.searchSslStatus.setOnClickListener {
                 val tab = tabsManager.currentTab
                 val url = tab?.url.orEmpty()
