@@ -14,6 +14,24 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="@string/ssl_info_connection"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_connection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="Secure (HTTPS)" />
+
+    <TextView
+        android:id="@+id/ssl_label_issued_by"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
         android:text="@string/ssl_info_issued_by"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
         android:textStyle="bold" />
@@ -28,6 +46,7 @@
         tools:text="Test Cert Authority" />
 
     <TextView
+        android:id="@+id/ssl_label_issued_to"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/material_grid_margin"
@@ -45,6 +64,7 @@
         tools:text="Test Company" />
 
     <TextView
+        android:id="@+id/ssl_label_issued_on"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/material_grid_margin"
@@ -62,6 +82,7 @@
         tools:text="today" />
 
     <TextView
+        android:id="@+id/ssl_label_expires_on"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/material_grid_margin"
@@ -77,6 +98,23 @@
         android:paddingStart="@dimen/material_grid_unit"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
         tools:text="tomorrow" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
+        android:text="@string/ssl_info_site_rank"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_site_rank"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="#1,234" />
 
     <TextView
         android:id="@+id/algorithm"
@@ -95,6 +133,57 @@
         android:paddingStart="@dimen/material_grid_unit"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
         tools:text="tomorrow" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
+        android:text="@string/ssl_info_cookies"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_cookies"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="4 stored for this site" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
+        android:text="@string/ssl_info_blocking"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_blocking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="Enabled for this site" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
+        android:text="@string/ssl_info_javascript"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_javascript"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="Allowed on this site" />
     </LinearLayout>
 
 </ScrollView>

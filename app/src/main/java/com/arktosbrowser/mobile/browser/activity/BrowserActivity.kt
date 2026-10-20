@@ -33,6 +33,7 @@ import android.view.animation.Animation
 import android.view.animation.Transformation
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient.CustomViewCallback
 import android.widget.*
@@ -91,6 +92,7 @@ import com.arktosbrowser.mobile.search.SuggestionsAdapter
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.createSslDrawableForState
 import com.arktosbrowser.mobile.ssl.showSslDialog
+import com.arktosbrowser.mobile.ssl.sslVerdictColor
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.*
 import com.arktosbrowser.mobile.view.SearchView
@@ -229,6 +231,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     @Inject
     lateinit var allowListModel: AllowListModel
+
+    @Inject
+    lateinit var siteSettings: SiteSettings
 
     @Inject
     lateinit var logger: Logger
@@ -518,19 +523,22 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         // create the search EditText in the ToolBar
         searchView = customView.findViewById<SearchView>(R.id.search).apply {
             toolbarBinding.searchSslStatus.setOnClickListener {
-                if (tabsManager.currentTab?.sslCertificate == null) {
-                    val builder = MaterialAlertDialogBuilder(context)
-                    builder.setTitle(R.string.site_not_secure)
-                    builder.setIcon(R.drawable.ic_alert)
-                    builder.setPositiveButton(R.string.action_ok) { _, _ ->
-                    }
-                    builder.show()
-                } else {
-                    tabsManager.currentTab?.let { tab ->
-                        tab.sslCertificate?.let { showSslDialog(it, tab.currentSslState()) }
-                    }
-                }
-
+                val tab = tabsManager.currentTab
+                val url = tab?.url.orEmpty()
+                // CookieManager counts name=value pairs for the page origin —
+                // the same site the desktop panel scopes its cookie row to.
+                val cookieCount = CookieManager.getInstance().getCookie(url)
+                    ?.split(';')?.count { it.contains('=') } ?: 0
+                showSslDialog(
+                    tab?.sslCertificate,
+                    tab?.currentSslState() ?: SslState.None,
+                    Uri.parse(url).host.orEmpty(),
+                    siteRank(url),
+                    isDarkTheme,
+                    cookieCount,
+                    userPreferences.adBlockEnabled && !allowListModel.isUrlAllowedAds(url),
+                    siteSettings.javaScriptEnabled(url)
+                )
             }
             toolbarBinding.searchSslStatus.updateVisibilityForContent()
 
@@ -1171,6 +1179,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         val url = tabsManager.currentTab?.url
         if (url != null && (url.contains("http://") || url.contains("https://"))) {
             toolbarBinding.searchSslStatus.setImageDrawable(createSslDrawableForState(sslState))
+            toolbarBinding.searchSslStatus.setColorFilter(
+                sslVerdictColor(sslState, siteRank(url), isDarkTheme))
         }
         else{
             toolbarBinding.searchSslStatus.setImageDrawable(null)
@@ -1182,6 +1192,10 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
         updateSiteShield()
     }
+
+    /** Merged Tranco+Majestic rank for the URL's host; 0 when unranked. */
+    private fun siteRank(url: String): Long =
+        Uri.parse(url).host?.let { ArktosCore.siteRank(it) } ?: 0
 
     private fun ImageView.updateVisibilityForContent() {
         drawable?.let { visibility = VISIBLE } ?: run { visibility = GONE }

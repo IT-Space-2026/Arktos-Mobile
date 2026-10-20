@@ -14,35 +14,83 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Shows an informative dialog with the provided [SslCertificate] information.
+ * [rank] is the host's merged Tranco+Majestic site rank (0 = unranked) and
+ * [darkTheme] picks the legible half of the desktop's verdict palette —
+ * both feed the desktop-parity trust row and icon tint.
+ *
+ * The desktop SitePanel's trust rows ride along: connection verdict,
+ * cookie count, per-site content blocking and JavaScript state. When the
+ * engine exposes no certificate object ([sslCertificate] == null — the
+ * WebView's cert getter is flaky even on valid https), the cert rows hide
+ * and the host/connection/trust rows carry the dialog.
  */
-fun Context.showSslDialog(sslCertificate: SslCertificate, sslState: SslState) {
-    val by = sslCertificate.issuedBy
-    val to = sslCertificate.issuedTo
-    val issueDate = sslCertificate.validNotBeforeDate
-    val expireDate = sslCertificate.validNotAfterDate
+fun Context.showSslDialog(
+    sslCertificate: SslCertificate?,
+    sslState: SslState,
+    host: String,
+    rank: Long,
+    darkTheme: Boolean,
+    cookieCount: Int,
+    blockingEnabled: Boolean,
+    javaScriptEnabled: Boolean
+) {
     val dateFormat = DateFormat.getDateFormat(applicationContext)
 
     val contentView = inflater.inflate(R.layout.dialog_ssl_info, null, false).apply {
-        findViewById<TextView>(R.id.ssl_layout_issue_by).text = by.cName
-        findViewById<TextView>(R.id.ssl_layout_issue_to).text = to.oName?.takeIf(String::isNotBlank)
-            ?: to.cName
-        findViewById<TextView>(R.id.ssl_layout_issue_date).text = dateFormat.format(issueDate)
-        findViewById<TextView>(R.id.ssl_layout_expire_date).text = dateFormat.format(expireDate)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            val cert = sslCertificate.x509Certificate
-            findViewById<TextView>(R.id.ssl_layout_serial_number).text = cert?.sigAlgName
+        val connectionText = findViewById<TextView>(R.id.ssl_layout_connection)
+        connectionText.text = when {
+            sslState is SslState.Invalid -> getString(R.string.connection_broken_cert)
+            sslState is SslState.Valid -> getString(R.string.connection_secure_https)
+            else -> getString(R.string.connection_not_secure_http)
         }
-        else{
-            findViewById<TextView>(R.id.ssl_layout_serial_number).visibility = View.GONE
-            findViewById<TextView>(R.id.algorithm).visibility = View.GONE
+        connectionText.setTextColor(sslVerdictColor(sslState, rank, darkTheme))
+
+        if (sslCertificate != null) {
+            findViewById<TextView>(R.id.ssl_layout_issue_by).text = sslCertificate.issuedBy.cName
+            findViewById<TextView>(R.id.ssl_layout_issue_to).text =
+                sslCertificate.issuedTo.oName?.takeIf(String::isNotBlank)
+                    ?: sslCertificate.issuedTo.cName
+            findViewById<TextView>(R.id.ssl_layout_issue_date).text =
+                dateFormat.format(sslCertificate.validNotBeforeDate)
+            findViewById<TextView>(R.id.ssl_layout_expire_date).text =
+                dateFormat.format(sslCertificate.validNotAfterDate)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val cert = sslCertificate.x509Certificate
+                findViewById<TextView>(R.id.ssl_layout_serial_number).text = cert?.sigAlgName
+            } else {
+                findViewById<TextView>(R.id.ssl_layout_serial_number).visibility = View.GONE
+                findViewById<TextView>(R.id.algorithm).visibility = View.GONE
+            }
+        } else {
+            listOf(
+                R.id.ssl_label_issued_by, R.id.ssl_layout_issue_by,
+                R.id.ssl_label_issued_to, R.id.ssl_layout_issue_to,
+                R.id.ssl_label_issued_on, R.id.ssl_layout_issue_date,
+                R.id.ssl_label_expires_on, R.id.ssl_layout_expire_date,
+                R.id.algorithm, R.id.ssl_layout_serial_number
+            ).forEach { findViewById<TextView>(it).visibility = View.GONE }
         }
+
+        findViewById<TextView>(R.id.ssl_layout_site_rank).apply {
+            text = if (rank > 0) "#${String.format("%,d", rank)}"
+                   else getString(R.string.ssl_rank_unranked)
+            setTextColor(sslVerdictColor(sslState, rank, darkTheme))
+        }
+        findViewById<TextView>(R.id.ssl_layout_cookies).text =
+            getString(R.string.cookies_count, cookieCount)
+        findViewById<TextView>(R.id.ssl_layout_blocking).text =
+            getString(if (blockingEnabled) R.string.site_blocking_on else R.string.site_blocking_off)
+        findViewById<TextView>(R.id.ssl_layout_javascript).text =
+            getString(if (javaScriptEnabled) R.string.site_js_on else R.string.site_js_off)
     }
 
-    val icon = createSslDrawableForState(sslState)
+    val icon = createSslDrawableForState(sslState)?.mutate()?.apply {
+        setColorFilter(sslVerdictColor(sslState, rank, darkTheme), android.graphics.PorterDuff.Mode.SRC_IN)
+    }
 
     val dialog = MaterialAlertDialogBuilder(this)
         .setIcon(icon)
-        .setTitle(to.cName)
+        .setTitle(host.ifBlank { sslCertificate?.issuedTo?.cName ?: "" })
         .setView(contentView)
         .setPositiveButton(R.string.action_ok, null)
         .resizeAndShow()

@@ -151,6 +151,20 @@
     <string name="ssl_info_issued_to">Issued to</string>
     <string name="ssl_info_issued_on">Issued on</string>
     <string name="ssl_info_expires_on">Expires on</string>
+    <string name="ssl_info_site_rank">Site rank</string>
+    <string name="ssl_info_connection">Connection</string>
+    <string name="ssl_info_cookies">Cookies</string>
+    <string name="ssl_info_blocking">Content blocking</string>
+    <string name="ssl_info_javascript">JavaScript</string>
+    <string name="connection_secure_https">Secure (HTTPS)</string>
+    <string name="connection_not_secure_http">Not secure (HTTP)</string>
+    <string name="connection_broken_cert">Broken certificate</string>
+    <string name="cookies_count">%1$d stored for this site</string>
+    <string name="site_blocking_on">Enabled for this site</string>
+    <string name="site_blocking_off">Disabled for this site</string>
+    <string name="site_js_on">Allowed on this site</string>
+    <string name="site_js_off">Blocked on this site</string>
+    <string name="ssl_rank_unranked">Unranked</string>
 
     <!-- SSL don't ask again -->
     <string name="ssl_warning_dont_ask_again">Don\'t ask again for this browsing session.</string>
@@ -462,6 +476,8 @@
     <string name="new_tab_foreground">Bring tabs to foreground</string>
     <string name="new_tab_foreground_summary">Open a new tab when it is created</string>
     <string name="site_not_secure">The connection to this site is not secure.</string>
+    <string name="site_secure">The connection to this site is secure.</string>
+    <string name="site_rank_info">Site rank: %1$s</string>
     <string name="language_not_supported">Language Not Supported</string>
     <string name="language_not_supported_text">Unfortunately, the extensions store is not available in your language yet. Use the button below to continue in English anyway.</string>
     <string name="extensions">Greasemonkey</string>
