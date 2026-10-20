@@ -24,11 +24,25 @@
             android:scaleType="center"
             app:srcCompat="@drawable/ic_action_tabs" />
 
+        <ImageView
+            android:id="@+id/close_all_button"
+            android:layout_width="?attr/actionBarSize"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:background="?attr/actionBarItemBackground"
+            android:clickable="true"
+            android:contentDescription="@string/close_all_tabs"
+            android:focusable="true"
+            android:scaleType="center"
+            app:srcCompat="@drawable/ic_action_delete"
+            app:tint="?attr/iconColor" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/material_grid_margin"
             android:layout_toEndOf="@id/tab_header_button"
+            android:layout_toStartOf="@id/close_all_button"
             android:clickable="true"
             android:focusable="true"
             android:fontFamily="sans-serif"

@@ -1155,15 +1155,29 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
         BrowserDialog.showWithIcons(this, getString(R.string.dialog_title_close_browser),
                 DialogItem(title = R.string.close_tab, icon = drawable(R.drawable.ic_delete_this)) {
-                    presenter?.deleteTab(position)
+                    presenter?.deleteTab(position, keepAlive = true)
                 },
                 DialogItem(title = R.string.close_other_tabs, icon = drawable(R.drawable.ic_delete_other)) {
-                    presenter?.closeAllOtherTabs()
+                    closeAllOtherTabs()
                 },
-                DialogItem(title = R.string.close_all_tabs, icon = drawable(R.drawable.ic_delete_all), onClick = this::closeBrowser),
+                DialogItem(title = R.string.close_all_tabs, icon = drawable(R.drawable.ic_delete_all), onClick = this::closeAllTabs),
                 DialogItem(title = R.string.close_app, icon = drawable(R.drawable.ic_action_delete), onClick = this::closeApp))
 
 
+    }
+
+    override fun showCloseAllDialog() {
+        BrowserDialog.showWithIcons(this, getString(R.string.dialog_title_close_browser),
+                DialogItem(title = R.string.close_all_tabs, icon = drawable(R.drawable.ic_delete_all), onClick = this::closeAllTabs),
+                DialogItem(title = R.string.close_other_tabs, icon = drawable(R.drawable.ic_delete_other), onClick = this::closeAllOtherTabs))
+    }
+
+    override fun closeAllTabs() {
+        presenter?.closeAllTabs(keepAlive = true)
+    }
+
+    override fun closeAllOtherTabs() {
+        presenter?.closeAllOtherTabs(keepAlive = true)
     }
 
     override fun notifyTabViewRemoved(position: Int) {
@@ -1387,7 +1401,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     override fun showSnackbar(@StringRes resource: Int) = snackbar(resource)
 
     override fun tabCloseClicked(position: Int) {
-        presenter?.deleteTab(position)
+        presenter?.deleteTab(position, keepAlive = true)
     }
 
     override fun tabClicked(position: Int) {
