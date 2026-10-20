@@ -19,9 +19,12 @@ import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
+import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ProxyUtils
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Scheduler
 import javax.inject.Inject
@@ -159,6 +162,64 @@ class DownloadHandler @Inject constructor(
             ).show()
         }
 
+        // SEC11 — executable/scriptable names and disguised MIME types get a
+        // warning the user must accept; unlike the regular download dialog
+        // this one cannot be disabled.
+        val risk = DownloadRisk.assess(fileName, effectiveMime)
+        if (risk.isRisky) {
+            warnRiskyDownload(context, fileName, risk) {
+                performEnqueue(
+                    context, url, fileName, effectiveMime, contentSize,
+                    userAgent, cookies, referer, probe
+                )
+            }
+            return
+        }
+
+        performEnqueue(
+            context, url, fileName, effectiveMime, contentSize,
+            userAgent, cookies, referer, probe
+        )
+    }
+
+    private fun warnRiskyDownload(
+        context: Activity,
+        fileName: String,
+        risk: DownloadRisk.Assessment,
+        onProceed: () -> Unit
+    ) {
+        logger.log(TAG, "DOWNLOAD: $fileName flagged ${risk.flags.joinToString("+")}")
+        val warnings = mutableListOf<String>()
+        if (DownloadRisk.Flag.EXECUTABLE in risk.flags) {
+            warnings += context.getString(R.string.download_warning_executable)
+        }
+        if (DownloadRisk.Flag.SCRIPTABLE in risk.flags) {
+            warnings += context.getString(R.string.download_warning_scriptable)
+        }
+        if (DownloadRisk.Flag.MIME_MISMATCH in risk.flags) {
+            warnings += context.getString(R.string.download_warning_mismatch)
+        }
+        val dialog = MaterialAlertDialogBuilder(context)
+            .setTitle(fileName)
+            .setMessage(warnings.joinToString("\n\n"))
+            .setPositiveButton(R.string.action_download) { _, _ -> onProceed() }
+            .setNegativeButton(R.string.action_cancel, null)
+            .show()
+        setDialogSize(context, dialog)
+        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.DOWNLOAD_CONFIRM)
+    }
+
+    private fun performEnqueue(
+        context: Activity,
+        url: String,
+        fileName: String,
+        effectiveMime: String,
+        contentSize: String,
+        userAgent: String,
+        cookies: String?,
+        referer: String?,
+        probe: DownloadHttpProbe.Result?
+    ) {
         val request = DownloadManager.Request(Uri.parse(url))
             .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             .setAllowedOverRoaming(false)

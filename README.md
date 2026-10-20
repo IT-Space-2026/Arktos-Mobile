@@ -223,5 +223,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Block mixed content' option (on by default; always on in incognito)
 - 'Secure windows' option (blocks screenshots/recents thumbnails; always on in incognito)
 - Tapjacking protection on sensitive dialogs (locks, credentials, proxy, download confirm)
+- Download risk warnings (executable/scriptable files, name-vs-MIME disguises)
 - 'Always incognito' option
 - Cookie dialog blocker
