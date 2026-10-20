@@ -1,15 +1,15 @@
 package com.arktosbrowser.mobile.settings.fragment
 
 import android.app.Activity
-import android.content.Context.MODE_PRIVATE
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.browser.AppLockGate
 import com.arktosbrowser.mobile.browser.PasswordChoice
 import com.arktosbrowser.mobile.browser.SiteBlockChoice
 import com.arktosbrowser.mobile.di.injector
@@ -28,6 +28,8 @@ import javax.inject.Inject
 class ParentalControlSettingsFragment : AbstractSettingsFragment() {
 
     @Inject lateinit var userPreferences: UserPreferences
+
+    private val appLockGate = AppLockGate()
 
     private lateinit var proxyChoices: Array<String>
 
@@ -67,11 +69,12 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
                 summary = userPreferences.passwordChoice.toSummary(),
                 onClick = ::showPasswordPicker
         )
-        val prefs: SharedPreferences? = activity?.getSharedPreferences("com.arktosbrowser.mobile", MODE_PRIVATE)
-
-        if (prefs?.getBoolean("noPassword", true)!!) {
-        }
-        else {
+        // The gate is the password choice itself — the old
+        // `noPassword` flag in the app-wide prefs file was shared with
+        // the privacy screen's app-lock toggle, so enabling one lock
+        // could silently demand the other's (unset) password.
+        if (userPreferences.passwordChoice == PasswordChoice.CUSTOM &&
+            userPreferences.passwordText.isNotBlank()) {
             passwordDialog()
         }
     }
@@ -81,37 +84,41 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
         val editText = dialogView.findViewById<EditText>(R.id.dialog_edit_text)
 
         editText.setHint(R.string.enter_password)
+        editText.inputType = InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_VARIATION_PASSWORD
 
         val editorDialog = MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.enter_password)
                 .setView(dialogView)
                 .setCancelable(false)
                 .setNegativeButton(R.string.action_back) { dialog, which ->
-                    //listener.onClick(editText.getText().toString());
                     val settings = Intent(activity, SettingsActivity::class.java)
                     settings.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     startActivity(settings)
                 }
-                .setPositiveButton(R.string.action_ok
-                ) { _, _ ->
-                    // PORT02 — stored value is `arktos:v1:` argon2id;
-                    // a legacy plaintext match upgrades in place.
-                    val check = ArktosCore.verifyPassword(
-                        userPreferences.passwordText,
-                        editText.text.toString()
-                    )
-                    if (!check.matched) {
-                        val duration = Toast.LENGTH_SHORT
-                        val toast = Toast.makeText(activity, resources.getString(R.string.wrong_password), duration)
-                        toast.show()
-                        passwordDialog()
-                    } else {
-                        check.upgradedHash?.let { userPreferences.passwordText = it }
-                    }
-                }
+                .setPositiveButton(R.string.action_ok, null)
 
         val dialog = editorDialog.show()
         setDialogSize(requireContext(), dialog)
+
+        // Button override keeps one dialog alive across attempts —
+        // the old flow re-invoked passwordDialog() per wrong guess,
+        // stacking a new dialog (and a recursion frame) each time.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            when (val result = appLockGate.check(
+                userPreferences.passwordText,
+                editText.text.toString()
+            )) {
+                is AppLockGate.Result.Unlocked -> {
+                    result.upgradedHash?.let { userPreferences.passwordText = it }
+                    dialog.dismiss()
+                }
+                AppLockGate.Result.Retry -> {
+                    editText.error = resources.getString(R.string.wrong_password)
+                    editText.text?.clear()
+                }
+            }
+        }
     }
 
     private fun SiteBlockChoice.toSummary(): String {
@@ -205,20 +212,8 @@ class ParentalControlSettingsFragment : AbstractSettingsFragment() {
     private fun updatePasswordChoice(choice: PasswordChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
         if (choice == PasswordChoice.CUSTOM) {
             showPasswordTextPicker(activity, summaryUpdater)
-
-            val prefs: SharedPreferences = activity.getSharedPreferences("com.arktosbrowser.mobile", MODE_PRIVATE)
-
-            val editor: SharedPreferences.Editor = prefs.edit()
-            editor.putBoolean("noPassword", false)
-            editor.apply()
         }
         else{
-            val prefs: SharedPreferences = activity.getSharedPreferences("com.arktosbrowser.mobile", MODE_PRIVATE)
-
-            val editor: SharedPreferences.Editor = prefs.edit()
-            editor.putBoolean("noPassword", true)
-            editor.apply()
-
             summaryUpdater.updateSummary(resources.getString(R.string.none))
         }
 
