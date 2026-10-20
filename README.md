@@ -224,5 +224,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Secure windows' option (blocks screenshots/recents thumbnails; always on in incognito)
 - Tapjacking protection on sensitive dialogs (locks, credentials, proxy, download confirm)
 - Download risk warnings (executable/scriptable files, name-vs-MIME disguises)
+- 'Show punycode domains' option (on by default; shows xn-- form for internationalized domains to expose lookalike phishing domains)
 - 'Always incognito' option
 - Cookie dialog blocker

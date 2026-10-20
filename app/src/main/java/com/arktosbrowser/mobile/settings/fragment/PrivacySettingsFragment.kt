@@ -244,6 +244,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
+                preference = SETTINGS_SHOW_PUNYCODE,
+                isChecked = userPreferences.showPunycodeEnabled,
+                onCheckChange = { userPreferences.showPunycodeEnabled = it }
+        )
+
+        switchPreference(
             preference = SETTINGS_IDENTIFYINGHEADERS,
             isChecked = userPreferences.removeIdentifyingHeadersEnabled,
             summary = (if(userPreferences.popupsEnabled) {
@@ -758,6 +764,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_BLOCK_LAN = "block_lan_requests"
         private const val SETTINGS_BLOCK_MIXED_CONTENT = "block_mixed_content"
         private const val SETTINGS_SECURE_WINDOWS = "secure_windows"
+        private const val SETTINGS_SHOW_PUNYCODE = "show_punycode"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"

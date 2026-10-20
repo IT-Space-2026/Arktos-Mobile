@@ -159,6 +159,15 @@ class UserPreferences @Inject constructor(
     var secureWindowsEnabled by preferences.booleanPreference(SECURE_WINDOWS, false)
 
     /**
+     * SEC12 — true to render internationalized domain names in the URL
+     * bar in their punycode (`xn--`) form instead of Unicode, so
+     * homograph/lookalike hosts can't masquerade as ASCII brands.
+     * Display-only — the loaded URL is never modified. See
+     * [com.arktosbrowser.mobile.rust.ArktosCore.idnDisplay].
+     */
+    var showPunycodeEnabled by preferences.booleanPreference(SHOW_PUNYCODE, true)
+
+    /**
      * True if the browser should block images from being loaded, false otherwise.
      */
     var blockImagesEnabled by preferences.booleanPreference(BLOCK_IMAGES, false)
@@ -613,6 +622,7 @@ private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
 private const val SECURE_WINDOWS = "secureWindows"
+private const val SHOW_PUNYCODE = "showPunycode"
 private const val PANIC_TRIGGER = "panicTrigger"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"

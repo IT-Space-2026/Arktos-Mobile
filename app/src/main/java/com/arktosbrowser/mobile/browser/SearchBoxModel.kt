@@ -51,9 +51,18 @@ class SearchBoxModel @Inject constructor(
             }
         }
 
-    private fun safeDomain(url: String) = ArktosCore.domainName(url)
+    private fun safeDomain(url: String) = ArktosCore.domainName(url.idnSafeUrl())
 
     private fun String.forUrlBar(): String =
-        if (userPreferences.trimUrlBarEnabled) trimmedForDisplay() else this
+        idnSafeUrl().let { if (userPreferences.trimUrlBarEnabled) it.trimmedForDisplay() else it }
+
+    /**
+     * SEC12 — the display URL with an internationalized host rendered
+     * in its punycode (`xn--`) form when [UserPreferences.showPunycodeEnabled]
+     * is on, so lookalike Unicode domains can't impersonate ASCII
+     * brands in the URL bar. Non-IDN URLs pass through untouched.
+     */
+    private fun String.idnSafeUrl(): String =
+        if (userPreferences.showPunycodeEnabled) ArktosCore.idnDisplay(this).asciiUrl else this
 
 }
