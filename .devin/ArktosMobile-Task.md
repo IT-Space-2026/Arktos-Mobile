@@ -1039,7 +1039,7 @@ Done 2026-10-20:
   both `testScMain*DebugUnitTest` green, engine-audit PASS. Runtime
   check (keyboard actually honoring the flag) needs a device — not
   run in this env.
-| SEC17 | Sec-GPC header alongside DNT + coverage docs — details below | pending | 0 | — |
+| SEC17 | Sec-GPC header alongside DNT + coverage docs — details below | done | 0 | DoNotTrackPolicy (DNT:1 + Sec-GPC:1) applied in ArktosCookieView; setting summary notes subresource gap; gecko already full-coverage via prefs (no WebExtension needed); LIMITATIONS.md entry — DoNotTrackPolicyTest 7/7, both flavors build+tests green, engine-audit PASS |
 
 ### SEC17
 DNT review found: the header only rides main-frame GETs (loadUrl
@@ -1052,6 +1052,30 @@ the subresource limitation; ENG05 follow-up: GeckoEngine should inject
 DNT/Sec-GPC on *all* requests via a WebExtension
 webRequest.onBeforeSendHeaders — WebView can't reach full coverage.
 needs:tool:java
+
+Outcome:
+- New `network/DoNotTrackPolicy.kt` (pure JVM seam):
+  `applyTo(requestHeaders, doNotTrackEnabled)` sets `DNT: 1` +
+  `Sec-GPC: 1` when on, removes both when off; replaces the inline
+  DNT-only block in `ArktosCookieView.initializePreferences`
+  (private `HEADER_DNT` const moved into the policy).
+- `do_not_track` switch gained `do_not_track_summary` noting the
+  WebView subresource/POST/XHR coverage gap and gecko's full
+  coverage.
+- Gecko side needed no WebExtension: ENG05 already maps the toggle
+  to `privacy.donottrackheader.enabled` +
+  `privacy.globalprivacycontrol.enabled`, which GeckoView attaches
+  to every request natively — better coverage than a
+  `webRequest.onBeforeSendHeaders` extension (see
+  `gecko/GeckoEngine.kt` PREF_DNT/PREF_GPC).
+- Coverage docs: new LIMITATIONS.md entry ("Do Not Track / Global
+  Privacy Control only reach top-level navigations") + README
+  Known-limitations mention.
+- Tests: `DoNotTrackPolicyTest` (7) — exact header names/values,
+  enabled/disabled map behavior, stale-signal cleanup, source-scan
+  guards for the ArktosCookieView + gecko wiring.
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
+  both `testScMain*DebugUnitTest` green, engine-audit PASS.
 | MOD09 | AnimatedProgressBar — 302-line custom animator, verify or slim — details below | pending | 0 | — |
 | MOD10 | micro-cleanup of !!-flagged untouched helpers — details below | pending | 0 | — |
 

@@ -121,6 +121,41 @@ the same device**, that is a WebView-vs-Chrome behavioural gap outside
 our control — please include the WebView version
 (`Settings → Apps → Android System WebView`) in the report.
 
+## Do Not Track / Global Privacy Control only reach top-level navigations
+
+**Status: platform limitation — WebView can't rewrite outgoing request
+headers.**
+
+*Settings → Privacy → "Request 'Do Not Track'"* sends `DNT: 1` and
+`Sec-GPC: 1` (Global Privacy Control, the legally-backed successor to
+the deprecated DNT signal) via the extra-headers argument of
+`WebView.loadUrl` (`network/DoNotTrackPolicy.kt`, applied in
+`ArktosCookieView.initializePreferences`). That argument only exists
+for app-initiated top-level navigations — **subresources, XHR/fetch
+and POST requests can never carry custom headers on WebView** (there
+is no `onBeforeSendHeaders`-style API), and the signals ride
+in-page link navigations only when the referrer policy takes the
+navigation over into a `loadUrl` call.
+
+Partial mitigations available today:
+
+- Sites that honor GPC treat the main-document signal as an opt-out
+  for the visit, which is the coverage that matters for most
+  consent-regime purposes.
+- The **gecko flavor** (`engine=gecko` build) has full coverage: it
+  sets GeckoView's `privacy.donottrackheader.enabled` and
+  `privacy.globalprivacycontrol.enabled` prefs, which attach the
+  signals to *every* request including subresources — see
+  `gecko/GeckoEngine.kt`. This is why no `webRequest` WebExtension
+  shim was needed there.
+- `navigator.globalPrivacyControl` / `navigator.doNotTrack` JS
+  properties can't be shimmed reliably either — WebView offers no
+  way to override navigator properties before page scripts run.
+
+**Revisit trigger:** a WebView request-header mutation API (e.g. an
+androidx.webkit `WebViewClientCompat` onBeforeSendHeaders feature),
+or the gecko flavor becoming the default build.
+
 ---
 
 ## Suggested issue replies

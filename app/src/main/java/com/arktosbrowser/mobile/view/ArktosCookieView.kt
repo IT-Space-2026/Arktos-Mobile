@@ -49,6 +49,7 @@ import com.arktosbrowser.mobile.engine.PageInitializer
 import com.arktosbrowser.mobile.engine.UserScript
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.log.Logger
+import com.arktosbrowser.mobile.network.DoNotTrackPolicy
 import com.arktosbrowser.mobile.network.NetworkConnectivityModel
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.preference.userAgent
@@ -330,11 +331,7 @@ class ArktosCookieView(
             || userPreferences.saveDataEnabled
             || userPreferences.removeIdentifyingHeadersEnabled
 
-        if (userPreferences.doNotTrackEnabled) {
-            requestHeaders[HEADER_DNT] = "1"
-        } else {
-            requestHeaders.remove(HEADER_DNT)
-        }
+        DoNotTrackPolicy.applyTo(requestHeaders, userPreferences.doNotTrackEnabled)
 
         if (userPreferences.saveDataEnabled) {
             requestHeaders[HEADER_SAVEDATA] = "on"
@@ -1113,7 +1110,6 @@ class ArktosCookieView(
 
         const val HEADER_REQUESTED_WITH = "X-Requested-With"
         const val HEADER_WAP_PROFILE = "X-Wap-Profile"
-        private const val HEADER_DNT = "DNT"
         private const val HEADER_SAVEDATA = "Save-Data"
 
         private val API = Build.VERSION.SDK_INT

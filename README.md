@@ -240,7 +240,7 @@ Arktos Mobile can optionally use online services to improve the browser. Informa
 
 ## Known limitations
 
-Arktos Mobile is built on Android WebView, so a few reported issues are platform limits we can't fix in app code — including WebRTC's ability to reveal your real IP, per-site timezone spoofing, and background media playback. See [LIMITATIONS.md](LIMITATIONS.md) for details and workarounds.
+Arktos Mobile is built on Android WebView, so a few reported issues are platform limits we can't fix in app code — including WebRTC's ability to reveal your real IP, per-site timezone spoofing, background media playback, and DNT/Global-Privacy-Control signals reaching only top-level navigations (the gecko build covers every request). See [LIMITATIONS.md](LIMITATIONS.md) for details and workarounds.
 
 ---
 

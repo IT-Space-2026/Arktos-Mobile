@@ -332,6 +332,7 @@
     <string name="swap_bookmarks_and_tabs">Swap bookmark and tab drawers</string>
     <string name="swap_bookmarks_and_tabs_icons">Swap bookmark and tab icons</string>
     <string name="do_not_track">Request \'Do Not Track\'</string>
+    <string name="do_not_track_summary">Send DNT and Global Privacy Control signals with page loads (WebView can\'t attach them to subresource requests; the gecko build covers every request)</string>
     <string name="remove_identifying_headers">Remove identifying HTTP headers</string>
     <string name="action_add_to_homescreen">Add to home screen</string>
     <string name="message_added_to_homescreen">Shortcut added to home screen</string>
