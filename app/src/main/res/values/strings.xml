@@ -18,6 +18,8 @@
     <string name="location">Location access</string>
     <string name="password">Save form data</string>
     <string name="invalid_proxy">Enter a valid host and a port between 1 and 65535</string>
+    <string name="download_location_invalid">This folder is not writable — downloads cannot be saved there</string>
+    <string name="custom_search_invalid">Enter a valid https:// URL — your search text is appended to it</string>
     <string name="agent">User agent</string>
     <string name="flash">Enable Adobe Flash</string>
     <string name="home">Homepage</string>
