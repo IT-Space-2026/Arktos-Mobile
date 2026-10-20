@@ -52,7 +52,7 @@
             margin-left: -85px;
         }
 
-        #header, .shortcuts, .column .card {
+        #header, .shortcuts {
             width: 88%;
             max-width: 500px;
             margin: 12px auto;
@@ -113,29 +113,6 @@
         .text {
             font-weight: 300;
             margin-top: 0;
-        }
-
-        /* News feed cards (INFORMATIVE homepage type). */
-        .card {
-            box-shadow: 0 2px 14px rgba(20, 30, 60, 0.12);
-            transition: 0.3s;
-            border-radius: 0.8em;
-            padding-top: 4px;
-            cursor: pointer;
-            background: #fff;
-            text-align: left;
-            overflow: hidden;
-        }
-
-        .card img {
-            display: block;
-            width: 95%;
-            margin: 8px auto 0 auto;
-            border-radius: 5px;
-        }
-
-        .card-content {
-            padding: 8px 16px 14px 16px;
         }
 
         .modal {
@@ -209,10 +186,6 @@
             background: #8892a8;
         }
 
-        .column {
-            display: block;
-        }
-
         /* Dark variant: HomePageFactory adds the arktos-dark class to
            <html> when the start page follows a dark app theme. */
         html.arktos-dark {
@@ -241,7 +214,6 @@
         }
 
         html.arktos-dark .shortcuts,
-        html.arktos-dark .card,
         html.arktos-dark .modal-content {
             background: #1c2130;
             color: #e4e4e8;
@@ -279,10 +251,6 @@
         <a id="link4click" href="//google.com"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" class="link" id="link4" alt=""/></a>
         <svg class="edit" xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M3 17.46v3.04c0 .28.22.5.5.5h3.04c.13 0 .26-.05.35-.15L17.81 9.94l-3.75-3.75L3.15 17.1c-.1.1-.15.22-.15.36zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
     </div>
-    <div class="columns">
-        <div class="column"></div>
-    </div>
-
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h1 id="edit_shortcuts">Edit shortcuts</h1>
@@ -303,7 +271,6 @@
     </div>
 
     <script type="text/javascript">
-        var endpoint = "${ENDPOINT}";
         var link1var = "https://github.com/IT-Space-2026/Arktos-Mobile/releases";
         var link2var = "https://it-space.info";
         var link3var = "https://arktos-browser.com";
@@ -344,27 +311,6 @@
             }
         }
 
-        if (endpoint !== "" && endpoint.charAt(0) !== "$") {
-            var req = new XMLHttpRequest();
-            req.overrideMimeType("application/json");
-            req.open('GET', endpoint, true);
-            req.onload = function() {
-                var jsonResponse = JSON.parse(req.responseText);
-                for (i in jsonResponse["articles"]) {
-                    var div = document.createElement('div');
-                    div.className = 'card';
-                    div.innerHTML = `<div onclick="window.location.href = '` + jsonResponse["articles"][i]["url"] + `';">
-                    <img src='` + jsonResponse["articles"][i]["urlToImage"] + `' onerror='this.style.display = "none"'/> <div class='card-content'>
-                    <h2>` + jsonResponse["articles"][i]["title"].replace(" - " + jsonResponse["articles"][i]["source"]["name"], "") + `</h2>
-                    <p>` + jsonResponse["articles"][i]["source"]["name"] + ` | by ` + jsonResponse["articles"][i]["author"] + `</p>
-                    </div></div>`;
-                    document.getElementsByClassName('column')[0].appendChild(div);
-                    var br = document.createElement('br');
-                    document.getElementsByClassName('column')[0].appendChild(br);
-                }
-            };
-            req.send(null);
-        }
     </script>
 </body>
 

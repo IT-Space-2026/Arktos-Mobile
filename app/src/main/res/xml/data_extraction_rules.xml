@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Data extraction rules for API 31+: same set as backup_rules.xml,
+     applied to both cloud backup and device-to-device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+        <include domain="file" path="." />
+        <exclude domain="file" path="site-rank" />
+        <exclude domain="file" path="adblock_subscriptions" />
+        <exclude domain="file" path="homepage.html" />
+        <exclude domain="file" path="private.html" />
+        <exclude domain="file" path="downloads.html" />
+        <exclude domain="root" path="app_webview" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+        <include domain="file" path="." />
+        <exclude domain="file" path="site-rank" />
+        <exclude domain="file" path="adblock_subscriptions" />
+        <exclude domain="file" path="homepage.html" />
+        <exclude domain="file" path="private.html" />
+        <exclude domain="file" path="downloads.html" />
+        <exclude domain="root" path="app_webview" />
+    </device-transfer>
+</data-extraction-rules>

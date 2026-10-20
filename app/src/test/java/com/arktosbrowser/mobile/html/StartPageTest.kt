@@ -117,8 +117,10 @@ class StartPageTest {
         listOf(homepage, privatePage).forEach { page ->
             assertFalse(firstBodyScript(page).contains("&"))
         }
-        // The homepage keeps the ${ENDPOINT} substitution point there.
-        assertTrue(firstBodyScript(homepage).contains("\${ENDPOINT}"))
+        // The removed news feed was the last placeholder consumer — the
+        // script must carry no template substitutions at all now.
+        assertFalse(firstBodyScript(homepage).contains("\${ENDPOINT}"))
+        assertFalse(firstBodyScript(homepage).contains("\${BASE_URL}"))
     }
 
     @Test

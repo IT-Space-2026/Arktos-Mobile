@@ -493,13 +493,11 @@
     <string name="tts">Ler página</string>
     <string name="stop_tts">Parar leitura</string>
     <string name="translation_endpoint">\'Endpoint\' de tradução</string>
-    <string name="news_endpoint">\'Endpoint\' de notícias</string>
     <string name="select_translate_text">Selecione o texto que você deseja que seja traduzido</string>
     <string name="select_tts_text">Selecione o texto que você deseja que seja lido</string>
     <!-- homepage type -->
     <string name="homepage_type">Tipo de página inicial</string>
     <string name="focused">Focada</string>
-    <string name="informational">Informativa</string>
     <!-- tab export -->
     <string name="export_to_file">Exportar para arquivo</string>
     <string name="export_as_html">Exportar como HTML</string>
