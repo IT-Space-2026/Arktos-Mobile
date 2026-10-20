@@ -1,4 +1,5 @@
-<!-- Copyright 2020 CookieJarApps MPL -->
+<!-- SPDX-License-Identifier: MPL-2.0
+     Copyright 2020 CookieJarApps and Arktos contributors -->
 <!-- Same items as bottom_menu.xml with the bookmarks and tabs icons swapped,
      used when the "swap bookmark and tab icons" option is enabled. -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"

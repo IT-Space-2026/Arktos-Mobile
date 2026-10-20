@@ -1,4 +1,5 @@
-// Copyright 2020 CookieJarApps MPL
+// SPDX-License-Identifier: MPL-2.0
+// Copyright 2020 CookieJarApps and Arktos contributors
 (function () {
     'use strict';
 

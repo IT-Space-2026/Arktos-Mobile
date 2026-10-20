@@ -1,4 +1,5 @@
-<!-- Copyright 2020 CookieJarApps - Modified from code Copyright 2014 ACR Development -->
+<!-- SPDX-License-Identifier: MPL-2.0
+     Copyright 2014 A.C.R., 2020 CookieJarApps and Arktos contributors -->
 <RelativeLayout android:id="@+id/relative_layout"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"

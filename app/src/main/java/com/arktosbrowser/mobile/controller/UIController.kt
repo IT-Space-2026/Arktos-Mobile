@@ -1,6 +1,5 @@
-/*
- * Copyright 2014 A.C.R.
- */
+// SPDX-License-Identifier: MPL-2.0
+// Copyright 2014 A.C.R. and Arktos contributors
 package com.arktosbrowser.mobile.controller
 
 import com.arktosbrowser.mobile.browser.TabsManager

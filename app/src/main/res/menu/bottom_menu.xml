@@ -1,4 +1,5 @@
-<!-- Copyright 2020 CookieJarApps MPL -->
+<!-- SPDX-License-Identifier: MPL-2.0
+     Copyright 2020 CookieJarApps and Arktos contributors -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
