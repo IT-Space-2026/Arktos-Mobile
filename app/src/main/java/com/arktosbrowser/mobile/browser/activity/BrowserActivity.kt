@@ -72,7 +72,7 @@ import com.arktosbrowser.mobile.database.WebPage
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
 import com.arktosbrowser.mobile.database.history.HistoryRepository
 import com.arktosbrowser.mobile.databinding.ActivityMainBinding
-import com.arktosbrowser.mobile.databinding.DialogAppLockBinding
+import com.arktosbrowser.mobile.databinding.LockScreenBinding
 import com.arktosbrowser.mobile.databinding.ToolbarContentBinding
 import com.arktosbrowser.mobile.di.*
 import com.arktosbrowser.mobile.dialog.BrowserDialog
@@ -167,7 +167,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     private val appLockGate = AppLockGate()
 
-    private var appLockShowing = false
+    private var lockScreen: LockScreenBinding? = null
 
     private var prefs: SharedPreferences? = null
 
@@ -637,10 +637,58 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
      * again from [onResume] once the re-lock window elapsed while the
      * app was backgrounded.
      */
-    private fun maybeShowAppLockGate() {
-        if (appLockShowing) {
+    private fun maybeShowAppLockGate() = syncAppLock()
+
+    /**
+     * Keep the lock screen in sync with [AppLockState]: show it
+     * whenever the session needs unlocking, remove it once unlocked
+     * (or while still inside the re-lock window after it was raised
+     * as a background cover).
+     */
+    private fun syncAppLock() {
+        if (AppLockState.needsUnlock(
+                userPreferences.appLockMethod,
+                userPreferences.appLockRelockMinutes
+            )
+        ) {
+            showLockScreen()
+        } else {
+            hideLockScreen()
+        }
+    }
+
+    /**
+     * SEC01 — full-window lock screen, styled like the dark start
+     * page. It replaces the old overlay dialog: the open tab is
+     * never visible while locked, and because [onPause] raises it
+     * too, the recents snapshot shows the lock screen rather than
+     * page content.
+     */
+    private fun showLockScreen() {
+        if (lockScreen != null) {
             return
         }
+        val screen = LockScreenBinding.inflate(layoutInflater)
+        addContentView(
+            screen.root,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        )
+        lockScreen = screen
+
+        screen.lockExit.setOnClickListener { finishAffinity() }
+        when (userPreferences.appLockMethod) {
+            AppLockMethod.PIN -> configureCredentialLock(screen, pin = true)
+            AppLockMethod.PASSWORD -> configureCredentialLock(screen, pin = false)
+            AppLockMethod.BIOMETRIC -> {
+                screen.lockField.visibility = GONE
+                screen.lockUnlock.setOnClickListener { showBiometricLock() }
+            }
+            AppLockMethod.NONE -> return
+        }
+
+        // Only prompt when an unlock is actually due — [onPause]
+        // raises the screen as a cover while the re-lock window may
+        // still be open.
         if (!AppLockState.needsUnlock(
                 userPreferences.appLockMethod,
                 userPreferences.appLockRelockMinutes
@@ -649,70 +697,72 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             return
         }
         when (userPreferences.appLockMethod) {
-            AppLockMethod.PIN -> showCredentialLockDialog(pin = true)
-            AppLockMethod.PASSWORD -> showCredentialLockDialog(pin = false)
+            AppLockMethod.PIN, AppLockMethod.PASSWORD -> {
+                screen.lockFieldText.requestFocus()
+                screen.lockFieldText.post {
+                    inputMethodManager.showSoftInput(
+                        screen.lockFieldText,
+                        InputMethodManager.SHOW_IMPLICIT
+                    )
+                }
+            }
             AppLockMethod.BIOMETRIC -> showBiometricLock()
             AppLockMethod.NONE -> Unit
         }
     }
 
-    private fun showCredentialLockDialog(pin: Boolean) {
-        appLockShowing = true
-        val customLayoutBinding = DialogAppLockBinding.inflate(layoutInflater)
+    private fun hideLockScreen() {
+        lockScreen?.let { screen ->
+            inputMethodManager.hideSoftInputFromWindow(screen.root.windowToken, 0)
+            (screen.root.parent as? ViewGroup)?.removeView(screen.root)
+        }
+        lockScreen = null
+    }
 
+    private fun configureCredentialLock(screen: LockScreenBinding, pin: Boolean) {
         if (pin) {
-            customLayoutBinding.enterPassword.setText(R.string.enter_pin)
-            customLayoutBinding.textField.hint = resources.getString(R.string.enter_pin)
-            customLayoutBinding.textFieldText.inputType =
+            screen.lockSubtitle.setText(R.string.enter_pin)
+            screen.lockField.hint = resources.getString(R.string.enter_pin)
+            screen.lockFieldText.inputType =
                 InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
         }
 
-        // FIXB07 (upstream #302): a mistyped password used to kill
-        // the app with no feedback, which read as a crash. The
-        // prompt now stays open with an inline error and retries;
-        // Cancel remains the explicit way out.
-        val dialog: AlertDialog = AlertDialog.Builder(this)
-            .setView(customLayoutBinding.root)
-            .setCancelable(false)
-            .setPositiveButton(resources.getString(R.string.action_ok), null)
-            .setNegativeButton(resources.getString(R.string.action_cancel)) { _, _ ->
-                this.finishAffinity()
-            }
-            .create()
-
-        customLayoutBinding.textFieldText.doOnTextChanged { _, _, _, _ ->
-            customLayoutBinding.textField.error = null
+        screen.lockFieldText.doOnTextChanged { _, _, _, _ ->
+            screen.lockField.error = null
         }
 
-        dialog.show()
-        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.APP_LOCK)
-
-        // Overriding after show() stops the button auto-dismissing
-        // the dialog on a failed attempt.
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+        val attempt = {
             // PORT02 — stored value is an `arktos:v1:` argon2id
             // hash; a legacy plaintext match upgrades in place.
             when (val result = appLockGate.check(
                 userPreferences.passwordTextLock,
-                customLayoutBinding.textFieldText.text.toString()
+                screen.lockFieldText.text.toString()
             )) {
                 is AppLockGate.Result.Unlocked -> {
                     result.upgradedHash?.let { userPreferences.passwordTextLock = it }
                     AppLockState.onUnlocked()
-                    appLockShowing = false
-                    dialog.dismiss()
+                    hideLockScreen()
                 }
                 AppLockGate.Result.Retry -> {
-                    customLayoutBinding.textField.error =
+                    screen.lockField.error =
                         resources.getString(R.string.wrong_password)
-                    customLayoutBinding.textFieldText.text?.clear()
+                    screen.lockFieldText.text?.clear()
                 }
+            }
+        }
+
+        screen.lockUnlock.setOnClickListener { attempt() }
+        screen.lockFieldText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                attempt()
+                true
+            } else {
+                false
             }
         }
     }
 
     private fun showBiometricLock() {
-        appLockShowing = true
         val prompt = BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -721,17 +771,13 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                     result: BiometricPrompt.AuthenticationResult
                 ) {
                     AppLockState.onUnlocked()
-                    appLockShowing = false
+                    hideLockScreen()
                 }
 
                 override fun onAuthenticationError(code: Int, errString: CharSequence) {
+                    // The lock screen stays up with its Unlock button;
+                    // Exit remains the way out.
                     logger.log(TAG, "biometric lock error $code: $errString")
-                    when (code) {
-                        BiometricPrompt.ERROR_USER_CANCELED,
-                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
-                        BiometricPrompt.ERROR_CANCELED -> showBiometricCancelledDialog()
-                        else -> showBiometricCancelledDialog()
-                    }
                 }
             }
         )
@@ -753,18 +799,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             builder.setNegativeButtonText(resources.getString(R.string.action_cancel))
         }
         prompt.authenticate(builder.build())
-    }
-
-    /** The biometric prompt was dismissed without unlocking. */
-    private fun showBiometricCancelledDialog() {
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.app_lock)
-            .setMessage(R.string.locked)
-            .setCancelable(false)
-            .setPositiveButton(R.string.unlock) { _, _ -> showBiometricLock() }
-            .setNegativeButton(R.string.action_cancel) { _, _ -> finishAffinity() }
-            .show()
-        TapjackingGuard.protect(dialog, TapjackingGuard.Surface.APP_LOCK)
     }
 
     private fun getBookmarksContainerId(): Int = if (swapBookmarksAndTabs) {
@@ -1755,6 +1789,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         startActivity(a)
     }
     override fun onBackPressed() {
+        if (lockScreen != null) {
+            // Locked — swallow back presses so nothing underneath is
+            // reachable; Exit on the lock screen is the way out.
+            return
+        }
         val currentTab = tabsManager.currentTab
         if (binding.drawerLayout.isDrawerOpen(getTabDrawer())) {
             binding.drawerLayout.closeDrawer(getTabDrawer())
@@ -1789,6 +1828,13 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         super.onPause()
         logger.log(TAG, "onPause")
         tabsManager.pauseAll()
+
+        // SEC01 — cover the UI before the system takes the recents
+        // snapshot: when a lock method is set, the app-switcher
+        // thumbnail must show the lock screen, not page content.
+        if (userPreferences.appLockMethod != AppLockMethod.NONE && !isFinishing) {
+            showLockScreen()
+        }
 
         if (isIncognito() && isFinishing) {
             overridePendingTransition(R.anim.fade_in_scale, R.anim.slide_down_out)
@@ -1845,7 +1891,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         // SEC01 — re-lock once the configured background window has
         // elapsed; on a cold start the gate was already raised in
-        // onCreate and `appLockShowing` suppresses a second prompt.
+        // onCreate and the lock-screen check suppresses a second
+        // prompt. Within the window this also drops the cover that
+        // onPause raised.
         maybeShowAppLockGate()
 
 

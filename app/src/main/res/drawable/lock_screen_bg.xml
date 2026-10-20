@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SEC01 — lock-screen background. Mirrors the dark start page:
+     linear #151820→#101218→#0c0e13 base under a top-centred aurora
+     glow (green → cyan → purple fade-out). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#151820"
+                android:centerColor="#101218"
+                android:endColor="#0c0e13"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.5"
+                android:centerY="0.0"
+                android:gradientRadius="400dp"
+                android:startColor="#2440F59A"
+                android:centerColor="#1F3FD2F0"
+                android:endColor="#00A24EF5"
+                android:type="radial" />
+        </shape>
+    </item>
+</layer-list>
