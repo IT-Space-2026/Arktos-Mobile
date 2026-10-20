@@ -143,6 +143,14 @@ class UserPreferences @Inject constructor(
     var blockMixedContentEnabled by preferences.booleanPreference(BLOCK_MIXED_CONTENT, true)
 
     /**
+     * SEC07 — true to set `FLAG_SECURE` on every app window, blocking
+     * screenshots and recents thumbnails app-wide. Incognito windows
+     * are always secured regardless of this toggle; see
+     * [com.arktosbrowser.mobile.browser.SecureWindowPolicy].
+     */
+    var secureWindowsEnabled by preferences.booleanPreference(SECURE_WINDOWS, false)
+
+    /**
      * True if the browser should block images from being loaded, false otherwise.
      */
     var blockImagesEnabled by preferences.booleanPreference(BLOCK_IMAGES, false)
@@ -596,6 +604,7 @@ private const val APP_LOCK_DELAY_MIN = "appLockDelayMin"
 private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
+private const val SECURE_WINDOWS = "secureWindows"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"
 private const val TRANCO_LIST_ENABLED = "trancoListEnabled"

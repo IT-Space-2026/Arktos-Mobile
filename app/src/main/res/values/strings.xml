@@ -452,6 +452,8 @@
     <string name="allpage">Apply theme to web pages (beta)</string>
     <string name="block_mixed_content">Block mixed content</string>
     <string name="block_mixed_content_summary">Stop HTTPS sites from loading insecure HTTP content (always on in incognito)</string>
+    <string name="secure_windows">Secure windows</string>
+    <string name="secure_windows_summary">Block screenshots and recents thumbnails in every window (always on in incognito)</string>
     <string name="forcehttps">Block non-HTTPS sites</string>
     <string name="preferhttps">Prefer HTTPS site versions</string>
     <string name="forcehttpsdesc">Only load HTTPS sites</string>

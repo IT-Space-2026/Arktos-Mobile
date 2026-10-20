@@ -231,6 +231,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
+                preference = SETTINGS_SECURE_WINDOWS,
+                isChecked = userPreferences.secureWindowsEnabled,
+                onCheckChange = { userPreferences.secureWindowsEnabled = it }
+        )
+
+        switchPreference(
             preference = SETTINGS_IDENTIFYINGHEADERS,
             isChecked = userPreferences.removeIdentifyingHeadersEnabled,
             summary = (if(userPreferences.popupsEnabled) {
@@ -744,6 +750,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_PREFERHTTPS = "prefer_https"
         private const val SETTINGS_BLOCK_LAN = "block_lan_requests"
         private const val SETTINGS_BLOCK_MIXED_CONTENT = "block_mixed_content"
+        private const val SETTINGS_SECURE_WINDOWS = "secure_windows"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"
