@@ -215,5 +215,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Force Zoom' option
 - 'Inject JavaScript' option
 - 'Force HTTPS' option
+- 'Block mixed content' option (on by default; always on in incognito)
 - 'Always incognito' option
 - Cookie dialog blocker

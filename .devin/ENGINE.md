@@ -28,6 +28,8 @@ WebView adapter:
 - `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
 - `app/src/main/java/com/arktosbrowser/mobile/view/TabInitializer.kt` — per-tab init.
 - `app/src/main/java/com/arktosbrowser/mobile/view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.
+- `app/src/main/java/com/arktosbrowser/mobile/view/MixedContentPolicy.kt` — mixed-content mode decision (NEVER_ALLOW default; compatibility mode only via the privacy toggle, never in incognito).
+- `app/src/test/java/com/arktosbrowser/mobile/view/MixedContentPolicyTest.kt` — unit tests for the mixed-content mode decision.
 - `app/src/main/java/com/arktosbrowser/mobile/view/UserScriptEngine.kt` — userscript runtime: `WebViewCompat` document-start injection + `WebMessageListener` GM bridge; maps to `UserScript`/`UserContentManager` + host messaging on the engine interface.
 - `app/src/test/java/com/arktosbrowser/mobile/view/NewWindowTransportTest.kt` — unit tests for the transport check (mocked `WebViewTransport`).
 - `app/src/main/java/com/arktosbrowser/mobile/view/webrtc/WebRtcPermissionsModel.kt` — WebRTC permission model.

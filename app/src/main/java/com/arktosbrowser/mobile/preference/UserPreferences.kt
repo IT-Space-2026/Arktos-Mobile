@@ -131,6 +131,12 @@ class UserPreferences @Inject constructor(
     var forceHTTPSenabled by preferences.booleanPreference(FORCE_HTTPS, false)
 
     /**
+     * SEC03 — true to reject mixed content (HTTP subresources on HTTPS
+     * pages) in normal browsing. Incognito tabs always reject it.
+     */
+    var blockMixedContentEnabled by preferences.booleanPreference(BLOCK_MIXED_CONTENT, true)
+
+    /**
      * True if the browser should block images from being loaded, false otherwise.
      */
     var blockImagesEnabled by preferences.booleanPreference(BLOCK_IMAGES, false)
@@ -583,6 +589,7 @@ private const val APP_LOCK_METHOD = "appLockMethod"
 private const val APP_LOCK_DELAY_MIN = "appLockDelayMin"
 private const val BLOCK_MALWARE = "blockMalware"
 private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
+private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"
 private const val TRANCO_LIST_ENABLED = "trancoListEnabled"

@@ -403,11 +403,11 @@ class ArktosCookieView(
         settings.apply {
             mediaPlaybackRequiresUserGesture = true
 
-            if (API >= Build.VERSION_CODES.LOLLIPOP && !isIncognito) {
-                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            } else if (API >= Build.VERSION_CODES.LOLLIPOP) {
-                // We're in Incognito mode, reject
-                mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            if (API >= Build.VERSION_CODES.LOLLIPOP) {
+                mixedContentMode = MixedContentPolicy.mode(
+                    isIncognito,
+                    userPreferences.blockMixedContentEnabled
+                )
             }
 
             if (!isIncognito || DeviceCapabilities.FULL_INCOGNITO.isSupported) {
