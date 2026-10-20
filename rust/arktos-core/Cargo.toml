@@ -35,7 +35,7 @@ html5gum = "=0.8.4"
 # suggestion responses.
 serde_json = "=1.0.154"
 # PORT01 — Baidu suggestion responses are GBK-encoded on the wire.
-encoding_rs = "=0.8.35"
+encoding_rs = "=0.8.42"
 # PORT01 — download filename/MIME core: extension↔type mapping for
 # URLUtil.guessFileName / FetchUrlMimeType parity.
 mime_guess = "=2.0.5"
