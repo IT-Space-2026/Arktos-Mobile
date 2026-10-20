@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 A.C.R. Development
+ * Copyright 2014 A.C.R.
  */
 
 package com.arktosbrowser.mobile.download
