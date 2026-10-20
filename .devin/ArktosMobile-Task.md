@@ -85,6 +85,10 @@ NO SUDO — everything user-local.
 | SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | pending | 0 | — |
 | SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | pending | 0 | — |
 | SEC16 | Reproducible/verified build investigation — details below | pending | 0 | — |
+| ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | pending | 0 | — |
+| ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | pending | 0 | — |
+| ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | pending | 0 | — |
+| ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
 
 ## Task details
 
@@ -662,3 +666,48 @@ Reproducible/verified builds: pin toolchain versions, lockfile
 verification (Cargo.lock + Gradle verification-metadata), strip
 nondeterminism (build timestamps), document the recipe — groundwork
 for F-Droid inclusion.
+
+### ENG02
+Consume the `engine/BrowserEngine.kt` seam for real: make the WebView
+host implement `Backend`/`Profile`/`Page` (WebViewEngine adapter —
+ArktosCookieView is the informal Page today) so the app talks to the
+interface, not to `android.webkit` types directly. Adjust the sketch
+where reality disagrees (it is a sketch — names/granularity may move).
+UI, TabsManager, settings, and the Rust core must not change behavior.
+Update `.devin/ENGINE.md`: the adapter + WebView-only helpers keep
+`android.webkit` imports; everything else drops them. Verify:
+`check-engine-audit.sh` PASS, `assembleScMainDebug`, unit suite.
+needs:tool:java
+
+### ENG03
+Add an `engine` flavor dimension (`webview`, `gecko`) alongside the
+existing `capabilities` dimension; gecko flavor gets its own
+applicationId (`com.arktosbrowser.mobile.full`) + "Arktos Mobile"
+name, webview flavor becomes "Arktos Mobile Lite". GeckoView dep via
+flavor-scoped `geckoImplementation` (maven.mozilla.org). Land
+`GeckoEngine` skeleton in `src/gecko/java`: GeckoRuntime +
+GeckoSession + GeckoView behind Backend/Profile/Page — pages load,
+navigate, back/forward, progress/title/url signals reach the UI.
+Feature gaps may be stubbed. Release scope: gecko ships arm64-v8a
+only (v7a users take Lite); document AAB vs per-ABI APK sizing.
+Verify: `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug`
+both build, engine-audit PASS. needs:tool:java
+
+### ENG04
+GeckoEngine parity pass A (navigation & policy): map RequestPolicy
+onto GeckoView navigation delegates so blocklists, HTTPS-only gate,
+mixed-content policy, referrer trim, SafeSearch, download-risk,
+offline pages and the intent-scheme allowlist all work identically;
+SSL error interstitial path; context menus; find-in-page
+(SessionFinder); file chooser + permission prompts; save/restore tab
+state; external-response → DownloadManager. needs:tool:java
+
+### ENG05
+GeckoEngine parity pass B (storage & UX): cookie/storage clear paths
+(map clear_* prefs + incognito OTR profile), proxy/I2P settings,
+userscript surface → WebExtensions where supported (document gaps),
+capability-gated settings UI (hide/grey prefs a backend can't honour
+via Capabilities), app-lock + secure-windows integration, About
+"engine version" label. Packaging: per-ABI release APKs or AAB
+instructions in README; universal gecko APK explicitly not shipped.
+needs:tool:java
