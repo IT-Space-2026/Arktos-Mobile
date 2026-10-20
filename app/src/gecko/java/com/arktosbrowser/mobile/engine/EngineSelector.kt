@@ -32,7 +32,13 @@ object EngineSelector {
             component.connectivityGate(),
             component.siteSettings(),
             component.blocklistLoader(),
-            component.rankListLoader()
+            component.rankListLoader(),
+            component.javaScriptRepository(),
+            component.userScriptBootstrap(),
+            component.arktosStore(),
+            component.proxyUtils(),
+            component.networkScheduler(),
+            component.mainScheduler()
         )
     }
 

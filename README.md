@@ -36,9 +36,14 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   side. The backend is selected at build time by the flavor-scoped
   `engine/EngineSelector.kt`; the shared UI shell talks only to the
   neutral `Page`/`Profile`/`Backend` seam in `engine/BrowserEngine.kt`.
-  The gecko build is a skeleton — favicons, downloads, printing,
-  userscripts and the permission/cert-error UX are stubbed and tracked
-  in `.devin/ENGINE.md`.
+  The gecko build covers the main browsing surface: navigation/policy,
+  prompts, permissions, downloads, cookies/storage clearing, proxy
+  (Orbot/I2P/manual), userscripts (via a built-in WebExtension) and
+  the mappable settings (UA, font size, viewport mode, dark color
+  scheme, image blocking, DNT + Sec-GPC). Settings with no gecko
+  equivalent are hidden by engine capability gates rather than left as
+  dead toggles; the remaining gaps (SSL bypass, favicons, printing,
+  per-request cookie get/set) are tracked in `.devin/ENGINE.md`.
 
 - The build cross-compiles the Rust core (`rust/arktos-core` →
   `libarktos.so`, consumed through UniFFI-generated Kotlin bindings).

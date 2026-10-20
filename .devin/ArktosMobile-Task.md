@@ -88,7 +88,7 @@ NO SUDO — everything user-local.
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | done | 0 | Backend/Profile/Page live; engine-audit PASS, assembleScMainDebug + unit suite green |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | done | 0 | engine dim (webview=Lite / gecko=Full .full, arm64-only release); GeckoEngine/Profile/Page skeleton in src/gecko behind Page seam (tab shell retyped off ArktosCookieView); assembleScMainWebviewDebug + assembleScMainGeckoDebug + both unit suites (366) + engine-audit PASS |
 | ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | done | 0 | engine-neutral NavigationPolicy + full GeckoPage delegate wiring (nav/progress/content/history/prompt/permission), GeckoErrorPages/Prompt/Permission/ExternalLauncher delegates; NavigationPolicyTest 15/15 both flavors, assembleScMainWebviewDebug + assembleScMainGeckoDebug + engine-audit PASS |
-| ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
+| ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | done | 0 | proxy/cookies/scripts/settings parity + WebExtension userscripts; both builds+tests+audit PASS |
 
 ## Task details
 
@@ -837,6 +837,59 @@ via Capabilities), app-lock + secure-windows integration, About
 "engine version" label. Packaging: per-ABI release APKs or AAB
 instructions in README; universal gecko APK explicitly not shipped.
 needs:tool:java
+
+DONE (2026-10-20). What landed:
+
+- Storage/cookies: `acceptsCookies` + `blockThirdPartyCookiesEnabled`
+  fold through shared `engine/CookieAcceptance.kt` into
+  `ContentBlocking.cookieBehavior`(+PrivateMode); clear paths already
+  ride `Profile.clear`/`clearSiteData` → `StorageController`. Cookie
+  get/set stays a documented gap (no CookieManager-style API in
+  GeckoView).
+- Proxy/I2P: new `Backend.applyProxy(HttpProxy?)` seam;
+  `WebViewEngine` keeps the `ProxyController` apply, `ProxyUtils`
+  shrank to choice→proxy resolution + the shared I2P readiness gate
+  (now called by `GeckoPage.loadUrl`/`reload`). Gecko applies
+  `network.proxy.*` prefs (`share_proxy_settings` covers all
+  schemes); Orbot 8118 / I2P 4444 / manual host:port preserved.
+- Userscripts: `userscript/UserScriptBootstrap.kt` extracted as the
+  engine-neutral builder+policy store (WebView
+  `addDocumentStartJavaScript` and gecko
+  `contentScripts.register` share it). Gecko side:
+  `gecko/GeckoUserScriptHost.kt` + built-in extension under
+  `src/gecko/assets/extensions/arktos_userscripts/` — background
+  registers the bootstrap at document_start via a `connectNative`
+  port sync; content-script `sendNativeMessage` lands at the
+  per-session `SessionController` delegate so `sender.url`/`isTopLevel`
+  stay the real page (SEC06 include/exclude + `@connect` enforced).
+  GM ops (values/clipboard/openTab/xhr+abort) ported 1:1.
+- Capability-gated settings: `Capabilities` grew `httpProxy`,
+  `textEncoding`, `renderingControl`, `shrinkToFit`,
+  `devToolsActivity`, `sendsIdentifyingHeaders`;
+  `gateByCapability()` in AbstractSettingsFragment hides dead rows —
+  text_encoding/rendering_mode/webview_devtools (Advanced),
+  overViewMode (Display), remove_identifying_headers (Privacy).
+- Mapped prefs on gecko: UA override (+re-apply after desktop toggle),
+  fontSizeFactor/fontInflation, VIEWPORT_MODE_*, dark color scheme,
+  image blocking, form fill, WebRTC, force-zoom, safe browsing,
+  DNT + Sec-GPC gecko prefs (full subresource coverage — better than
+  WebView's main-frame-only headers), Save-Data via
+  `Loader.additionalHeaders`, popups gating `onNewSession`.
+- App-lock/secure-windows: engine-independent (BrowserApp +
+  BrowserActivity-level), inherited by the gecko flavor; About shows
+  "GeckoView <MOZ_APP_VERSION>" via `engineNote()`.
+- Packaging: README refreshed (arm64-only gecko release, AAB-preferred
+  distribution, no universal APK) — was already documented in ENG03,
+  updated the stale "skeleton" paragraph.
+- Tests: `CookieAcceptanceTest`, `UserScriptBootstrapTest`
+  (transport/policy surface), `EngineContractTest` extended (applyProxy
+  seam + gate fields).
+- Verify: `assembleScMainWebviewDebug`,
+  `assembleScMainGeckoDebug`,
+  `testScMainWebviewDebugUnitTest`, `testScMainGeckoDebugUnitTest`
+  all PASS; `./.devin/check-engine-audit.sh` PASS.
+  Runtime smoke (real extension install, I2P tunnel hand-off) not
+  exercised — no emulator in this env.
 | INCOG01 | Wipe incognito partition on session end/fresh start — details below | pending | 0 | — |
 | INCOG02 | Include incognito profile in panicClean — details below | pending | 0 | — |
 | INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | pending | 0 | — |

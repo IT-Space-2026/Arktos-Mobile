@@ -39,6 +39,7 @@ import com.arktosbrowser.mobile.network.NavigationDecision
 import com.arktosbrowser.mobile.network.NavigationPolicy
 import com.arktosbrowser.mobile.network.NavigationPolicyConfig
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.preference.userAgent
 import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
@@ -179,6 +180,14 @@ class GeckoPage(
             GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL or
                 GeckoSession.FINDER_DISPLAY_DIM_PAGE
         )
+        // The per-session userscript message delegate +
+        // GM_openInTab's channel to the tab shell (ENG05).
+        engine.userScriptHostOrNull()?.let { host ->
+            host.attachTo(session)
+            host.setOpenInTab { url ->
+                uiController.handleNewTab(NewTab.FOREGROUND, url)
+            }
+        }
         initializePreferences()
         initializer.initialize(this, emptyMap())
     }
@@ -222,6 +231,8 @@ class GeckoPage(
     override fun stop() = session.stop()
 
     override fun reload() {
+        // Same proxy-readiness gate as the WebView's reload.
+        if (!engine.proxyUtils.isProxyReady(activity)) return
         // Reloading a generated error/interstitial page reloads the
         // `data:` document — re-issue the real navigation instead,
         // like `reloadIncludingErrorPage` on the WebView client.
@@ -407,16 +418,29 @@ class GeckoPage(
     override fun blockedThisPage(): Int = blockedCountThisPage
 
     /**
-     * Re-apply preference-dependent settings — JS, and the mixed-content
-     * policy which Gecko takes as a gecko pref (passive/displayed mixed
-     * content is what the WebView toggle controls; active mixed content
-     * Gecko always blocks). The pref is runtime-global, so incognito's
+     * Re-apply preference-dependent settings — JS, per-session UA and
+     * viewport mode, plus the runtime-level sync the engine owns
+     * (mixed-content pref, cookie behavior, safe browsing, DNT/GPC,
+     * WebRTC, image blocking, font ladder, dark color scheme, ENG05).
+     * The mixed-content pref is runtime-global, so incognito's
      * always-block rule wins by re-applying on every session's init —
      * documented approximation of the per-WebView setting (SEC03).
      */
     override fun initializePreferences() {
         session.settings.setAllowJavascript(userPreferences.javaScriptEnabled)
+        session.settings.setUserAgentOverride(
+            userPreferences.userAgent(activity.application)
+        )
+        session.settings.setViewportMode(
+            if (userPreferences.useWideViewPortEnabled) {
+                GeckoSessionSettings.VIEWPORT_MODE_MOBILE
+            } else {
+                GeckoSessionSettings.VIEWPORT_MODE_DESKTOP
+            }
+        )
+        engine.syncRuntimePreferences()
         applyMixedContentPref()
+        engine.userScriptHostOrNull()?.syncIfStale()
     }
 
     private fun applyMixedContentPref() {
@@ -456,10 +480,21 @@ class GeckoPage(
     }
 
     override fun loadUrl(url: String) {
+        // Same gate as the WebView's loadUrl: when I2P is configured
+        // but its tunnels are down, the load must wait for them.
+        if (!engine.proxyUtils.isProxyReady(activity)) return
+
         // Forced SafeSearch (upstream #327) applies on the gecko flavor
-        // too; the WebView-side proxy-readiness gate has no gecko
-        // equivalent yet (ENG05).
-        load(SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced), emptyMap())
+        // too. Save-Data rides the embedder-load header set — the same
+        // coverage the WebView's requestHeaders achieve (DNT/GPC need
+        // no header here: the gecko prefs already put them on every
+        // request including subresources).
+        val headers = if (userPreferences.saveDataEnabled) {
+            mapOf(HEADER_SAVEDATA to "on")
+        } else {
+            emptyMap()
+        }
+        load(SafeSearch.enforcedUrl(url, userPreferences.safeSearchForced), headers)
     }
 
     override fun loadHomePage() =
@@ -491,6 +526,13 @@ class GeckoPage(
                 GeckoSessionSettings.USER_AGENT_MODE_MOBILE
             }
         )
+        if (!desktopMode) {
+            // MOBILE mode restores the engine UA — re-apply the
+            // preference override so a custom UA survives the toggle.
+            session.settings.setUserAgentOverride(
+                userPreferences.userAgent(activity.application)
+            )
+        }
     }
 
     /** The UA downloads carry — the session override or the runtime default. */
@@ -720,7 +762,14 @@ class GeckoPage(
             uri: String
         ): GeckoResult<GeckoSession> {
             if (uri.isNotEmpty()) {
-                uiController.handleNewTab(NewTab.FOREGROUND, uri, true)
+                // `supportMultipleWindows` parity (popupsEnabled): with
+                // new-window support off the navigation stays in this
+                // session instead of spawning a tab (ENG05).
+                if (userPreferences.popupsEnabled) {
+                    uiController.handleNewTab(NewTab.FOREGROUND, uri, true)
+                } else {
+                    session.loadUri(uri)
+                }
             }
             return GeckoResult.fromValue(null)
         }
@@ -990,6 +1039,9 @@ class GeckoPage(
     companion object {
         private const val TAG = "GeckoPage"
         private const val STATE_KEY = "GECKO_SESSION_STATE"
+
+        /** Mirrors `ArktosCookieView.HEADER_SAVEDATA`. */
+        private const val HEADER_SAVEDATA = "Save-Data"
 
         /** Gecko pref toggled by the mixed-content setting (SEC03). */
         private const val PREF_BLOCK_DISPLAYED_MIXED_CONTENT =

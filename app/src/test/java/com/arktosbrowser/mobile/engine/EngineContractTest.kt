@@ -62,6 +62,27 @@ class EngineContractTest {
     }
 
     @Test
+    fun `backend exposes the ENG05 proxy seam`() {
+        assertTrue(
+            "Backend is missing applyProxy",
+            Backend::class.java.methods.any { it.name == "applyProxy" }
+        )
+    }
+
+    @Test
+    fun `capabilities carry the ENG05 settings gates`() {
+        // Removing one of these silently re-exposes a settings row the
+        // gecko backend cannot honour.
+        val fields = Capabilities::class.java.declaredFields.map { it.name }
+        for (gate in listOf(
+            "httpProxy", "textEncoding", "renderingControl",
+            "shrinkToFit", "devToolsActivity", "sendsIdentifyingHeaders"
+        )) {
+            assertTrue("Capabilities is missing $gate", gate in fields)
+        }
+    }
+
+    @Test
     fun `page maps to tab view state`() {
         val page = mock<Page> {
             on { id } doReturn 42

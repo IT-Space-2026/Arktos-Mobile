@@ -20,17 +20,22 @@ import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.RankListLoader
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.SiteSettings
+import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
 import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
 import com.arktosbrowser.mobile.history.HistoryActivity
 import com.arktosbrowser.mobile.network.ConnectivityGate
 import com.arktosbrowser.mobile.popup.PopUpClass
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.uniffi.ArktosStore
+import com.arktosbrowser.mobile.userscript.UserScriptBootstrap
 import com.arktosbrowser.mobile.view.BookmarkPageInitializer
 import com.arktosbrowser.mobile.view.DownloadPageInitializer
 import com.arktosbrowser.mobile.view.HistoryPageInitializer
 import com.arktosbrowser.mobile.view.HomePageInitializer
 import com.arktosbrowser.mobile.view.IncognitoPageInitializer
+import com.arktosbrowser.mobile.view.ProxyUtils
+import io.reactivex.rxjava3.core.Scheduler
 import dagger.BindsInstance
 import dagger.Component
 import javax.inject.Singleton
@@ -149,4 +154,20 @@ interface AppComponent {
     fun blocklistLoader(): BlocklistLoader
 
     fun rankListLoader(): RankListLoader
+
+    // ---- gecko ENG05 storage/proxy/scripts parity ----------------------
+
+    fun javaScriptRepository(): JavaScriptRepository
+
+    fun userScriptBootstrap(): UserScriptBootstrap
+
+    fun arktosStore(): ArktosStore
+
+    fun proxyUtils(): ProxyUtils
+
+    @NetworkScheduler
+    fun networkScheduler(): Scheduler
+
+    @MainScheduler
+    fun mainScheduler(): Scheduler
 }

@@ -18,6 +18,20 @@ abstract class AbstractSettingsFragment : PreferenceFragmentCompat() {
     }
 
     /**
+     * ENG05 — engine capability gating: when [supported] is false the
+     * listed preferences are removed from the screen, so a build cannot
+     * offer a toggle its engine ignores (text-encoding / rendering-mode
+     * on GeckoView, identifying-headers where the engine sends none).
+     */
+    protected fun gateByCapability(supported: Boolean, vararg keys: String) {
+        if (supported) return
+        val screen = preferenceScreen ?: return
+        keys.forEach { key ->
+            findPreference<androidx.preference.Preference>(key)?.let(screen::removePreference)
+        }
+    }
+
+    /**
      * Creates a [CheckBoxPreference] with the provided options and listener.
      *
      * @param preference the preference to create.

@@ -51,10 +51,10 @@ the WebView adapter — the only subtree allowed to import
 - `view/TabInitializer.kt` — `PageInitializer` impls (homepage, incognito, bookmark, download, history, restore, transport).
 - `view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.
 - `view/MixedContentPolicy.kt` — mixed-content mode decision (NEVER_ALLOW default; compatibility mode only via the privacy toggle, never in incognito).
-- `view/UserScriptEngine.kt` — userscript runtime: `WebViewCompat` document-start injection + `WebMessageListener` GM bridge.
+- `view/UserScriptEngine.kt` — userscript runtime: `WebViewCompat` document-start injection + `WebMessageListener` GM bridge. The page-side bootstrap and the SEC06 policy store are shared with gecko via the engine-neutral `userscript/UserScriptBootstrap.kt` (outside `view/`; no WebKit types).
+- `view/ProxyUtils.kt` — engine-neutral proxy resolution (choice → `HttpProxy`) + the I2P readiness gate; the WebView `ProxyController` apply itself lives in `WebViewEngine.applyProxy` (ENG05 seam).
 - `view/TranslateBridgeWebView.kt` — the `WebViewCompat.addWebMessageListener` plumbing for `translate/TranslateBridge.kt` (whose core is engine-neutral).
 - `view/WebViewPages.kt` — adapter-local helpers bridging `Page` ↔ WebView specifics.
-- `view/ProxyUtils.kt` — `ProxyController` plumbing (moved out of `utils/`).
 - `view/LightningDownloadListener.kt` — `DownloadListener` seam (moved out of `download/`).
 - `view/PermissionRequestExtensions.kt` — WebRTC/geolocation permission mapping (moved out of `extensions/`).
 - `view/webrtc/` — WebRTC permission model + view.
@@ -80,10 +80,24 @@ applies — WebKit types stay banned here).
   process gets private-mode sessions), `systemUserAgent`,
   `defaultProfile`/`createProfile` (contextId partitioning),
   `createPage`, `createView`, `engineNote` (GeckoView milestone).
+  ENG05: `applyProxy` maps Orbot/I2P/manual `HttpProxy` values onto
+  `network.proxy.*` gecko prefs (`share_proxy_settings` covers every
+  scheme); `syncRuntimePreferences` re-applies the runtime-level
+  mappings (cookie behavior via `ContentBlocking`, safe browsing,
+  DNT + Sec-GPC via `privacy.donottrackheader.enabled` /
+  `privacy.globalprivacycontrol.enabled`, WebRTC, image blocking,
+  form fill, font size/inflation, dark color scheme, force-zoom)
+  — called once in `initialize` and again from every
+  `GeckoPage.initializePreferences` like the WebView's `WebSettings`
+  re-apply. `syncCookieBehavior` folds `acceptsCookies` +
+  `blockThirdPartyCookiesEnabled` through the shared
+  `engine/CookieAcceptance.kt` helper into
+  `cookieBehavior`(+PrivateMode).
 - `gecko/GeckoProfile.kt` — `Profile`: storage partition over
   `GeckoSessionSettings.contextId` + `StorageController.clearData`;
   `requestPolicy` is consumed by the page's navigation delegate.
-  Cookie get/set is a documented gap — GeckoView has no
+  `acceptsCookies` drives the runtime cookie behavior (above); cookie
+  get/set stays a documented gap — GeckoView has no
   CookieManager-style imperative API.
 - `gecko/GeckoPage.kt` — `Page`: a `GeckoSession` + lazily created
   `GeckoView`; navigation/progress/content/history/prompt/permission
@@ -108,9 +122,26 @@ applies — WebKit types stay banned here).
   `SslCertificate`, window.open transport, media fullscreen uses the
   whole GeckoView, mixed content is a runtime-global gecko pref not
   per-session.
-  Stubs (ENG05): favicons, JS eval + userscripts (move to
-  WebExtensions), printing, cookie get/set, proxy, Sec-GPC/DNT on
-  subresources.
+  ENG05: `loadUrl`/`reload` run the shared I2P readiness gate
+  (`ProxyUtils.isProxyReady`), `popupsEnabled` gates `onNewSession`
+  (off → the window.open navigation stays in-session), the
+  preference UA rides `setUserAgentOverride` (re-applied after
+  `toggleDesktopUA`), `useWideViewPort` maps to `VIEWPORT_MODE_*`,
+  and the Save-Data header goes on `Loader.additionalHeaders`.
+  Stubs: favicons, JS eval, printing, cookie get/set.
+- `gecko/GeckoUserScriptHost.kt` — ENG05 userscript surface: a
+  built-in WebExtension
+  (`src/gecko/assets/extensions/arktos_userscripts/`) whose background
+  page registers the shared `userscript/UserScriptBootstrap` (GECKO
+  transport) via `contentScripts.register` at document_start; a
+  `connectNative` port carries script-set pushes (re-synced on
+  `UserScriptEngine.scriptSetVersion` changes). GM ops travel from
+  the content script's `runtime.sendNativeMessage` straight to the
+  per-session `SessionController` delegate — `sender.url`/`isTopLevel`
+  describe the real page frame, which the shared SEC06
+  include/exclude + `@connect` gating depends on; the
+  xhr/clipboard/openTab/value ops are a port of `UserScriptEngine`'s
+  bridge.
 - `engine/EngineSelector.kt` (in `src/gecko` and `src/webview`) —
   flavor seam; `BrowserApp` calls `EngineSelector.createBackend(app)`
   so `main` never names a flavor type.

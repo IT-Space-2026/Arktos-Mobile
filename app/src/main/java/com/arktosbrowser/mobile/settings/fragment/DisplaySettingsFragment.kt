@@ -12,6 +12,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.SearchBoxDisplayChoice
 import com.arktosbrowser.mobile.browser.TextZoom
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -109,6 +110,14 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
                 isChecked = userPreferences.bottomBar,
                 isEnabled = !userPreferences.navbar || userPreferences.bottomBar,
                 onCheckChange = {userPreferences.bottomBar = it; Toast.makeText(activity, R.string.please_restart, Toast.LENGTH_LONG).show()}
+        )
+
+        // ENG05 — "shrink pages to fit" is WebView's
+        // loadWithOverviewMode; gecko's viewport-mode mapping covers
+        // wideViewPort but has no overview-mode equivalent.
+        gateByCapability(
+            Engines.backend.capabilities.shrinkToFit,
+            SETTINGS_OVERVIEWMODE
         )
     }
 

@@ -1,13 +1,10 @@
 package com.arktosbrowser.mobile.view
 
 import android.app.Activity
-import android.util.Log
-import androidx.core.content.ContextCompat
-import androidx.webkit.ProxyConfig
-import androidx.webkit.ProxyController
-import androidx.webkit.WebViewFeature
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.ProxyChoice
+import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.HttpProxy
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -55,31 +52,10 @@ class ProxyUtils @Inject constructor(
             }
         }
 
-        // WebView-specific adapter — the only WebView-coupled piece of proxy
-        // support. A future engine would get its own applier behind this seam.
-        try {
-            applyWebViewProxy(activity, host, port)
-        } catch (e: Exception) {
-            Log.d(TAG, "error enabling web proxying", e)
-        }
-    }
-
-    private fun applyWebViewProxy(activity: Activity, host: String, port: Int) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
-            Log.w(TAG, "WebView on this device does not support proxy override")
-            return
-        }
-        val config = ProxyConfig.Builder().addProxyRule("$host:$port").build()
-        ProxyController.getInstance()
-            .setProxyOverride(config, ContextCompat.getMainExecutor(activity)) {}
-    }
-
-    private fun clearWebViewProxy(activity: Activity) {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
-            return
-        }
-        ProxyController.getInstance()
-            .clearProxyOverride(ContextCompat.getMainExecutor(activity)) {}
+        // ENG05 — the engine applies the resolved proxy itself
+        // (WebView → ProxyController, GeckoView → network.proxy.* prefs),
+        // so this file is no longer the WebView-coupled piece.
+        Engines.backend.applyProxy(HttpProxy(host, port))
     }
 
     fun isProxyReady(activity: Activity): Boolean {
@@ -100,11 +76,7 @@ class ProxyUtils @Inject constructor(
         if (userPreferences.proxyChoice != ProxyChoice.NONE) {
             initializeProxy(activity)
         } else {
-            try {
-                clearWebViewProxy(activity)
-            } catch (e: Exception) {
-                Log.e(TAG, "Unable to reset proxy", e)
-            }
+            Engines.backend.applyProxy(null)
 
             sI2PProxyInitialized = false
         }
@@ -128,8 +100,6 @@ class ProxyUtils @Inject constructor(
     }
 
     companion object {
-        private const val TAG = "ProxyUtils"
-
         // Helper
         private var sI2PHelperBound: Boolean = false
         private var sI2PProxyInitialized: Boolean = false

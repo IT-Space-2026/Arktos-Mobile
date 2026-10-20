@@ -276,6 +276,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 onCheckChange = { userPreferences.incognito = it }
         )
 
+        // ENG05 — gecko emits no X-Requested-With/X-Wap-Profile, so the
+        // "remove identifying headers" toggle has nothing to strip there.
+        gateByCapability(
+            Engines.backend.capabilities.sendsIdentifyingHeaders,
+            SETTINGS_IDENTIFYINGHEADERS
+        )
     }
 
     private fun appLockMethodSummary(method: AppLockMethod): String = when (method) {

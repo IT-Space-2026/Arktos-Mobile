@@ -405,6 +405,16 @@ data class ProfileOptions(
     val offTheRecord: Boolean
 )
 
+// ---- proxy ---------------------------------------------------------------
+
+// A process-wide HTTP proxy override (Orbot/I2P/manual all resolve to
+// host:port). `null` handed to [Backend.applyProxy] returns the engine
+// to direct connections.
+data class HttpProxy(
+    val host: String,
+    val port: Int
+)
+
 // What a profile is: a cookie/storage partition + request policy +
 // user agent + script collection.  Incognito tabs = OTR profile.
 //
@@ -449,7 +459,19 @@ data class Capabilities(
     val socksProxy: Boolean,
     val extensions: Boolean,
     val downloadDelegate: Boolean,
-    val certificateErrorDetails: Boolean
+    val certificateErrorDetails: Boolean,
+    // ENG05 — capability gates for the settings UI: a `false` here means
+    // the backend cannot honour the preference at all, so the settings
+    // screens hide the row rather than let the user flip a dead switch.
+    val httpProxy: Boolean,           // process-wide HTTP proxy override
+    val textEncoding: Boolean,        // per-page charset override
+    val renderingControl: Boolean,    // rendering mode / color inversion pipeline
+    val shrinkToFit: Boolean,         // WebView loadWithOverviewMode equivalent
+    val devToolsActivity: Boolean,    // a launchable engine dev-tools UI
+    // The engine emits X-Requested-With/X-Wap-Profile that the
+    // "remove identifying headers" toggle strips — gecko sends neither,
+    // so the row is hidden there rather than toggling nothing.
+    val sendsIdentifyingHeaders: Boolean
 )
 
 interface Backend {
@@ -472,6 +494,14 @@ interface Backend {
 
     fun createProfile(options: ProfileOptions): Profile
     fun createPage(request: PageRequest): Page
+
+    /**
+     * Apply (or clear, when [proxy] is null) the process-wide HTTP proxy
+     * override. WebView routes it through `ProxyController`, GeckoView
+     * through `network.proxy.*` gecko prefs. No-op on backends without
+     * proxy support — see [Capabilities.httpProxy].
+     */
+    fun applyProxy(proxy: HttpProxy?) = Unit
 
     // Android counterpart of the desktop's createView: hands the
     // platform widget to the UI shell.

@@ -9,6 +9,7 @@ import android.widget.Toast
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.TEXT_ENCODINGS
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
@@ -82,6 +83,14 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
                     }
                 }
         )
+
+        // ENG05 — hide engine-specific rows the active backend cannot
+        // honour (gecko has no charset override, no invert/grayscale
+        // rendering pipeline, and no launchable dev-tools activity).
+        val capabilities = Engines.backend.capabilities
+        gateByCapability(capabilities.textEncoding, SETTINGS_TEXT_ENCODING)
+        gateByCapability(capabilities.renderingControl, SETTINGS_RENDERING_MODE)
+        gateByCapability(capabilities.devToolsActivity, SETTINGS_WEBVIEW_DEVTOOLS)
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {

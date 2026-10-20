@@ -24,7 +24,8 @@ import org.mozilla.geckoview.StorageController
 class GeckoProfile(
     internal val engine: GeckoEngine,
     override val storageName: String,
-    override val isOffTheRecord: Boolean
+    override val isOffTheRecord: Boolean,
+    acceptsCookiesInitial: Boolean = true
 ) : Profile {
 
     override var userAgent: String = ""
@@ -83,11 +84,21 @@ class GeckoProfile(
     }
 
     // ---- cookie surface -----------------------------------------------
-    // GeckoView only exposes cookie behavior as a runtime setting — there
-    // is no get/set-cookie API like CookieManager's. Kept as stored
-    // flags/defaults for the seam; the real mapping is an ENG05 gap.
+    // GeckoView has no CookieManager-style get/set API — get/set stay
+    // stubs (documented gap: downloads can't attach a Cookie header).
+    // `acceptsCookies` IS honored: it resolves through
+    // `GeckoEngine.syncCookieBehavior` into the runtime's
+    // `contentBlocking.cookieBehavior`(…PrivateMode), folded with the
+    // third-party-cookie pref (ENG05).
 
-    override var acceptsCookies: Boolean = true
+    // Seeded from `userPreferences.cookiesEnabled` by the engine's
+    // profile factories — the setter would run the behavior sync
+    // reentrantly inside `defaultProfile`'s lazy initializer.
+    override var acceptsCookies: Boolean = acceptsCookiesInitial
+        set(value) {
+            field = value
+            engine.syncCookieBehavior()
+        }
 
     override fun getCookie(url: String): String? = null
 

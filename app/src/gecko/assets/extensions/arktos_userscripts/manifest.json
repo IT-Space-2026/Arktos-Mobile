@@ -1,0 +1,21 @@
+{
+  "manifest_version": 2,
+  "name": "Arktos Userscripts",
+  "version": "1.0",
+  "description": "Built-in userscript host: registers the app-managed script set as a document-start content script and relays the GM bridge ops to native messaging.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "arktos-userscripts@arktosbrowser.mobile",
+      "strict_min_version": "113.0"
+    }
+  },
+  "permissions": [
+    "nativeMessaging",
+    "geckoViewAddons",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "hidden": true
+}
