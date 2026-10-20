@@ -83,7 +83,7 @@ NO SUDO — everything user-local.
 | SEC12 | IDN/homograph punycode warning in URL bar — details below | done | 0 | Rust idn.rs (idna =1.1.0, UTS-46) exports idnDisplay→{isIdn,asciiUrl}; SearchBoxModel punycodes IDN hosts in URL/DOMAIN/loading display behind showPunycodeEnabled (default on) + Privacy→Security switch; display-only — cargo 141/141, IdnDisplayTest 9/9 (325 total 0 fail), assembleScMainDebug + engine-audit PASS |
 | SEC13 | Referrer-trim privacy toggle — details below | done | 0 | ReferrerPolicy (DEFAULT/SAME_ORIGIN/STRIP; origin = scheme+host+port w/ default ports; fragment-only navs untouched) + referrerMode pref + 3-way picker in Privacy→Security; shouldOverrideUrlLoading vetoes main-frame GETs and re-issues via loadUrl (programmatic loads carry no auto-Referer; POSTs left alone), applied after external-app resolution; stale Referer purged from base headers — ReferrerPolicyTest 10/10 (335 total 0 fail), assembleScMainDebug + engine-audit PASS |
 | SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | done | 0 | new `security` job: engine-audit + check-manifest-security.py (export/permission allowlists, implicit-export + debuggable lint) + gitleaks 8.30.1 full-history + osv-scanner-action v2.7.0; dependabot.yml covers gradle/cargo/actions; rust/osv-scanner.toml accepts unmaintained basic-toml (build-time askama dep, expires 2027-10) — all gates run locally exit 0, ManifestSecurityTest 4/4 |
-| SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | pending | 0 | — |
+| SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | done | 0 | rusqlite→bundled-sqlcipher-vendored-openssl; ArktosStore.open(path,key) + sqlcipher_export plaintext migration; DatabaseKeyProvider (Keystore AES/GCM-wrapped random 32B — argon2id-of-credential infeasible: credential is hash-only, store opens pre-unlock); unreadable DB quarantined; database domain re-included in backup rules — cargo 146/146, 350 unit tests 0 fail (EncryptedStoreTest 5/5, DatabaseKeyProviderTest 6/6), assembleScMainDebug + engine-audit PASS |
 | SEC16 | Reproducible/verified build investigation — details below | pending | 0 | — |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | pending | 0 | — |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | pending | 0 | — |
@@ -682,6 +682,35 @@ app-lock credential; fallback Keystore-wrapped random key when no
 password lock), or field-level AES-GCM on sensitive columns. When this
 lands, Auto Backup can re-include the database domain because the
 backup itself would be ciphertext. needs:tool:java, needs:tool:cargo-ndk
+
+Landed (this run): SQLCipher route taken —
+`bundled-sqlcipher-vendored-openssl` builds SQLCipher + OpenSSL into
+libarktos.so for host and all 3 ABIs (no system libcrypto needed).
+`ArktosStore.open(path, key)` keys the connection with a raw 256-bit
+key passed as an `x'…'` literal (skips SQLCipher's passphrase PBKDF).
+Open order: keyed probe → plaintext probe → `sqlcipher_export` into
+`*.enc`, verify keyed, swap in place. Wrong-key and corrupt files
+surface `StorageException`; `AppModule` quarantines them to
+`*.unreadable` and opens a fresh encrypted DB instead of
+crash-looping.
+Key management: `database/DatabaseKeyProvider.kt` generates a random
+32-byte key, wrapped by an Android Keystore AES/GCM key
+(`arktos_store_key` alias), persisted as a versioned envelope in
+`files/arktos_store.key`. The spec's argon2id-of-app-lock-credential
+variant was rejected: the credential survives only as a hash (nothing
+to derive from at open) and `ArktosStore` is constructed by DI before
+the app-lock gate completes — the DB must open without the unlock
+secret. Keystore-wrapping is the spec's documented fallback and is
+applied uniformly for all lock states.
+Auto Backup: `database` domain re-included in `backup_rules.xml` +
+`data_extraction_rules.xml` (ciphertext; keystore keys never back up,
+so restores elsewhere quarantine). README + in-app license row
+updated (SQLCipher BSD, OpenSSL Apache-2.0).
+Verify: cargo test 146/146 incl. encrypted roundtrip, wrong-key,
+short-key, plaintext-migration, corrupt-file cases; 350 unit tests
+0 fail (EncryptedStoreTest 5/5 exercises ciphertext-on-disk vs the
+real lib, DatabaseKeyProviderTest 6/6 with a JCE AES/GCM wrapper);
+assembleScMainDebug PASS; check-engine-audit.sh PASS.
 
 ### SEC16
 Reproducible/verified builds: pin toolchain versions, lockfile

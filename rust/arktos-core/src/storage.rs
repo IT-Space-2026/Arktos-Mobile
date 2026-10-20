@@ -1,10 +1,20 @@
 //! Rust storage core (STORE01).
 //!
 //! One `ArktosStore` object behind UniFFI, backed by a single bundled
-//! SQLite database (`rusqlite`, `bundled` feature — Android's
-//! `libsqlite` is not part of the NDK stable ABI). It replaces the
-//! five parallel `SQLiteOpenHelper` databases that used to live in
+//! SQLite database (`rusqlite`, `bundled-sqlcipher-vendored-openssl`
+//! — SQLCipher full-database AES-256 page encryption with vendored
+//! OpenSSL; Android's `libsqlite` is not part of the NDK stable ABI
+//! anyway). It replaces the five parallel `SQLiteOpenHelper`
+//! databases that used to live in
 //! `database/{bookmark,history,downloads,allowlist,javascript}`.
+//!
+//! SEC15 — the database file is ciphertext at rest. The 256-bit page
+//! key is generated once on the Kotlin side
+//! (`database/DatabaseKeyProvider`) and persisted wrapped by an
+//! Android Keystore AES/GCM key, so the file alone is useless to an
+//! attacker who can read app-private storage but not the device
+//! keystore. Pre-SEC15 plaintext databases are migrated in place on
+//! first open via `sqlcipher_export`.
 //!
 //! The Kotlin repositories keep their RxJava signatures and delegate
 //! here; query semantics (ordering, limits, alternate-slash URL
@@ -22,10 +32,12 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 /// Flat error surface — message strings only, matching how the old
 /// Kotlin layer let `SQLiteException`s propagate through RxJava.
-#[derive(Debug, uniffi::Error)]
+#[derive(Debug, Clone, uniffi::Error)]
 #[uniffi(flat_error)]
 pub enum StorageError {
     Sqlite(String),
+    /// SEC15 — the caller passed a store key that isn't 32 raw bytes.
+    Key,
     Poisoned,
 }
 
@@ -33,6 +45,7 @@ impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::Sqlite(msg) => write!(f, "sqlite error: {msg}"),
+            StorageError::Key => write!(f, "store key must be 32 raw bytes"),
             StorageError::Poisoned => write!(f, "store lock poisoned"),
         }
     }
@@ -139,9 +152,9 @@ fn alternate_slash_url(url: &str) -> String {
 }
 
 /// The single storage core. Created once from Kotlin via
-/// `ArktosStore.open(path)`; the `Mutex` serializes calls — the Kotlin
-/// side already confines DB work to a single-threaded scheduler, so
-/// contention is a non-issue.
+/// `ArktosStore.open(path, key)`; the `Mutex` serializes calls — the
+/// Kotlin side already confines DB work to a single-threaded
+/// scheduler, so contention is a non-issue.
 #[derive(uniffi::Object)]
 pub struct ArktosStore {
     conn: Mutex<Connection>,
@@ -150,6 +163,72 @@ pub struct ArktosStore {
 impl ArktosStore {
     fn db(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
         self.conn.lock().map_err(|_| StorageError::Poisoned)
+    }
+
+    /// SEC15 — `key` is the raw 256-bit page key. Passing it as a
+    /// `x'…'` blob literal makes SQLCipher use it verbatim instead of
+    /// running the passphrase PBKDF.
+    fn key_literal(key: &[u8]) -> String {
+        use std::fmt::Write;
+        let mut hex = String::with_capacity(key.len() * 2);
+        for b in key {
+            let _ = write!(hex, "{b:02x}");
+        }
+        format!("x'{hex}'")
+    }
+
+    /// Open `path` keyed and prove the key took by reading the schema
+    /// — SQLCipher defers key application to the first statement.
+    fn open_keyed(path: &str, key: &[u8]) -> Result<Connection, StorageError> {
+        let conn = Connection::open(path)?;
+        conn.execute_batch(&format!("PRAGMA key = \"{}\"", Self::key_literal(key)))?;
+        conn.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| Ok(()))?;
+        Self::init(&conn)?;
+        Ok(conn)
+    }
+
+    /// SEC15 — re-encrypt a plaintext `path` under `key`. Exports into
+    /// a sibling `*.enc` file via `sqlcipher_export`, verifies the copy
+    /// opens keyed, and only then swaps it into place — a failed
+    /// migration leaves the original untouched.
+    fn migrate_to_encrypted(
+        plain: Connection,
+        path: &str,
+        key: &[u8],
+    ) -> Result<(), StorageError> {
+        // Fold a hot WAL into the main image so the file the export
+        // reads is complete.
+        let _ = plain.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)");
+        let enc_path = format!("{path}.enc");
+        let _ = std::fs::remove_file(&enc_path);
+        let escaped = enc_path.replace('\'', "''");
+        plain.execute_batch(&format!(
+            "ATTACH DATABASE '{escaped}' AS enc KEY \"{}\";
+             SELECT sqlcipher_export('enc');
+             DETACH DATABASE enc;",
+            Self::key_literal(key)
+        ))?;
+        drop(plain);
+        {
+            let check = Connection::open(&enc_path)?;
+            check.execute_batch(&format!(
+                "PRAGMA key = \"{}\"",
+                Self::key_literal(key)
+            ))?;
+            check.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| {
+                Ok(())
+            })?;
+        }
+        for suffix in ["-wal", "-shm", "-journal"] {
+            let _ = std::fs::remove_file(format!("{path}{suffix}"));
+        }
+        std::fs::remove_file(path).map_err(|e| {
+            StorageError::Sqlite(format!("replace plaintext store: {e}"))
+        })?;
+        std::fs::rename(&enc_path, path).map_err(|e| {
+            StorageError::Sqlite(format!("install encrypted store: {e}"))
+        })?;
+        Ok(())
     }
 
     fn init(conn: &Connection) -> Result<(), StorageError> {
@@ -247,11 +326,36 @@ type StoreResult<T> = Result<T, StorageError>;
 
 #[uniffi::export]
 impl ArktosStore {
-    /// Open (and if needed create) the storage database at `path`.
+    /// Open (and if needed create) the encrypted storage database at
+    /// `path`. `key` is the raw 256-bit SQLCipher key — the Kotlin
+    /// `DatabaseKeyProvider` generates it once and keeps it wrapped by
+    /// an Android Keystore key. A pre-SEC15 plaintext database at
+    /// `path` is transparently migrated; anything the key can't open
+    /// and that isn't plaintext surfaces as `StorageError` for the
+    /// caller to quarantine.
     #[uniffi::constructor(name = "open")]
-    pub fn open(path: String) -> Result<Arc<Self>, StorageError> {
-        let conn = Connection::open(path)?;
-        Self::init(&conn)?;
+    pub fn open(path: String, key: Vec<u8>) -> Result<Arc<Self>, StorageError> {
+        if key.len() != 32 {
+            return Err(StorageError::Key);
+        }
+        let conn = match Self::open_keyed(&path, &key) {
+            Ok(conn) => conn,
+            Err(keyed_err) => {
+                // Keyed open failed — the upgrade case is a plaintext
+                // file, which a SQLCipher build still opens with no
+                // key at all.
+                let plain = Connection::open(&path)
+                    .and_then(|c| {
+                        c.query_row("SELECT COUNT(*) FROM sqlite_master", [], |_| {
+                            Ok(())
+                        })
+                        .map(|_| c)
+                    })
+                    .map_err(|_| keyed_err)?;
+                Self::migrate_to_encrypted(plain, &path, &key)?;
+                Self::open_keyed(&path, &key)?
+            }
+        };
         Ok(Arc::new(Self {
             conn: Mutex::new(conn),
         }))
@@ -993,6 +1097,99 @@ mod tests {
 
     fn store() -> ArktosStore {
         ArktosStore::in_memory()
+    }
+
+    /// Unique temp path — no `tempfile` dep in this crate.
+    fn temp_db(tag: &str) -> String {
+        let path = std::env::temp_dir().join(format!(
+            "arktos-store-{tag}-{}-{}.db",
+            std::process::id(),
+            now_millis()
+        ));
+        path.to_string_lossy().into_owned()
+    }
+
+    fn key(byte: u8) -> Vec<u8> {
+        vec![byte; 32]
+    }
+
+    fn is_plain_sqlite(path: &str) -> bool {
+        std::fs::read(path)
+            .map(|b| b.starts_with(b"SQLite format 3"))
+            .unwrap_or(false)
+    }
+
+    #[test]
+    fn encrypted_roundtrip_ciphertext_on_disk() {
+        let path = temp_db("enc");
+        {
+            let s = ArktosStore::open(path.clone(), key(0xA1)).unwrap();
+            s.add_bookmark_if_not_exists(bookmark("https://a.com", "A", ""))
+                .unwrap();
+        }
+        // The file is ciphertext — no SQLite magic header.
+        assert!(!is_plain_sqlite(&path));
+        let reopened = ArktosStore::open(path.clone(), key(0xA1)).unwrap();
+        assert!(reopened.is_bookmark("https://a.com".into()).unwrap());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn wrong_key_rejected() {
+        let path = temp_db("wrongkey");
+        {
+            let _ = ArktosStore::open(path.clone(), key(0xA1)).unwrap();
+        }
+        // A different key fails — and the file is ciphertext so the
+        // plaintext-upgrade path can't claim it either.
+        assert!(ArktosStore::open(path.clone(), key(0xB2)).is_err());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn short_key_rejected() {
+        let path = temp_db("shortkey");
+        let err = ArktosStore::open(path.clone(), vec![0u8; 16]).err();
+        assert!(matches!(err, Some(StorageError::Key)));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn plaintext_store_migrates() {
+        let path = temp_db("migrate");
+        // A pre-SEC15 database: plain rusqlite write, no key.
+        {
+            let plain = Connection::open(&path).unwrap();
+            ArktosStore::init(&plain).unwrap();
+            plain
+                .execute(
+                    "INSERT INTO bookmark(url, title, folder, position, created_at)
+                     VALUES ('https://keep.me', 'Keep', '', 0, 1)",
+                    [],
+                )
+                .unwrap();
+        }
+        assert!(is_plain_sqlite(&path));
+
+        let s = ArktosStore::open(path.clone(), key(0xC3)).unwrap();
+        // Rows survived the sqlcipher_export migration…
+        let found = s.find_bookmark_for_url("https://keep.me".into()).unwrap();
+        assert_eq!(found.unwrap().title, "Keep");
+        drop(s);
+        // …and the file is ciphertext afterwards.
+        assert!(!is_plain_sqlite(&path));
+        // Reopening under the same key still reads it.
+        let reopened = ArktosStore::open(path.clone(), key(0xC3)).unwrap();
+        assert!(reopened.is_bookmark("https://keep.me".into()).unwrap());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn corrupt_store_errors() {
+        let path = temp_db("corrupt");
+        std::fs::write(&path, b"definitely not a database").unwrap();
+        assert!(ArktosStore::open(path.clone(), key(0xA1)).is_err());
+        let _ = std::fs::remove_file(&path);
     }
 
     fn bookmark(url: &str, title: &str, folder: &str) -> StoreBookmark {

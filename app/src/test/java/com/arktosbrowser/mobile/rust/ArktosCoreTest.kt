@@ -36,7 +36,7 @@ class ArktosCoreTest {
     @Test
     fun `store opens and round-trips a bookmark`() {
         val dir = java.nio.file.Files.createTempDirectory("arktos-store-test")
-        val store = ArktosCore.openStore("$dir/test.db")
+        val store = ArktosCore.openStore("$dir/test.db", TEST_STORE_KEY)
         assertTrue(store.bookmarkCount() == 0uL)
         store.close()
     }

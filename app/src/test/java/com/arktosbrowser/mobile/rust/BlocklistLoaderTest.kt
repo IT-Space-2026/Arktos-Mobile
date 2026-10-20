@@ -41,7 +41,7 @@ class BlocklistLoaderTest {
         val dir = tempDir("refresh")
         val listFile = File(dir, "custom.txt")
             .apply { writeText("0.0.0.0 per-row-refresh.example\n") }
-        val store = ArktosCore.openStore("${dir.absolutePath}/test.db")
+        val store = ArktosCore.openStore("${dir.absolutePath}/test.db", TEST_STORE_KEY)
         try {
             store.addAdblockSubscription(fileSub(listFile))
             val loader = loader(dir, store)
@@ -71,7 +71,7 @@ class BlocklistLoaderTest {
         val dir = tempDir("refresh-off")
         val listFile = File(dir, "custom.txt")
             .apply { writeText("0.0.0.0 disabled-row.example\n") }
-        val store = ArktosCore.openStore("${dir.absolutePath}/test.db")
+        val store = ArktosCore.openStore("${dir.absolutePath}/test.db", TEST_STORE_KEY)
         try {
             store.addAdblockSubscription(fileSub(listFile, enabled = false))
             val loader = loader(dir, store)
@@ -98,7 +98,7 @@ class BlocklistLoaderTest {
         val dir = tempDir("consent")
         val listFile = File(dir, "local.txt")
             .apply { writeText("0.0.0.0 local-still-loads.example\n") }
-        val store = ArktosCore.openStore("${dir.absolutePath}/test.db")
+        val store = ArktosCore.openStore("${dir.absolutePath}/test.db", TEST_STORE_KEY)
         try {
             // A remote sub whose cache is missing AND a local file
             // sub — consent off must skip only the remote fetch.
@@ -126,7 +126,7 @@ class BlocklistLoaderTest {
     @Test
     fun `refreshHosts fetches an enabled remote subscription over loopback`() {
         val dir = tempDir("remote")
-        val store = ArktosCore.openStore("${dir.absolutePath}/test.db")
+        val store = ArktosCore.openStore("${dir.absolutePath}/test.db", TEST_STORE_KEY)
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/list.txt") { ex ->
             val body = "0.0.0.0 loopback-fetched.example\n".toByteArray()

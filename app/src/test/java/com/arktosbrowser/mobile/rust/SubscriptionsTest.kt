@@ -71,7 +71,7 @@ class SubscriptionsTest {
     @Test
     fun `store subscription rows round-trip`() {
         val dir = java.nio.file.Files.createTempDirectory("arktos-subs-test")
-        val store = ArktosCore.openStore("$dir/test.db")
+        val store = ArktosCore.openStore("$dir/test.db", TEST_STORE_KEY)
         try {
             assertTrue(store.allAdblockSubscriptions().isEmpty())
 

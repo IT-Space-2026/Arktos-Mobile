@@ -150,10 +150,11 @@ object ArktosCore {
 
     /**
      * Open (creating if needed) the Rust storage core at [path]
-     * (STORE01). One instance is shared by all repositories — see
-     * `AppModule.providesArktosStore`.
+     * (STORE01). [key] is the 32-byte SQLCipher page key — see
+     * `database/DatabaseKeyProvider` (SEC15). One instance is shared
+     * by all repositories — see `AppModule.providesArktosStore`.
      */
-    fun openStore(path: String): ArktosStore = ArktosStore.open(path)
+    fun openStore(path: String, key: ByteArray): ArktosStore = ArktosStore.open(path, key)
 
     /**
      * Parse a Netscape-format bookmark file in the Rust core

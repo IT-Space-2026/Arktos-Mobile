@@ -37,7 +37,10 @@ import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
+import com.arktosbrowser.mobile.database.AndroidKeystoreDbKeyWrapper
+import com.arktosbrowser.mobile.database.DatabaseKeyProvider
 import com.arktosbrowser.mobile.i2p.I2PAndroidHelper
+import com.arktosbrowser.mobile.uniffi.StorageException
 import okhttp3.*
 import java.io.File
 import java.util.concurrent.Executors
@@ -192,14 +195,44 @@ class AppModule {
      * The single Rust storage core shared by all `Rust*Repository`
      * implementations (STORE01). `getDatabasePath` puts the file in the
      * app-private databases dir and creates the parent if missing.
+     * SEC15 — the file is SQLCipher ciphertext under a Keystore-wrapped
+     * random key (`DatabaseKeyProvider`); pre-encryption databases are
+     * migrated in place by the Rust side.
      */
     @Provides
     @Singleton
-    fun providesArktosStore(application: Application): ArktosStore =
-        ArktosCore.openStore(application.getDatabasePath(ARKTOS_DB_NAME).absolutePath)
+    fun providesArktosStore(application: Application): ArktosStore {
+        val dbFile = application.getDatabasePath(ARKTOS_DB_NAME)
+        val key = DatabaseKeyProvider(
+            File(application.filesDir, STORE_KEY_FILE),
+            AndroidKeystoreDbKeyWrapper(),
+        ).loadOrCreate()
+        return try {
+            ArktosCore.openStore(dbFile.absolutePath, key)
+        } catch (e: StorageException) {
+            // Unreadable store — corrupt file, or a DB encrypted under
+            // a key the Keystore can no longer unwrap (key invalidated,
+            // or a restored backup on another device). Preserve it
+            // aside instead of deleting, then start a fresh encrypted
+            // DB rather than crash-looping the browser.
+            quarantineUnreadableStore(dbFile)
+            ArktosCore.openStore(dbFile.absolutePath, key)
+        }
+    }
 }
 
 private const val ARKTOS_DB_NAME = "arktos.db"
+private const val STORE_KEY_FILE = "arktos_store.key"
+
+/** Move `arktos.db` (+ journals) to `*.unreadable` siblings. */
+private fun quarantineUnreadableStore(dbFile: File) {
+    for (suffix in listOf("", "-wal", "-shm", "-journal")) {
+        val src = File("${dbFile.absolutePath}$suffix")
+        if (src.exists()) {
+            src.renameTo(File("${dbFile.absolutePath}.unreadable$suffix"))
+        }
+    }
+}
 
 @Qualifier
 @Retention(AnnotationRetention.SOURCE)

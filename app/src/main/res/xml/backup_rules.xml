@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Auto Backup rules for API 30 and below (fullBackupContent).
-     SEC02 — the database domain is excluded: arktos.db holds history,
-     bookmarks, downloads and userscripts and Auto Backup would ship it
-     to the cloud provider in plaintext. The password-protected restore
-     path is the in-app encrypted backup (Settings → Import/Export →
-     Encrypted backup). Shared prefs carry only settings + argon2id
-     credential hashes — no content — so they stay included. Files are
-     included minus regenerable bulk (downloaded rank lists, adblock
-     caches, generated pages) that would exhaust the 25MB quota. -->
+     SEC15 — the database domain is included again: arktos.db is now
+     SQLCipher ciphertext keyed by an Android Keystore-wrapped key
+     (keystore keys are never backed up), so a cloud copy is inert
+     ciphertext. The wrapped-key blob (files/arktos_store.key) is
+     ciphertext too — restoring it without the device keystore just
+     yields an undecryptable DB that openStore quarantines. The
+     password-protected restore path stays the in-app encrypted backup
+     (Settings → Import/Export → Encrypted backup). Shared prefs carry
+     only settings + argon2id credential hashes. Files are included
+     minus regenerable bulk (downloaded rank lists, adblock caches,
+     generated pages) that would exhaust the 25MB quota. -->
 <full-backup-content>
     <include domain="sharedpref" path="." />
+    <include domain="database" path="." />
     <include domain="file" path="." />
     <exclude domain="file" path="site-rank" />
     <exclude domain="file" path="adblock_subscriptions" />

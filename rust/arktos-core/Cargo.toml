@@ -27,7 +27,11 @@ uniffi = "=0.32.2"
 aho-corasick = "=1.1.3"
 # STORE01 — storage core. `bundled` compiles SQLite into libarktos.so;
 # Android's libsqlite is not part of the NDK stable ABI.
-rusqlite = { version = "=0.40.1", features = ["bundled"] }
+# SEC15 — `bundled-sqlcipher-vendored-openssl` swaps plain SQLite for
+# SQLCipher (full-database AES-256 page encryption) and vendors OpenSSL
+# as its crypto provider so host and NDK builds carry no system
+# libcrypto dependency.
+rusqlite = { version = "=0.40.1", features = ["bundled-sqlcipher-vendored-openssl"] }
 # STORE01 — Netscape bookmark importer. Tokenizer-only crate; the
 # importer builds its own tiny DT/DL state machine on top.
 html5gum = "=0.8.4"

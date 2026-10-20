@@ -80,8 +80,9 @@ SmartCookieWeb#314).
   stamps, per-row and refresh-all actions, plus a remote-list
   auto-download consent toggle (manual refresh always works)
 - Bookmarks, history, downloads, the ad-block allow list and
-  userscripts persist through a single Rust `ArktosStore` (SQLite via
-  bundled rusqlite) behind the existing repository interfaces;
+  userscripts persist through a single Rust `ArktosStore` (SQLCipher-
+  encrypted SQLite, keyed by an Android Keystore-wrapped random key)
+  behind the existing repository interfaces;
   Netscape bookmark imports are parsed in Rust too
 - Search suggestions (Google, DuckDuckGo, Baidu, Naver), userscript
   metadata parsing, download filename/MIME resolution, legacy
@@ -115,7 +116,7 @@ rust/arktos-core/     Rust browser-core library (libarktos.so) — UniFFI crate
   src/subscriptions.rs  multi-list ad-block subscriptions (desktop catalog)
   src/ranklist.rs       Tranco + Majestic Million site-rank tables
   src/storage.rs        ArktosStore: bookmarks/history/downloads/userscripts
-                        (SQLite via bundled rusqlite)
+                        (SQLCipher-encrypted SQLite via bundled rusqlite)
   src/download.rs       download filename/MIME resolution
   src/netscape.rs       Netscape bookmark-file import/export
   src/readability.rs    reading-mode extraction (dom_smoothie)
@@ -169,7 +170,7 @@ Android (Gradle) — highlights:
 
 Rust (Cargo) — `rust/arktos-core` pins exact versions:
 
-- uniffi — MPL-2.0; rusqlite (bundled SQLite) — MIT
+- uniffi — MPL-2.0; rusqlite (bundled SQLCipher — BSD, vendored OpenSSL — Apache-2.0) — MIT
 - dom_smoothie — MIT; html5gum — MIT
 - serde_json — MIT/Apache-2.0; aho-corasick — MIT
 - argon2 — MIT/Apache-2.0; miniz_oxide — MIT

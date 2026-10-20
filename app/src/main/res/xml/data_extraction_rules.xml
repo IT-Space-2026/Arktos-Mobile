@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Data extraction rules for API 31+: same set as backup_rules.xml,
-     applied to both cloud backup and device-to-device transfer. The
-     database domain is excluded for both — browsing data only leaves
-     the device via the password-encrypted in-app backup archive. -->
+     applied to both cloud backup and device-to-device transfer.
+     SEC15 — the database domain is included for both: arktos.db is
+     SQLCipher ciphertext under a device-keystore-wrapped key, so a
+     transferred copy decrypts only where the same keystore key lives
+     (device-to-device transports that carry keystore material keep
+     browsing data; plain cloud restores quarantine it). -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
         <include domain="file" path="." />
         <exclude domain="file" path="site-rank" />
         <exclude domain="file" path="adblock_subscriptions" />
@@ -16,6 +20,7 @@
     </cloud-backup>
     <device-transfer>
         <include domain="sharedpref" path="." />
+        <include domain="database" path="." />
         <include domain="file" path="." />
         <exclude domain="file" path="site-rank" />
         <exclude domain="file" path="adblock_subscriptions" />

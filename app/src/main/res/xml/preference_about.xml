@@ -136,7 +136,7 @@
         </Preference>
         <Preference
             android:layout="@layout/preference_license"
-            android:summary="@string/apache_mit_license"
+            android:summary="@string/apache_mit_bsd_license"
             android:title="@string/library_rust_crates">
             <intent
                 android:action="android.intent.action.VIEW"
