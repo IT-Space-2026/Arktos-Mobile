@@ -19,9 +19,13 @@ jobs:
         distribution: temurin
         java-version: 21
     - name: Install Rust toolchain
-      # No toolchain input: rust-toolchain.toml at the repo root pins
-      # the channel and the Android targets (SEC16).
+      # toolchain is a required input — the action does not read
+      # rust-toolchain.toml itself. Values mirror the root
+      # rust-toolchain.toml pin (SEC16); bump both together.
       uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: 1.99.0
+        targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
     - name: Install cargo-ndk
       run: cargo install cargo-ndk --version 4.1.2 --locked
     - name: Install Android NDK
@@ -86,9 +90,11 @@ jobs:
       # .github/dependabot.yml alerts (Groovy build.gradle is not
       # an OSV-parseable manifest). The step-level action lives in a
       # subdirectory — the repo root action.yml has no runs: and only
-      # exists to document the reusable-workflow form.
+      # exists to document the reusable-workflow form. Scoped to rust/
+      # because a repo-wide scan parses verification-metadata.xml as a
+      # Maven manifest and flags Gradle's build-time tooling deps.
       uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
       with:
         scan-args: |-
           --recursive
-          ./
+          ./rust
