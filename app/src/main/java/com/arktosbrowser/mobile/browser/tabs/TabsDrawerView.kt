@@ -96,6 +96,9 @@ class TabsDrawerView @JvmOverloads constructor(
         findViewById<View>(R.id.tab_header_button).setOnClickListener {
             uiController.showCloseDialog(uiController.getTabModel().indexOfCurrentTab())
         }
+        findViewById<View>(R.id.close_all_button).setOnClickListener {
+            uiController.showCloseAllDialog()
+        }
         findViewById<View>(R.id.new_tab_button).apply {
             setOnClickListener {
                 uiController.newTabButtonClicked()

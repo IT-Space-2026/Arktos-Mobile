@@ -131,6 +131,22 @@ interface UIController {
     fun showCloseDialog(position: Int)
 
     /**
+     * Show the bulk-close dialog offered by the tabs-drawer header:
+     * close all tabs or close all tabs but the active one.
+     */
+    fun showCloseAllDialog()
+
+    /**
+     * Close every tab, leaving a fresh default tab behind.
+     */
+    fun closeAllTabs()
+
+    /**
+     * Close every tab except the current one.
+     */
+    fun closeAllOtherTabs()
+
+    /**
      * Notify the browser that the new tab button was clicked.
      */
     fun newTabButtonClicked()

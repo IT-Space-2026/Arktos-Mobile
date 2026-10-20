@@ -176,16 +176,26 @@ class BrowserPresenter(
     /**
      * Closes all tabs but the current tab.
      */
-    fun closeAllOtherTabs() {
+    fun closeAllOtherTabs(keepAlive: Boolean = false) {
 
         while (tabsModel.last() != tabsModel.indexOfCurrentTab()) {
-            deleteTab(tabsModel.last())
+            deleteTab(tabsModel.last(), keepAlive = keepAlive)
         }
 
         while (0 != tabsModel.indexOfCurrentTab()) {
-            deleteTab(0)
+            deleteTab(0, keepAlive = keepAlive)
         }
 
+    }
+
+    /**
+     * Closes every tab. With [keepAlive] the browser is never closed —
+     * the last delete leaves a fresh default tab behind.
+     */
+    fun closeAllTabs(keepAlive: Boolean = false) {
+        repeat(tabsModel.size()) {
+            deleteTab(0, keepAlive = keepAlive)
+        }
     }
 
     private fun mapHomepageToCurrentUrl(): String = when (val homepage = userPreferences.homepage) {
@@ -200,7 +210,7 @@ class BrowserPresenter(
      *
      * @param position the position at which to delete the tab.
      */
-    fun deleteTab(position: Int, back: Boolean = false) {
+    fun deleteTab(position: Int, back: Boolean = false, keepAlive: Boolean = false) {
         logger.log(TAG, "deleting tab...")
         val tabToDelete = tabsModel.getTabAtPosition(position) ?: return
 
@@ -216,7 +226,8 @@ class BrowserPresenter(
             && currentTab != null
             && URLUtil.isFileUrl(currentTab.url)
             && currentTab.url == mapHomepageToCurrentUrl()
-            && userPreferences.closeOnLastTab) {
+            && userPreferences.closeOnLastTab
+            && !keepAlive) {
             view.closeActivity()
             return
         } else {
@@ -233,18 +244,18 @@ class BrowserPresenter(
         view.notifyTabViewRemoved(position)
 
         if (afterTab == null) {
-            if(userPreferences.closeOnLastTab){
+            if(userPreferences.closeOnLastTab && !keepAlive){
                 view.closeBrowser()
             }
             else{
-                newTab(UrlInitializer(mapHomepageToCurrentUrl()), true)
+                newTab(UrlInitializer(if (isIncognito) "$FILE${incognitoPageFactory.createIncognitoPage()}" else mapHomepageToCurrentUrl()), true)
             }
             return
         } else if (afterTab !== currentTab) {
             view.notifyTabViewChanged(tabsModel.indexOfCurrentTab())
         }
 
-        if (shouldClose && !isIncognito) {
+        if (shouldClose && !isIncognito && !keepAlive) {
             this.shouldClose = false
             view.closeActivity()
         }
