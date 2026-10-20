@@ -1076,7 +1076,7 @@ Outcome:
   guards for the ArktosCookieView + gecko wiring.
   `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
   both `testScMain*DebugUnitTest` green, engine-audit PASS.
-| MOD09 | AnimatedProgressBar — 302-line custom animator, verify or slim — details below | pending | 0 | — |
+| MOD09 | AnimatedProgressBar — 302-line custom animator, verify or slim — details below | done | 0 | kept custom view (thin accent line + CSS-ease bezier + fade-at-100 IS the design; ProgressBar needs same custom drawable+alpha plumbing); 302→167 lines: ValueAnimator retarget replaces legacy Animation+queue (fixes progress lagging real load); dead setters/strokeWidth/instance-state/onFinishInflate dropped; new pure-JVM ProgressBarPolicy seam — ProgressBarPolicyTest 9/9, both flavors build+unit suites green, engine-audit PASS |
 | MOD10 | micro-cleanup of !!-flagged untouched helpers — details below | pending | 0 | — |
 
 ### MOD09
@@ -1088,6 +1088,40 @@ behavior) replaces it; if the custom bezier easing is load-bearing for
 the design, keep the file but trim dead paths. Check callers in
 BrowserActivity/TabsView before changing the API.
 needs:tool:java
+
+Done 2026-10-20 (chose slim, not replace):
+
+- Reviewed first: the only call site is
+  `BrowserActivity.updateProgress` → `progressView.progress`
+  (webview + gecko both feed it via `UIController.updateProgress`;
+  TabsView never touches it). Both layouts set
+  `progressColor=?attr/colorAccent` + `bidirectionalAnimate=false`.
+- Verdict: keep the custom view — the thin accent line, the
+  cubic-bezier(0.25,0.1,0.25,1) easing (the CSS `ease` curve, same
+  family as the ported desktop styling) and fade-out-at-100 are the
+  app's progress design. A platform ProgressBar still needs a custom
+  progressDrawable/tint plus the same alpha plumbing to match, so it
+  trades risk for no code savings.
+- Rewrote internals 302→167 lines: a single `ValueAnimator` retargets
+  on each update (replaces legacy `android.view.animation.Animation`
+  + `Transformation` + `ArrayDeque` queue — the queue serialized full
+  500 ms animations so the bar lagged real load, and a snap-reset
+  could be overwritten by a still-running stale animation). Fade
+  in/out kept via ViewPropertyAnimator; cancel added on detach.
+- Dead paths dropped: `setDuration`/`setBidirectionalAnimate`/
+  `setProgressColor` (never called — attrs cover config),
+  `mPaint.strokeWidth` (no-op on FILL paint), `onFinishInflate`
+  invalidate, `onSave/RestoreInstanceState` (restored `mProgress` but
+  not `mDrawWidth` — half-broken), `willChange*` overrides. All three
+  XML attrs still honored; `progress` API unchanged, zero caller churn.
+- New pure-JVM seam `browser/progress/ProgressBarPolicy.kt`
+  (clamp/snap/fade/width rules — same pattern as the other policy
+  objects).
+- Tests: `ProgressBarPolicyTest` (9) — clamp boundaries, target-width
+  scaling + clamping, snap truth table, fade-at-100, source-scan
+  guards (view delegates to policy; no legacy Animation/queue).
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
+  both `testScMain*DebugUnitTest` green, engine-audit PASS.
 
 ### MOD10
 The only untouched files with stale patterns: `di/DiExtensions.kt`,
