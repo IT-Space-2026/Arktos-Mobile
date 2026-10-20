@@ -259,6 +259,10 @@ class ArktosCookieView(
 
     fun currentSslState(): SslState = arktosCookieWebClient.sslState
 
+    /** Subresource requests the blocker stopped on this page load —
+     *  the shield panel's badge count. */
+    fun blockedThisPage(): Int = arktosCookieWebClient.blockedCountThisPage
+
     fun sslStateObservable(): Observable<SslState> = arktosCookieWebClient.sslStateObservable()
 
     /**

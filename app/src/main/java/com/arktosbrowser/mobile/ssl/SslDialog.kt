@@ -42,11 +42,7 @@ fun Context.showSslDialog(
 
     val contentView = inflater.inflate(R.layout.dialog_ssl_info, null, false).apply {
         val connectionText = findViewById<TextView>(R.id.ssl_layout_connection)
-        connectionText.text = when {
-            sslState is SslState.Invalid -> getString(R.string.connection_broken_cert)
-            sslState is SslState.Valid -> getString(R.string.connection_secure_https)
-            else -> getString(R.string.connection_not_secure_http)
-        }
+        connectionText.text = sslConnectionLabel(sslState)
         connectionText.setTextColor(sslVerdictColor(sslState, mergedRank, darkTheme))
 
         if (sslCertificate != null) {
@@ -135,3 +131,11 @@ internal fun boundedScrollHeight(
     availableHeight: Int,
     minHeight: Int
 ): Int = minOf(contentHeight, (availableHeight - chromeHeight).coerceAtLeast(minHeight))
+
+/** The one-line connection verdict shared by the SSL dialog and the
+ *  shield panel — needs a Context for the strings. */
+fun Context.sslConnectionLabel(sslState: SslState): String = when {
+    sslState is SslState.Invalid -> getString(R.string.connection_broken_cert)
+    sslState is SslState.Valid -> getString(R.string.connection_secure_https)
+    else -> getString(R.string.connection_not_secure_http)
+}

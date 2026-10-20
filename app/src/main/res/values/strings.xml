@@ -153,6 +153,14 @@
     <string name="ssl_info_expires_on">Expires on</string>
     <string name="ssl_rank_tranco">Tranco rank</string>
     <string name="ssl_rank_majestic">Majestic rank</string>
+    <string name="shield_block_site">Block content on this site</string>
+    <string name="shield_block_global">Content blocking everywhere</string>
+    <string name="shield_javascript">JavaScript on this site</string>
+    <string name="shield_cookies">Cookies on this site</string>
+    <string name="shield_blocked_count">%1$d blocked on this page</string>
+    <string name="shield_clear_data">Clear site data</string>
+    <string name="shield_data_cleared">Site data cleared</string>
+    <string name="shield_view_certificate">Certificate</string>
     <string name="ssl_info_connection">Connection</string>
     <string name="ssl_info_cookies">Cookies</string>
     <string name="ssl_info_blocking">Content blocking</string>

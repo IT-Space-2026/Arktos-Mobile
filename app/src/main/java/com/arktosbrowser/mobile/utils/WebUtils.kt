@@ -1,6 +1,7 @@
 package com.arktosbrowser.mobile.utils
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.webkit.CookieManager
 import android.webkit.WebStorage
@@ -22,6 +23,31 @@ object WebUtils {
 
     fun clearWebStorage() {
         WebStorage.getInstance().deleteAllData()
+    }
+
+    /**
+     * Wipes one origin's site data — the per-site scope of
+     * [eraseWebStorage]. CookieManager has no per-host delete, so the
+     * host's cookie names are re-set with an epoch expiry; DOM
+     * storage goes through [WebStorage.deleteOrigin].
+     */
+    fun clearSiteData(url: String) {
+        val uri = Uri.parse(url)
+        val host = uri.host ?: return
+        val origin = "${uri.scheme}://${uri.host}${if (uri.port > 0) ":${uri.port}" else ""}"
+
+        val cookieManager = CookieManager.getInstance()
+        val cookies = cookieManager.getCookie(url).orEmpty()
+        for (pair in cookies.split(";")) {
+            val name = pair.substringBefore('=').trim()
+            if (name.isNotEmpty()) {
+                cookieManager.setCookie(origin,
+                    "$name=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=$host")
+            }
+        }
+        cookieManager.flush()
+
+        WebStorage.getInstance().deleteOrigin(origin)
     }
 
     fun eraseWebStorage(context: Context) {

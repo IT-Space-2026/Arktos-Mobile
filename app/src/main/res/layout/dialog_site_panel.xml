@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="@dimen/dialog_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ssl_info_connection"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/panel_connection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:paddingStart="@dimen/material_grid_unit"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            tools:text="Secure (HTTPS)" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_margin"
+            android:text="@string/ssl_rank_tranco"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/panel_rank_tranco"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:paddingStart="@dimen/material_grid_unit"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            tools:text="#1,234" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_margin"
+            android:text="@string/ssl_rank_majestic"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/panel_rank_majestic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:paddingStart="@dimen/material_grid_unit"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            tools:text="#567" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_margin"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/shield_block_site"
+                android:textAppearance="?android:attr/textAppearanceListItemSmall" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/panel_block_site"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/shield_block_global"
+                android:textAppearance="?android:attr/textAppearanceListItemSmall" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/panel_block_global"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/panel_blocked_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:paddingStart="@dimen/material_grid_unit"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            tools:text="12 requests blocked on this page" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_margin"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/shield_javascript"
+                android:textAppearance="?android:attr/textAppearanceListItemSmall" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/panel_javascript"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/shield_cookies"
+                android:textAppearance="?android:attr/textAppearanceListItemSmall" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/panel_cookies"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/panel_cookie_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_unit"
+            android:paddingStart="@dimen/material_grid_unit"
+            android:textAppearance="?android:attr/textAppearanceListItemSmall"
+            tools:text="21 stored for this site" />
+
+        <Button
+            android:id="@+id/panel_clear_data"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/material_grid_margin"
+            android:text="@string/shield_clear_data" />
+    </LinearLayout>
+</ScrollView>
