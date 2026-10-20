@@ -107,6 +107,10 @@ import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.kotlin.subscribeBy
+import io.reactivex.rxjava3.schedulers.Schedulers
+import org.json.JSONObject
+import java.io.BufferedWriter
+import java.io.OutputStreamWriter
 import java.io.IOException
 import javax.inject.Inject
 import kotlin.math.roundToInt
@@ -602,6 +606,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 intent = null
             }
             presenter?.setupTabs(intent)
+            maybeImportTabs(intent)
+            maybeExportTabs(intent)
             setIntent(null)
 
         }
@@ -1467,7 +1473,68 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     protected fun handleNewIntent(intent: Intent) {
+        maybeImportTabs(intent)
+        maybeExportTabs(intent)
         presenter?.onNewIntent(intent)
+    }
+
+    /**
+     * Settings → Export tabs delivers the picked destination URI through
+     * this extra; the live TabsManager only exists here. Settings →
+     * Import tabs arrives as [EXTRA_IMPORT_TABS]. Both are consumed once
+     * initialization finishes so they work on re-delivered and
+     * cold-start intents alike.
+     */
+    private fun maybeExportTabs(intent: Intent?) {
+        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent?.getParcelableExtra(EXTRA_EXPORT_TABS_URI, android.net.Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION") intent?.getParcelableExtra(EXTRA_EXPORT_TABS_URI)
+        } ?: return
+        intent?.removeExtra(EXTRA_EXPORT_TABS_URI)
+        tabsManager.doAfterInitialization {
+            val tabs = tabsManager.allTabs.map { it.url to it.title }
+            Completable.fromAction {
+                contentResolver.openOutputStream(uri)?.use { out ->
+                    BufferedWriter(OutputStreamWriter(out)).use { writer ->
+                        tabs.forEach { (url, title) ->
+                            writer.write(
+                                JSONObject().put("url", url).put("title", title).toString()
+                            )
+                            writer.newLine()
+                        }
+                    }
+                } ?: throw java.io.IOException("Could not open $uri")
+            }
+                .subscribeOn(Schedulers.io())
+                .observeOn(mainScheduler)
+                .subscribeBy(
+                    onComplete = { toast(R.string.action_ok) },
+                    onError = {
+                        logger.log(TAG, "tab export failed", it)
+                        toast(R.string.bookmark_export_failure)
+                    }
+                )
+        }
+    }
+
+    /**
+     * Settings → Import tabs delivers a URL list through this extra.
+     * Tabs are opened once initialization finishes so the call works on
+     * both re-delivered intents and the cold-start intent below.
+     */
+    private fun maybeImportTabs(intent: Intent?) {
+        val urls = intent?.getStringArrayListExtra(EXTRA_IMPORT_TABS) ?: return
+        intent.removeExtra(EXTRA_IMPORT_TABS)
+        tabsManager.doAfterInitialization {
+            urls.forEachIndexed { index, url ->
+                handleNewTab(
+                    if (index == 0) LightningDialogBuilder.NewTab.FOREGROUND
+                    else LightningDialogBuilder.NewTab.BACKGROUND,
+                    url, false
+                )
+            }
+        }
     }
 
     protected fun performExitCleanUp() {
@@ -2461,6 +2528,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         private const val TAG = "BrowserActivity"
 
         const val INTENT_PANIC_TRIGGER = "info.guardianproject.panic.action.TRIGGER"
+        const val EXTRA_IMPORT_TABS = "com.arktosbrowser.mobile.IMPORT_TABS"
+        const val EXTRA_EXPORT_TABS_URI = "com.arktosbrowser.mobile.EXPORT_TABS_URI"
 
         private const val FILE_CHOOSER_REQUEST_CODE = 1111
 
