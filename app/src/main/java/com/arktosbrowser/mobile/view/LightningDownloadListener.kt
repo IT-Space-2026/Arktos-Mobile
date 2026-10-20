@@ -18,9 +18,8 @@ import android.webkit.DownloadListener
 import android.widget.CheckBox
 import android.widget.Toast
 import androidx.core.content.ContextCompat.getSystemService
-import com.arktosbrowser.mobile.permissions.PermissionsManager
-import com.arktosbrowser.mobile.permissions.PermissionsResultAction
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
@@ -62,21 +61,23 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             triggerDownload(url, userAgent, contentDisposition, mimetype, downloadSize, fileName)
         } else {
-            PermissionsManager.instance.requestPermissionsIfNecessaryForResult(mActivity,
-                arrayOf(
+            val controller = mActivity as? UIController
+            if (controller == null) {
+                triggerDownload(url, userAgent, contentDisposition, mimetype, downloadSize, fileName)
+                return
+            }
+            controller.requestRuntimePermissions(
+                setOf(
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        triggerDownload(url, userAgent, contentDisposition, mimetype, downloadSize, fileName)
-                    }
-
-                    override fun onDenied(permission: String) {
-                        //TODO show message
-                        logger!!.log(TAG, "Permission denied: $permission")
-                    }
-                })
+                )
+            ) { granted ->
+                if (granted) {
+                    triggerDownload(url, userAgent, contentDisposition, mimetype, downloadSize, fileName)
+                } else {
+                    logger!!.log(TAG, "Permission denied for download")
+                }
+            }
         }
     }
 

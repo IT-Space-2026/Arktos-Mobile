@@ -13,8 +13,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.webkit.*
 import android.widget.FrameLayout
-import com.arktosbrowser.mobile.permissions.PermissionsManager
-import com.arktosbrowser.mobile.permissions.PermissionsResultAction
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.di.DiskScheduler
@@ -93,22 +91,7 @@ class ArktosCookieChromeClient(
     }
 
     override fun requestPermissions(permissions: Set<String>, onGrant: (Boolean) -> Unit) {
-        val missingPermissions = permissions
-            .filter { !PermissionsManager.instance.hasPermission(activity, it) }
-
-        if (missingPermissions.isEmpty()) {
-            onGrant(true)
-        } else {
-            PermissionsManager.instance.requestPermissionsIfNecessaryForResult(
-                    activity,
-                    missingPermissions.toTypedArray(),
-                    object : PermissionsResultAction() {
-                        override fun onGranted() = onGrant(true)
-
-                        override fun onDenied(permission: String) = onGrant(false)
-                    }
-            )
-        }
+        uiController.requestRuntimePermissions(permissions, onGrant)
     }
 
     override fun requestResources(source: String,
@@ -138,31 +121,28 @@ class ArktosCookieChromeClient(
     }
 
     override fun onGeolocationPermissionsShowPrompt(origin: String,
-                                                    callback: GeolocationPermissions.Callback) =
-        PermissionsManager.instance.requestPermissionsIfNecessaryForResult(activity, geoLocationPermissions, object : PermissionsResultAction() {
-            override fun onGranted() {
-                val remember = true
-                MaterialAlertDialogBuilder(activity).apply {
-                    setTitle(activity.getString(R.string.location))
-                    val org = if (origin.length > 50) {
-                        "${origin.subSequence(0, 50)}..."
-                    } else {
-                        origin
-                    }
-                    setMessage(org + activity.getString(R.string.message_location))
-                    setCancelable(true)
-                    setPositiveButton(activity.getString(R.string.action_allow)) { _, _ ->
-                        callback.invoke(origin, true, remember)
-                    }
-                    setNegativeButton(activity.getString(R.string.action_dont_allow)) { _, _ ->
-                        callback.invoke(origin, false, remember)
-                    }
-                }.resizeAndShow()
-            }
-
-            override fun onDenied(permission: String) =//TODO show message and/or turn off setting
-                    Unit
-        })
+                                                    callback: GeolocationPermissions.Callback) {
+        uiController.requestRuntimePermissions(geoLocationPermissions.toSet()) { granted ->
+            if (!granted) return@requestRuntimePermissions // TODO show message and/or turn off setting
+            val remember = true
+            MaterialAlertDialogBuilder(activity).apply {
+                setTitle(activity.getString(R.string.location))
+                val org = if (origin.length > 50) {
+                    "${origin.subSequence(0, 50)}..."
+                } else {
+                    origin
+                }
+                setMessage(org + activity.getString(R.string.message_location))
+                setCancelable(true)
+                setPositiveButton(activity.getString(R.string.action_allow)) { _, _ ->
+                    callback.invoke(origin, true, remember)
+                }
+                setNegativeButton(activity.getString(R.string.action_dont_allow)) { _, _ ->
+                    callback.invoke(origin, false, remember)
+                }
+            }.resizeAndShow()
+        }
+    }
 
     override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean,
                                 resultMsg: Message): Boolean {

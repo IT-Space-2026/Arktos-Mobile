@@ -79,6 +79,12 @@ interface UIController {
     fun showFileChooser(callback: (Array<Uri>?) -> Unit)
 
     /**
+     * Request runtime [permissions]; [onResult] fires once with `true`
+     * when every permission is (or was already) granted.
+     */
+    fun requestRuntimePermissions(permissions: Set<String>, onResult: (Boolean) -> Unit)
+
+    /**
      * Notify the controller that it should display the custom [view] in full-screen to the user.
      * [callback] is invoked when the page should be told fullscreen was left.
      */

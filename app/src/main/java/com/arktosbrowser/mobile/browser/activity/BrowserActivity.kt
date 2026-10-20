@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -89,7 +90,6 @@ import com.arktosbrowser.mobile.icon.TabCountView
 import com.arktosbrowser.mobile.interpolator.BezierDecelerateInterpolator
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.notifications.IncognitoNotification
-import com.arktosbrowser.mobile.permissions.PermissionsManager
 import com.arktosbrowser.mobile.popup.PopUpClass
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SearchEngineProvider
@@ -2647,16 +2647,27 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     /**
      * Handle the callback that permissions requested have been granted or not.
-     * This method should act upon the results of the permissions request.
-     *
-     * @param requestCode  the request code sent when initially making the request
-     * @param permissions  the array of the permissions that was requested
-     * @param grantResults the results of the permissions requests that provides
-     * information on whether the request was granted or not
+     * Replaces the old PermissionsManager/onRequestPermissionsResult relay.
      */
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        PermissionsManager.instance.notifyPermissionsChange(permissions, grantResults)
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    private var permissionResultCallback: ((Boolean) -> Unit)? = null
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        permissionResultCallback?.invoke(grants.values.all { it })
+        permissionResultCallback = null
+    }
+
+    override fun requestRuntimePermissions(permissions: Set<String>, onResult: (Boolean) -> Unit) {
+        val missing = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            onResult(true)
+        } else {
+            permissionResultCallback = onResult
+            permissionLauncher.launch(missing.toTypedArray())
+        }
     }
 
    override fun getAssets(): AssetManager {
