@@ -1,6 +1,5 @@
 package com.arktosbrowser.mobile.settings.fragment
 
-import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
@@ -10,25 +9,17 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import com.arktosbrowser.mobile.R
-import com.arktosbrowser.mobile.browser.ChooseNavbarCol
-import com.arktosbrowser.mobile.browser.DrawerLineChoice
 import com.arktosbrowser.mobile.browser.SearchBoxDisplayChoice
 import com.arktosbrowser.mobile.browser.TextZoom
-import com.arktosbrowser.mobile.browser.DrawerSizeChoice
 import com.arktosbrowser.mobile.di.injector
-import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.flask.colorpicker.ColorPickerView
-import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import javax.inject.Inject
 
 
 class DisplaySettingsFragment : AbstractSettingsFragment() {
-
-    private lateinit var themeOptions: Array<String>
 
     @Inject internal lateinit var userPreferences: UserPreferences
 
@@ -91,12 +82,6 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         )
 
         switchPreference(
-                preference = SETTINGS_EXTRA,
-                isChecked = userPreferences.showExtraOptions,
-                onCheckChange = { userPreferences.showExtraOptions = it}
-        )
-
-        switchPreference(
             preference = SETTINGS_VIEWPORT,
             isChecked = userPreferences.useWideViewPortEnabled,
             onCheckChange = { userPreferences.useWideViewPortEnabled = it }
@@ -114,32 +99,16 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
             onCheckChange = { userPreferences.textReflowEnabled = it }
         )
 
-        switchPreference(
-            preference = SETTINGS_DRAWERTABS,
-            isChecked = userPreferences.showTabsInDrawer,
-            onCheckChange = { userPreferences.showTabsInDrawer = it }
-        )
-
-        switchPreference(
-            preference = SETTINGS_SWAPTABS,
-            isChecked = userPreferences.bookmarksAndTabsSwapped,
-            onCheckChange = { userPreferences.bookmarksAndTabsSwapped = it }
-        )
+        // The drawer option keys live in preference_drawers.xml and are
+        // bound by DrawerSettingsFragment; the duplicate bindings that
+        // used to sit here found no matching preference and were dead
+        // no-ops. "show_extra" had no consumer either.
 
         switchPreference(
                 preference = SETTINGS_BOTTOM_BAR,
                 isChecked = userPreferences.bottomBar,
                 isEnabled = !userPreferences.navbar || userPreferences.bottomBar,
                 onCheckChange = {userPreferences.bottomBar = it; Toast.makeText(activity, R.string.please_restart, Toast.LENGTH_LONG).show()}
-        )
-        clickablePreference(
-                preference = SETTINGS_LINES,
-                onClick = ::showDrawerLines
-        )
-
-        clickablePreference(
-                preference = SETTINGS_SIZE,
-                onClick = ::showDrawerSize
         )
     }
 
@@ -165,77 +134,6 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
             SearchBoxDisplayChoice.TITLE -> stringArray[2]
         }
     }
-
-    private fun showDrawerSize() {
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.drawer_size)
-            val stringArray = resources.getStringArray(R.array.drawer_size)
-            val values = DrawerSizeChoice.values().map {
-                Pair(it, when (it) {
-                    DrawerSizeChoice.AUTO -> stringArray[0]
-                    DrawerSizeChoice.ONE -> stringArray[1]
-                    DrawerSizeChoice.TWO -> stringArray[2]
-                    DrawerSizeChoice.THREE -> stringArray[3]
-                })
-            }
-            withSingleChoiceItems(values, userPreferences.drawerSize) {
-                userPreferences.drawerSize = it
-            }
-            setPositiveButton(R.string.action_ok){_, _ ->
-                Toast.makeText(activity, R.string.please_restart, Toast.LENGTH_LONG).show()
-            }
-        }
-
-    }
-
-    private fun showDrawerLines() {
-        BrowserDialog.showCustomDialog(activity) {
-            setTitle(R.string.drawer_lines)
-            val stringArray = resources.getStringArray(R.array.drawer_lines)
-            val values = DrawerLineChoice.values().map {
-                Pair(it, when (it) {
-                    DrawerLineChoice.ONE -> stringArray[0]
-                    DrawerLineChoice.TWO -> stringArray[1]
-                    DrawerLineChoice.THREE -> stringArray[2]
-                })
-            }
-            withSingleChoiceItems(values, userPreferences.drawerLines) {
-                userPreferences.drawerLines = it
-            }
-            setPositiveButton(R.string.action_ok){_, _ ->
-                Toast.makeText(activity, R.string.please_restart, Toast.LENGTH_LONG).show()
-            }
-        }
-
-    }
-
-    private fun showNavbarColPicker(){
-        var initColor = userPreferences.colorNavbar
-        if(userPreferences.navbarColChoice == ChooseNavbarCol.NONE){
-            initColor = Color.WHITE
-        }
-        ColorPickerDialogBuilder
-                .with(activity)
-                .setTitle("Choose color")
-                .initialColor(initColor)
-                .wheelType(ColorPickerView.WHEEL_TYPE.FLOWER)
-                .density(12)
-                .setOnColorSelectedListener { /*selectedColor -> activity.toast("onColorSelected: 0x" + Integer.toHexString(selectedColor))*/ }
-                .setPositiveButton("ok") { dialog, selectedColor, allColors -> userPreferences.colorNavbar = selectedColor }
-                .setNegativeButton("cancel") { dialog, which -> }
-                .build()
-                .show()
-    }
-
-    private fun updateNavbarCol(choice: ChooseNavbarCol) {
-        if (choice == ChooseNavbarCol.COLOR) {
-            showNavbarColPicker()
-
-        }
-
-        userPreferences.navbarColChoice = choice
-    }
-
 
     private fun showTextSizePicker() {
         MaterialAlertDialogBuilder(requireContext()).apply {
@@ -295,12 +193,7 @@ class DisplaySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_OVERVIEWMODE = "overViewMode"
         private const val SETTINGS_REFLOW = "text_reflow"
         private const val SETTINGS_TEXTSIZE = "text_size"
-        private const val SETTINGS_DRAWERTABS = "cb_drawertabs"
-        private const val SETTINGS_SWAPTABS = "cb_swapdrawers"
-        private const val SETTINGS_EXTRA = "show_extra"
         private const val SETTINGS_BOTTOM_BAR = "bottom_bar"
-        private const val SETTINGS_LINES = "drawer_lines"
-        private const val SETTINGS_SIZE = "drawer_size"
         private const val SETTINGS_NAVBAR = "second_bar"
         private const val SETTINGS_URL_CONTENT = "url_contents"
         private const val SETTINGS_TRIM_URL_BAR = "trim_url_bar"
