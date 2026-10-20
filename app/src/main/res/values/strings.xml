@@ -5,7 +5,7 @@
     <!-- ENG03 — the launcher label moved to the appNameBase/appNameSuffix
          manifest placeholders; this resource stays for in-app surfaces
          (lock screen, About preference header). -->
-    <string name="app_name" translatable="false">Arktos Mobile</string>
+    <string name="app_name" translatable="false">Arktos</string>
     <string name="ytdl_package_name" translatable="false">com.cookiejarapps.smartcookieweb_ytdl</string>
     <string name="app_desc">A free and open source web browser that blocks ads and trackers</string>
     <string name="action_new_tab">New tab</string>

@@ -73,7 +73,7 @@ android {
 
     productFlavors {
         // Each dimension owns one manifest placeholder; the label is
-        // ${appNameBase}${appNameSuffix}, e.g. "Arktos Mobile Lite" or
+        // ${appNameBase}${appNameSuffix}, e.g. "Arktos Light" or
         // "Arktos Mobile beta".
         scMain {
             dimension "capabilities"
@@ -94,17 +94,19 @@ android {
         }
 
         // ENG03 — the 'engine' dimension picks the rendering backend:
-        // `webview` (Android WebView — "Arktos Mobile Lite") and
-        // `gecko` (GeckoView — the full "Arktos Mobile"). Variant
+        // `webview` (Android WebView — "Arktos Light") and
+        // `gecko` (GeckoView — the full "Arktos"). Variant
         // source sets live in app/src/webview and app/src/gecko.
         webview {
             dimension "engine"
-            manifestPlaceholders.appNameBase = "Arktos Mobile Lite"
+            manifestPlaceholders.appNameBase = "Arktos Light"
+            resValue "string", "app_name", "Arktos Light"
         }
         gecko {
             dimension "engine"
             applicationIdSuffix ".full"
-            manifestPlaceholders.appNameBase = "Arktos Mobile"
+            manifestPlaceholders.appNameBase = "Arktos"
+            resValue "string", "app_name", "Arktos"
             ndk {
                 // Release scope: the gecko flavor ships arm64-v8a only —
                 // GeckoView does not publish armeabi-v7a, and x86 is
