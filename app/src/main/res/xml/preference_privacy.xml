@@ -105,6 +105,12 @@
             android:key="block_lan_requests"
             android:summary="@string/block_lan_requests_summary"
             android:title="@string/block_lan_requests"/>
+        <SwitchPreference
+            android:defaultValue="true"
+            android:singleLineTitle="false"
+            android:key="block_mixed_content"
+            android:summary="@string/block_mixed_content_summary"
+            android:title="@string/block_mixed_content"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/privacy_data_category">
         <SwitchPreference

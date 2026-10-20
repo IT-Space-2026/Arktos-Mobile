@@ -450,6 +450,8 @@
     <string name="block_info">Enter words to block in URLs (separated with a comma).</string>
     <string name="startpage">Apply theme to homepage</string>
     <string name="allpage">Apply theme to web pages (beta)</string>
+    <string name="block_mixed_content">Block mixed content</string>
+    <string name="block_mixed_content_summary">Stop HTTPS sites from loading insecure HTTP content (always on in incognito)</string>
     <string name="forcehttps">Block non-HTTPS sites</string>
     <string name="preferhttps">Prefer HTTPS site versions</string>
     <string name="forcehttpsdesc">Only load HTTPS sites</string>
