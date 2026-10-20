@@ -52,6 +52,8 @@ Rust core:
 - Tranco + Majestic site-rank lists merge a vendored seed with
   downloaded drop files through a streaming Rust parser, consent-gated
   behind the same privacy screen (RANK01).
+- ArktosStore schema v3 adds run_at/no_frames userscript columns and a
+  gm_value table backing GM_*Value persistence (STORE02).
 
 Web-view fixes (upstream SmartCookieWeb issues):
 - Error/interstitial pages got a stable non-null baseUrl
@@ -107,6 +109,14 @@ Web-view fixes (upstream SmartCookieWeb issues):
 - WebView hardening pass: intent-scheme allowlist on incoming VIEW
   intents, no user-CA trust, no cloud backup, download filename
   sanitization and dead-code removal (SECFIX).
+- WebView Safe Browsing channel disabled outright; reader-mode page
+  failures and proxy bypass leaks fixed (SECFIX02).
+- Userscript engine rebuilt on WebViewCompat document-start injection
+  plus a web-message GM bridge — @run-at/@exclude/@include/@require
+  honoured, @require fetched once via the proxy-aware OkHttp client,
+  GM_xmlhttpRequest/GM_setClipboard/GM_openInTab and the GM.* promise
+  API implemented, GM_*Value persisted to the Rust store; legacy
+  evaluation kept as a fallback for old WebViews (USENG01).
 
 UI:
 - Error/block interstitials restyled to the Arktos desktop look —
@@ -119,6 +129,23 @@ UI:
 - In-app changelog page (this document) reachable from
   Settings → About → Changelog and via arktos://changelog; after an
   upgrade the changelog opens once in a new tab (CHLOG01).
+- Arktos light/dark brand themes added to the theme picker, including
+  'Follow system' resolution to the Arktos variants (THEME01).
+- Desktop-parity site shield before the URL bar opens a per-site
+  privacy panel (ad-block, JS, cookies, SafeSearch overrides); the
+  padlock is tinted by the site's shield verdict (SHIELD01).
+- Bookmark rows resolve real favicons straight from the host —
+  declared link icons then /favicon.ico, with ICO-container decoding,
+  a SHA-256-keyed disk cache and a 30-day TTL; no third-party icon
+  service (ICON01).
+- Tabs drawer gained a header X offering close-all / close-others;
+  closing the last tab now always leaves a fresh default tab instead
+  of exiting, saved-tab restore order is deterministic again, and a
+  corrupt saved session can't leave the browser tab-less (TABS01).
+- The logo overflow menu hardened: rows that need a page hide when
+  none is loaded, null-tab crashes eliminated, dark-theme background
+  restored, and a 'Close browser' action added under Settings
+  (MENU01).
 
 Build / housekeeping:
 - Build fixed for JDK 21 (jacoco bump, locale string fixes);
@@ -127,3 +154,27 @@ Build / housekeeping:
   GitHub Releases + in-repo fastlane metadata as the F-Droid
   prerequisite (#314), 'userscript' and manual-proxy support
   documented (#315/#325; HOUSE01).
+- RxJava 2 → 3 migration, targetSdk 35 / minSdk 26 bump, ButterKnife
+  and netcipher dropped, deprecated news feed removed, Naver search
+  engine retired, quick-start tiles pointed at Arktos destinations
+  (HOUSE02).
+
+Settings audit (every screen verified end-to-end):
+- Advanced: dead "integrated download manager" switch wired to a real
+  third-party hand-off, SHIFT_JIS label corrected, dev-tools row
+  crash-proofed, translation-endpoint summary fixed (SETA01).
+- Import/export moved fully to the Storage Access Framework (the old
+  runtime permission gate fails on targetSdk 35), settings backup now
+  a typed JSON-lines round-trip that parses before wiping, bookmark
+  format detected by content not MIME type, and tab backup/restore
+  implemented through the live browser activity (SETA02).
+- Customization/Privacy: homepage-type row tracks changes live, dead
+  bindings removed, manual-proxy choice only persists after host/port
+  validation, "Save form data" labelled correctly, destructive clears
+  confirm first and can't crash (SETA03).
+- General: download location must be writable to persist, custom
+  search only commits after a valid https:// template, mis-tagged
+  placeholder requirements corrected (SETA04).
+- Parental controls: shared no-password flag that could hard-lock the
+  section removed, every password field now masks input, retry no
+  longer stacks dialogs (SETA05).

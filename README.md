@@ -58,8 +58,13 @@ SmartCookieWeb#314).
   on long-pressing a link — host-keyed overrides that persist per
   origin on top of the global switches
 - Userscript support — Greasemonkey-style `.user.js` scripts install
-  from a page prompt, persist per-site `@include`/`@require` metadata,
-  and can be removed under Extensions settings
+  from a page prompt and inject at document-start via WebViewCompat,
+  with `@include`/`@exclude`/`@run-at`/`@require` honoured and a GM
+  bridge (`GM_xmlhttpRequest`, `GM_setValue`, …) persisted in the Rust
+  store; scripts can be removed under Extensions settings
+- Desktop-parity site shield — a shield button ahead of the URL bar
+  opens a per-site privacy panel (ad-block, JavaScript, cookies,
+  SafeSearch), and the padlock tint reflects the site's verdict
 - Proxy support — Orbot/Tor, I2P, or a manual HTTP proxy host:port
   (Settings → General → HTTP proxy); no special build needed
 - Site-rank table (Tranco + Majestic Million) in the Rust core — a
@@ -109,7 +114,8 @@ rust/arktos-core/     Rust browser-core library (libarktos.so) — UniFFI crate
   src/misc.rs           color math, hosts-file parsing, misc pure logic
 app/src/main/java/com/arktosbrowser/mobile/
                       Android shell (Kotlin; no Java sources remain)
-  view/                 ArktosCookieView/WebClient/ChromeClient — WebView seam
+  view/                 ArktosCookieView/WebClient/ChromeClient + UserScriptEngine
+                        — WebView seam (document-start injection, GM bridge)
   browser/              activity, tabs, presenter, drawer views
   settings/             settings fragments incl. Privacy + list management
   rust/ArktosCore.kt    thin Kotlin façade over UniFFI-generated bindings
@@ -137,12 +143,11 @@ Android (Gradle) — highlights:
   constraintlayout, drawerlayout, cardview, palette) — Apache-2.0
 - Jetpack Compose UI (view-source editor dialogs) — Apache-2.0
 - Material Components — Apache-2.0
-- Dagger 2 — Apache-2.0; ButterKnife — Apache-2.0
-- RxJava 2 / RxAndroid / RxKotlin — Apache-2.0
-- OkHttp 3 + Okio — Apache-2.0
+- Dagger 2 — Apache-2.0
+- RxJava 3 / RxAndroid / RxKotlin — Apache-2.0
+- OkHttp + Okio — Apache-2.0
 - jsoup — MIT
 - sora-editor (view-source editor) — LGPL-2.1
-- netcipher-webkit (Orbot/Tor WebView proxying) — LGPL
 - mozilla.components concept-fetch — MPL-2.0
 - permissionx, QuadFlask colorpicker, AppIntro — Apache-2.0
 - JNA (host-side UniFFI tests) — Apache-2.0 / LGPL-2.1
