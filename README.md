@@ -1,6 +1,6 @@
 <p align="center"><img src="fastlane/metadata/android/en-US/images/icon.png" width="150"></p>
 <h2 align="center"><b>Arktos Mobile</b></h2>
-<h4 align="center">A secure, free and open source WebView-based web browser for Android.</h4>
+<h4 align="center">A secure, free and open source browser for Android — ships as <b>Arktos</b> (GeckoView) or <b>Arktos Light</b> (WebView).</h4>
 
 <p align="center">
 <a href="https://github.com/IT-Space-2026/Arktos-Mobile/releases" alt="GitHub Release (latest by date)"><img src="https://img.shields.io/github/v/release/IT-Space-2026/Arktos-Mobile.svg" ></a>
@@ -30,8 +30,8 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 
 - **Engine flavors** (`engine` dimension, on top of the `capabilities`
   channel dimension): `webview` ships the system WebView backend as
-  **Arktos Mobile Lite** (`com.arktosbrowser.mobile`); `gecko` ships the
-  GeckoView backend as **Arktos Mobile**
+  **Arktos Light** (`com.arktosbrowser.mobile`); `gecko` ships the
+  GeckoView backend as **Arktos**
   (`com.arktosbrowser.mobile.full`), so both can be installed side by
   side. The backend is selected at build time by the flavor-scoped
   `engine/EngineSelector.kt`; the shared UI shell talks only to the
@@ -82,9 +82,10 @@ SmartCookieWeb#314).
 ## Features
 
 - Modern, clean UI
-- ~13MB per-device download (~24MB universal APK — the bundled
-  `libarktos.so` Rust core dominates; ABI splits keep per-device
-  installs small)
+- Light build is ~13MB per-device download (~24MB universal APK — the
+  bundled `libarktos.so` Rust core dominates; ABI splits keep
+  per-device installs small). The full build's size comes from
+  GeckoView — see the size section above
 - Tons of settings
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
@@ -131,7 +132,16 @@ SmartCookieWeb#314).
 - Browser-wide app lock — PIN, password, or biometric unlock (system
   credential fallback on API 30+) with a configurable re-lock window
   (immediately, 1/5/10 minutes, or a custom minute count) that re-arms
-  after the app sits in the background
+  after the app sits in the background; a full-screen lock page covers
+  open tabs so page content can't leak into recents thumbnails
+- Privacy signals — `DNT: 1` and `Sec-GPC: 1` (Global Privacy Control)
+  headers are sent on top-level navigations when enabled
+- Panic trigger — an external intent wipes the browsing session; can be
+  disabled under Privacy settings for users without a panic-button app
+- Modernized codebase — no deprecated APIs remain: coroutines instead
+  of AsyncTask, ActivityResultContracts instead of
+  startActivityForResult/onRequestPermissionsResult, `overrideActivityTransition`,
+  and FileProvider-backed camera uploads
 - Password-encrypted backups — Settings → Import/Export can seal
   bookmarks + settings into an `ARKBAK` archive (PBKDF2 key
   derivation → AES-256-GCM) that restores only with the password;
@@ -165,8 +175,12 @@ rust/arktos-core/     Rust browser-core library (libarktos.so) — UniFFI crate
   src/misc.rs           color math, hosts-file parsing, misc pure logic
 app/src/main/java/com/arktosbrowser/mobile/
                       Android shell (Kotlin; no Java sources remain)
-  view/                 ArktosCookieView/WebClient/ChromeClient + UserScriptEngine
-                        — WebView seam (document-start injection, GM bridge)
+  view/                 WebView backend: ArktosCookieView/WebClient/ChromeClient
+                        + UserScriptEngine (document-start injection, GM bridge)
+  engine/               engine-neutral Backend/Profile/Page contract +
+                        Engines registry + EngineSelector
+app/src/gecko/java/     GeckoView backend (GeckoEngine/GeckoProfile/GeckoPage)
+app/src/webview/java/   WebView flavor glue (EngineSelector impl)
   browser/              activity, tabs, presenter, drawer views
   settings/             settings fragments incl. Privacy + list management
   rust/ArktosCore.kt    thin Kotlin façade over UniFFI-generated bindings
@@ -200,6 +214,7 @@ Android (Gradle) — highlights:
 - jsoup — MIT
 - sora-editor (view-source editor) — LGPL-2.1
 - mozilla.components concept-fetch — MPL-2.0
+- GeckoView (`org.mozilla.geckoview`, gecko flavor only) — MPL-2.0
 - permissionx, QuadFlask colorpicker, AppIntro — Apache-2.0
 - JNA (host-side UniFFI tests) — Apache-2.0 / LGPL-2.1
 - Vendored I2P Android helper — Apache-2.0 (upstream i2p.android.base)
@@ -264,5 +279,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Show punycode domains' option (on by default; shows xn-- form for internationalized domains to expose lookalike phishing domains)
 - 'Referrer policy' option (default / same-origin only / never send on page navigations)
 - 'Always incognito' option
-- Incognito sessions run in a separate process with their own storage partition that is wiped when the session ends (and again on the next incognito start, so swipe-away can't carry cookies or logins forward)
+- Incognito sessions run in a separate process with their own storage partition that is wiped when the session ends (and again on the next incognito start, so swipe-away can't carry cookies or logins forward); the private-tabs notification is hidden from the lock screen and the keyboard is barred from learning incognito-typed text
+- Panic-button intent support — a panic app can wipe the session; toggleable in Privacy settings (also covers the incognito profile)
 - Cookie dialog blocker
