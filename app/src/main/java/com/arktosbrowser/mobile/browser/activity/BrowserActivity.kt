@@ -840,6 +840,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     protected fun panicClean() {
         logger.log(TAG, "Closing browser")
+        // INCOG02 — the panic TRIGGER filter only reaches the main
+        // process: a live :incognito browser would keep its window and
+        // its on-disk WebView partition through the wipe. Kill the
+        // sibling process, delete its partition dirs and drop the
+        // "private tabs" notification so nothing points at a private
+        // session after panic.
+        IncognitoPartition.panicWipe(applicationContext)
+        notificationManager.cancel(IncognitoNotification.NOTIFICATION_ID)
         tabsManager.newTab(this, NoOpInitializer(), false)
         tabsManager.switchToTab(0)
         tabsManager.clearSavedState()

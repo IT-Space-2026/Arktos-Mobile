@@ -891,7 +891,7 @@ DONE (2026-10-20). What landed:
   Runtime smoke (real extension install, I2P tunnel hand-off) not
   exercised — no emulator in this env.
 | INCOG01 | Wipe incognito partition on session end/fresh start — details below | done | 0 | IncognitoPartition wipe on session end (performExitCleanUp+onDestroy) + fresh start (engine initialize); real dir is app_webview_incognito; gecko OTR = private mode + clearData; 5 tests + assemble both flavors + engine-audit PASS |
-| INCOG02 | Include incognito profile in panicClean — details below | pending | 0 | — |
+| INCOG02 | Include incognito profile in panicClean — details below | done | 0 | IncognitoPartition.panicWipe kills :incognito pid (ActivityManager lookup + Process.killProcess) then deletes partition dirs from main; panicClean also cancels the private-tabs notification (id exported as NOTIFICATION_ID); 3 new tests, 400 unit tests/flavor 0 fail, assemble both flavors + engine-audit PASS |
 | INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | pending | 0 | — |
 | INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | pending | 0 | — |
 
@@ -954,6 +954,31 @@ process or a broadcast the incognito activity handles to wipe + exit)
 and delete the incognito data dir. Verify: open incognito tab, send
 panic intent, confirm incognito window dies and partition is empty.
 needs:tool:java
+
+Done 2026-10-20:
+
+- Took the killProcess option over the broadcast: delivery to a
+  possibly-wedged sibling isn't guaranteed, while `Process.killProcess`
+  on the own-uid pid is deterministic and the dir wipe doesn't depend
+  on the sibling cooperating.
+- `IncognitoPartition.panicWipe(context, kill)` — finds the sibling
+  pid via `ActivityManager.runningAppProcesses` matching
+  `pkg:incognito` (pure `liveIncognitoPid` seam + `ProcessEntry` DTO
+  keep it JVM-testable; `kill` injectable, defaults to
+  `Process.killProcess`), then `wipeDirectories`. Runs unconditionally
+  so swipe-away leftovers are cleaned even when no sibling is live.
+  `wipeSession` must not run in the main process (it would clear the
+  MAIN profile) — panicWipe intentionally does dirs only.
+- `panicClean` calls `panicWipe` first, then cancels notification id
+  `IncognitoNotification.NOTIFICATION_ID` (was a private field) —
+  notifications are per-package, so the private-tabs reminder posted
+  from :incognito doesn't outlive the panic.
+- Tests: `IncognitoPartitionTest` +3 (pid matching incl. beta-package
+  lookalike rejection; kill+wipe via mocked ActivityManager; no-sibling
+  still wipes). 400 unit tests/flavor, 0 failures;
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS;
+  engine-audit PASS. Runtime verify (panic intent on device) needs an
+  emulator — not run in this env.
 
 ### INCOG03
 `IncognitoNotification` posts a persistent "N private tabs running"

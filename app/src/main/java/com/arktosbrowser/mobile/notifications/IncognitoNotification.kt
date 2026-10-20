@@ -22,7 +22,6 @@ class IncognitoNotification(
     private val notificationManager: NotificationManager
 ) {
 
-    private val incognitoNotificationId = 1
     private val channelId = "channel_incognito"
 
     init {
@@ -65,12 +64,21 @@ class IncognitoNotification(
             .setOngoing(true)
             .build()
 
-        notificationManager.notify(incognitoNotificationId, incognitoNotification)
+        notificationManager.notify(NOTIFICATION_ID, incognitoNotification)
     }
 
     /**
      * Hides the current notification if there is one.
      */
-    fun hide() = notificationManager.cancel(incognitoNotificationId)
+    fun hide() = notificationManager.cancel(NOTIFICATION_ID)
+
+    companion object {
+        /**
+         * Stable notification id — the main process cancels it
+         * directly on panic (INCOG02), which runs while the incognito
+         * process that posted it is already gone.
+         */
+        const val NOTIFICATION_ID = 1
+    }
 
 }

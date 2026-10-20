@@ -1,5 +1,6 @@
 package com.arktosbrowser.mobile.browser
 
+import android.app.ActivityManager
 import android.content.Context
 import com.arktosbrowser.mobile.engine.Backend
 import com.arktosbrowser.mobile.engine.Engines
@@ -7,6 +8,7 @@ import com.arktosbrowser.mobile.engine.Profile
 import com.arktosbrowser.mobile.engine.StorageArea
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -118,6 +120,82 @@ class IncognitoPartitionTest {
         verify(profile).clear(
             setOf(StorageArea.LocalStorage, StorageArea.IndexedDb)
         )
+        assertFalse(File(dataDir, "app_webview_incognito").exists())
+    }
+
+    @Test
+    fun `liveIncognitoPid matches only the exact sibling process`() {
+        val pkg = "com.arktosbrowser.mobile"
+        val processes = listOf(
+            IncognitoPartition.ProcessEntry(100, pkg),
+            IncognitoPartition.ProcessEntry(200, "$pkg:incognito"),
+            IncognitoPartition.ProcessEntry(300, "com.arktosbrowser.mobile.beta:incognito")
+        )
+
+        assertEquals(200, IncognitoPartition.liveIncognitoPid(pkg, processes))
+        assertNull(
+            IncognitoPartition.liveIncognitoPid(
+                pkg, listOf(IncognitoPartition.ProcessEntry(100, pkg))
+            )
+        )
+        assertNull(IncognitoPartition.liveIncognitoPid(pkg, emptyList()))
+    }
+
+    /**
+     * INCOG02 — panic in the main process must reach the live sibling:
+     * the `:incognito` pid is killed and its partition dirs deleted,
+     * while the main `app_webview` partition survives.
+     */
+    @Test
+    fun `panicWipe kills the sibling process and wipes its partition`() {
+        val pkg = "com.arktosbrowser.mobile"
+        val dataDir = tempFolder.root
+        File(dataDir, "app_webview_incognito").mkdirs()
+        val mainDir = File(dataDir, "app_webview").apply { mkdirs() }
+
+        val mainInfo = mock<ActivityManager.RunningAppProcessInfo>().apply {
+            pid = 100
+            processName = pkg
+        }
+        val incognitoInfo = mock<ActivityManager.RunningAppProcessInfo>().apply {
+            pid = 200
+            processName = "$pkg:incognito"
+        }
+        val activityManager = mock<ActivityManager> {
+            on { runningAppProcesses } doReturn listOf(mainInfo, incognitoInfo)
+        }
+        val context = mock<Context> {
+            on { this.dataDir } doReturn dataDir
+            on { packageName } doReturn pkg
+            on { getSystemService(Context.ACTIVITY_SERVICE) } doReturn activityManager
+        }
+        val killed = mutableListOf<Int>()
+
+        assertTrue(IncognitoPartition.panicWipe(context) { killed.add(it) })
+
+        assertEquals(listOf(200), killed)
+        assertFalse(File(dataDir, "app_webview_incognito").exists())
+        assertTrue(mainDir.exists())
+    }
+
+    /**
+     * No live incognito process (or no ActivityManager handle): the
+     * kill is skipped but leftover on-disk state is still wiped —
+     * swipe-away death leaves residue until the next incognito start.
+     */
+    @Test
+    fun `panicWipe without a live sibling still wipes leftover dirs`() {
+        val dataDir = tempFolder.root
+        File(dataDir, "app_webview_incognito").mkdirs()
+        val context = mock<Context> {
+            on { this.dataDir } doReturn dataDir
+            on { packageName } doReturn "com.arktosbrowser.mobile"
+        }
+        var killCalled = false
+
+        assertTrue(IncognitoPartition.panicWipe(context) { killCalled = true })
+
+        assertFalse(killCalled)
         assertFalse(File(dataDir, "app_webview_incognito").exists())
     }
 }

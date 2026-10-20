@@ -1,6 +1,8 @@
 package com.arktosbrowser.mobile.browser
 
+import android.app.ActivityManager
 import android.content.Context
+import android.os.Process
 import com.arktosbrowser.mobile.DeviceCapabilities
 import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.engine.StorageArea
@@ -20,7 +22,7 @@ import java.io.File
  * profile's partition and wiping it would destroy normal browsing
  * data.
  *
- * Two wipes keep the guarantee airtight:
+ * Three wipes keep the guarantee airtight:
  *
  *  1. Session end — [wipeSession], called from the BrowserActivity
  *     exit path and onDestroy: API-level clears through the engine's
@@ -30,6 +32,10 @@ import java.io.File
  *  2. Fresh start — [wipeDirectories] inside the engine's
  *     `initialize`, before the first page exists, so a swipe-away
  *     process death (no onDestroy ran) cannot carry state forward.
+ *  3. Panic — [panicWipe], called from the MAIN process (the panic
+ *     TRIGGER filter only reaches MainActivity): the live sibling
+ *     process is killed and its partition directories deleted, so a
+ *     private session can't survive the panic wipe.
  *
  * GeckoView needs no partition bookkeeping: its incognito sessions
  * run `usePrivateMode`, which keeps nothing on disk, so process death
@@ -100,5 +106,47 @@ object IncognitoPartition {
             WebUtils.clearWebStorage()
         }
         wipeDirectories(context.dataDir, context.packageName)
+    }
+
+    /**
+     * A running-process entry — pid + full process name — mirrored
+     * from `ActivityManager.RunningAppProcessInfo` so the pid lookup
+     * stays JVM-testable.
+     */
+    data class ProcessEntry(val pid: Int, val processName: String)
+
+    /**
+     * The pid of the live `:incognito` sibling process, or null when
+     * it isn't running.
+     */
+    fun liveIncognitoPid(
+        packageName: String,
+        processes: Collection<ProcessEntry>
+    ): Int? = processes
+        .firstOrNull { isIncognitoProcess(packageName, it.processName) }
+        ?.pid
+
+    /**
+     * INCOG02 — panic wipe of a live incognito session, called from
+     * the MAIN process: the panic TRIGGER intent only reaches
+     * MainActivity, so a running `:incognito` browser never sees it
+     * and would keep its window — plus whatever WebView state already
+     * hit disk. Kill the sibling process outright, then delete its
+     * partition directories. [wipeSession] must NOT run here: inside
+     * the main process it would clear the MAIN profile.
+     *
+     * Returns the directory-wipe result; the kill is best-effort (the
+     * sibling may not exist, and [kill] is injectable for tests).
+     */
+    fun panicWipe(
+        context: Context,
+        kill: (Int) -> Unit = Process::killProcess
+    ): Boolean {
+        val activityManager =
+            context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val processes = activityManager?.runningAppProcesses.orEmpty()
+            .map { ProcessEntry(it.pid, it.processName) }
+        liveIncognitoPid(context.packageName, processes)?.let(kill)
+        return wipeDirectories(context.dataDir, context.packageName)
     }
 }
