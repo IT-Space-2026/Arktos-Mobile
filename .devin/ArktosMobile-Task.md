@@ -82,7 +82,7 @@ NO SUDO — everything user-local.
 | SEC11 | Download risk warnings (executable ext, MIME mismatch) — details below | done | 0 | DownloadRisk policy (executable/scriptable ext + MIME-vs-name disguise flags) gates enqueueRequest behind a warning dialog that can't be disabled; DownloadRiskTest 15/15, assembleScMainDebug + engine-audit PASS |
 | SEC12 | IDN/homograph punycode warning in URL bar — details below | done | 0 | Rust idn.rs (idna =1.1.0, UTS-46) exports idnDisplay→{isIdn,asciiUrl}; SearchBoxModel punycodes IDN hosts in URL/DOMAIN/loading display behind showPunycodeEnabled (default on) + Privacy→Security switch; display-only — cargo 141/141, IdnDisplayTest 9/9 (325 total 0 fail), assembleScMainDebug + engine-audit PASS |
 | SEC13 | Referrer-trim privacy toggle — details below | done | 0 | ReferrerPolicy (DEFAULT/SAME_ORIGIN/STRIP; origin = scheme+host+port w/ default ports; fragment-only navs untouched) + referrerMode pref + 3-way picker in Privacy→Security; shouldOverrideUrlLoading vetoes main-frame GETs and re-issues via loadUrl (programmatic loads carry no auto-Referer; POSTs left alone), applied after external-app resolution; stale Referer purged from base headers — ReferrerPolicyTest 10/10 (335 total 0 fail), assembleScMainDebug + engine-audit PASS |
-| SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | pending | 0 | — |
+| SEC14 | CI security gates: dep scan + secret scan + manifest lint — details below | done | 0 | new `security` job: engine-audit + check-manifest-security.py (export/permission allowlists, implicit-export + debuggable lint) + gitleaks 8.30.1 full-history + osv-scanner-action v2.7.0; dependabot.yml covers gradle/cargo/actions; rust/osv-scanner.toml accepts unmaintained basic-toml (build-time askama dep, expires 2027-10) — all gates run locally exit 0, ManifestSecurityTest 4/4 |
 | SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | pending | 0 | — |
 | SEC16 | Reproducible/verified build investigation — details below | pending | 0 | — |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | pending | 0 | — |
@@ -651,6 +651,28 @@ Cargo.lock), secret scan (gitleaks/trufflehog), and an
 exported-component/permission lint step (or reuse
 check-engine-audit.sh as the gate pattern). needs:tool:java only if
 verification builds are run.
+
+Landed: `.github/workflows/android.yml` gained a parallel `security`
+job with four gates — check-engine-audit.sh, the new
+`.devin/check-manifest-security.py` (Python XML lint: exported
+components must match the SEC09 allowlist of MainActivity +
+DownloadCompleteReceiver, intent-filter components must declare
+exported explicitly, uses-permission must match an allowlist, no
+debuggable outside debug sources), a pinned gitleaks 8.30.1 binary
+doing a full-history scan (official action avoided — it wants a paid
+GITLEAKS_LICENSE on org-owned repos), and google/osv-scanner-action
+v2.7.0 scanning the tree. `.github/dependabot.yml` adds weekly
+gradle/cargo/github-actions update+alert coverage (Groovy
+build.gradle isn't OSV-parseable, so Gradle vulns come via
+Dependabot alerts; Cargo.lock is covered by osv-scanner directly).
+`rust/osv-scanner.toml` accepts RUSTSEC-2026-0374 (basic-toml
+unmaintained; build-time-only transitive of askama_derive, never
+linked into libarktos.so) with ignoreUntil 2027-10-20.
+`ManifestSecurityTest` mirrors the allowlists in the JVM suite.
+Verified locally: lint PASS on real manifest + FAIL on synthetic
+rogue manifest, gitleaks history scan exit 0, osv-scanner exit 0
+after documented acceptance, `testScMainDebugUnitTest --tests
+ManifestSecurityTest` 4/4.
 
 ### SEC15
 Encrypted store at rest: arktos.db is plaintext SQLite today — anyone

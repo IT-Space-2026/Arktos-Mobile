@@ -1,0 +1,17 @@
+# Dependabot — SEC14 dependency vulnerability gate (GitHub side).
+# Feeds the repo's dependency graph + security alerts; the in-CI gate
+# is the osv-scanner step in .github/workflows/android.yml.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/rust"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
