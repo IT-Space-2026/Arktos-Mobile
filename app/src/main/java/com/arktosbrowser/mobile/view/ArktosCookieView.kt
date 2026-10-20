@@ -458,7 +458,7 @@ class ArktosCookieView(
      * This method is used to toggle the user agent between desktop and the current preference of
      * the user.
      */
-    fun toggleDesktopUA() {
+    override fun toggleDesktopUA() {
         if (!toggleDesktop) {
             webView?.settings?.userAgentString = DESKTOP_USER_AGENT
         } else {

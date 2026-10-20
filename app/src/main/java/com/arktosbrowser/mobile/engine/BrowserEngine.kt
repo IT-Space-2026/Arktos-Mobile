@@ -371,6 +371,13 @@ interface Page {
     fun loadDownloadsPage()
     fun loadHistoryPage()
 
+    /**
+     * Toggle this page between the desktop and configured mobile user
+     * agent. Per-page: WebView flips `settings.userAgentString`,
+     * GeckoView sets the session's `Settings.userAgentOverride`.
+     */
+    fun toggleDesktopUA()
+
     /** Start a find-in-page session; backends without it return a no-op result. */
     fun find(text: String): FindResults
 
