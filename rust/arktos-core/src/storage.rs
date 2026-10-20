@@ -99,6 +99,10 @@ pub struct StoreJavaScriptEntry {
     pub run_at: Option<String>,
     /// `@noframes` — true when the script must not run in subframes.
     pub no_frames: bool,
+    /// Comma-joined `@connect` domains allowed for `GM_xmlhttpRequest`
+    /// (SEC06). `None` for rows written before the column existed —
+    /// treated as "no @connect" (same-origin only).
+    pub connects: Option<String>,
 }
 
 /// Ad-block filter-list subscription row (LIST01). `id` is the fetch
@@ -192,7 +196,8 @@ impl ArktosStore {
                 code TEXT,
                 requirements TEXT,
                 run_at TEXT,
-                no_frames INTEGER
+                no_frames INTEGER,
+                connects TEXT
             );
             CREATE TABLE IF NOT EXISTS gm_value(
                 script TEXT NOT NULL,
@@ -214,7 +219,7 @@ impl ArktosStore {
         )?;
         // Databases created before run_at existed: the CREATE above
         // no-ops, so add the column if it isn't there.
-        for column in ["run_at TEXT", "no_frames INTEGER"] {
+        for column in ["run_at TEXT", "no_frames INTEGER", "connects TEXT"] {
             let name = column.split(' ').next().unwrap_or_default();
             if conn
                 .prepare(&format!("SELECT {name} FROM javascript LIMIT 0"))
@@ -670,7 +675,7 @@ impl ArktosStore {
         let search = format!("%{query}%");
         let mut stmt = conn.prepare(
             "SELECT name, namespace, author, version, include, exclude, time,
-                    permissions, code, requirements, run_at, no_frames
+                    permissions, code, requirements, run_at, no_frames, connects
              FROM javascript WHERE name LIKE ?1
              ORDER BY id DESC LIMIT 5",
         )?;
@@ -685,7 +690,7 @@ impl ArktosStore {
         let conn = self.db()?;
         let mut stmt = conn.prepare(
             "SELECT name, namespace, author, version, include, exclude, time,
-                    permissions, code, requirements, run_at, no_frames
+                    permissions, code, requirements, run_at, no_frames, connects
              FROM javascript ORDER BY id DESC LIMIT 100",
         )?;
         let rows = stmt.query_map([], row_to_javascript)?;
@@ -712,8 +717,8 @@ impl ArktosStore {
         conn.execute(
             "INSERT INTO javascript(name, namespace, author, version, include,
                                     exclude, time, permissions, code, requirements,
-                                    run_at, no_frames)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                                    run_at, no_frames, connects)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 entry.name,
                 entry.namespace,
@@ -727,6 +732,7 @@ impl ArktosStore {
                 entry.requirements,
                 entry.run_at,
                 entry.no_frames,
+                entry.connects,
             ],
         )?;
         Ok(true)
@@ -930,6 +936,7 @@ fn row_to_javascript(
         requirements: r.get(9)?,
         run_at: r.get(10)?,
         no_frames: r.get::<_, Option<i64>>(11)?.unwrap_or(0) != 0,
+        connects: r.get(12)?,
     })
 }
 
@@ -1253,6 +1260,7 @@ mod tests {
             requirements: Some("lib.js".into()),
             run_at: Some("document-end".into()),
             no_frames: false,
+            connects: Some("api.example.com,*".into()),
         };
         assert!(s.add_javascript_if_not_exists(entry.clone()).unwrap());
         assert!(!s.add_javascript_if_not_exists(entry.clone()).unwrap());
@@ -1263,6 +1271,7 @@ mod tests {
         assert_eq!(found[0].author.as_deref(), Some("me"));
         assert_eq!(found[0].code, "console.log(1)");
         assert_eq!(found[0].exclude, None);
+        assert_eq!(found[0].connects.as_deref(), Some("api.example.com,*"));
 
         s.delete_javascript_entry("script".into()).unwrap();
         assert_eq!(s.javascript_count().unwrap(), 0);

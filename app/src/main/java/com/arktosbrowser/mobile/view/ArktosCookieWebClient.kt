@@ -399,8 +399,9 @@ class ArktosCookieWebClient(
             .joinToString(",")
         val reqs = meta.requires.joinToString(",")
         val grants = meta.grants.joinToString(",")
+        val conns = meta.connects.joinToString(",")
 
-        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, meta.namespace ?: "", meta.version, meta.author, inc, exc, "", grants, meta.code, reqs, meta.runAt, meta.noFrames))
+        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, meta.namespace ?: "", meta.version, meta.author, inc, exc, "", grants, meta.code, reqs, meta.runAt, meta.noFrames, conns))
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {

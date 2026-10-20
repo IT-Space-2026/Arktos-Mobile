@@ -52,7 +52,8 @@ internal fun JavaScriptEntry.toStoreEntry() = StoreJavaScriptEntry(
     code = code,
     requirements = requirements,
     runAt = runAt,
-    noFrames = noFrames
+    noFrames = noFrames,
+    connects = connects
 )
 
 internal fun StoreJavaScriptEntry.toJavaScriptEntry() = JavaScriptEntry(
@@ -67,5 +68,6 @@ internal fun StoreJavaScriptEntry.toJavaScriptEntry() = JavaScriptEntry(
     code = code,
     requirements = requirements,
     runAt = runAt,
-    noFrames = noFrames
+    noFrames = noFrames,
+    connects = connects
 )

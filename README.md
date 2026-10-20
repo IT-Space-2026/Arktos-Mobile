@@ -61,9 +61,12 @@ SmartCookieWeb#314).
   origin on top of the global switches
 - Userscript support — Greasemonkey-style `.user.js` scripts install
   from a page prompt and inject at document-start via WebViewCompat,
-  with `@include`/`@exclude`/`@run-at`/`@require` honoured and a GM
-  bridge (`GM_xmlhttpRequest`, `GM_setValue`, …) persisted in the Rust
-  store; scripts can be removed under Extensions settings
+  with `@include`/`@exclude`/`@run-at`/`@require`/`@connect` honoured
+  and a GM bridge (`GM_xmlhttpRequest`, `GM_setValue`, …) persisted in
+  the Rust store; `GM_xmlhttpRequest` is restricted to each script's
+  declared `@connect` domains (same-origin only without them) and
+  bridge calls are checked against the script's include rules; scripts
+  can be removed under Extensions settings
 - Desktop-parity site shield — a shield button ahead of the URL bar
   opens a per-site privacy panel (ad-block, JavaScript, cookies,
   SafeSearch), and the padlock tint reflects the site's verdict
