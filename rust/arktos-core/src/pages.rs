@@ -149,6 +149,50 @@ pub fn build_block_page(
     )
 }
 
+/// SEC04 — the HTTPS-only warning interstitial, served when strict
+/// mode blocks a cleartext `http://` navigation. Three choices:
+/// [https_label] (primary) upgrades to [https_url], [go_back_label]
+/// returns to the previous page, and [proceed_label] (danger)
+/// navigates to [proceed_url]. The caller points `proceed_url` at a
+/// consent marker — not the raw cleartext URL — so continuing over
+/// plain HTTP is always an explicit decision.
+#[uniffi::export]
+pub fn build_https_warning_page(
+    color: String,
+    title: String,
+    error: String,
+    blocked_url: String,
+    hint: String,
+    https_label: String,
+    https_url: String,
+    proceed_label: String,
+    proceed_url: String,
+    go_back_label: String,
+) -> String {
+    let https_button = format!(
+        "<button onclick=\"location.href = '{https_url}';\" id=\"https-button\" class=\"primary\">{https_label}</button>"
+    );
+    let go_back_button = format!(
+        "<button onclick=\"window.history.back();\" id=\"back-button\">{go_back_label}</button>"
+    );
+    let proceed_button = format!(
+        "<button onclick=\"location.href = '{proceed_url}';\" id=\"proceed-button\" class=\"danger\">{proceed_label}</button>"
+    );
+
+    format!(
+        "<html{}><head>\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
+         <title>{title}</title><style>{PAGE_STYLE}</style></head><body>\
+         <div id=\"box\"><div id=\"header\">\
+         <img src=\"{}\" alt=\"Arktos\"><h1>{title}</h1></h1><p></p></div>\
+         <div id=\"content\"><h2>{error}</h2><ul><li>{blocked_url}</li><li>{hint}</li></ul>\
+         <div id=\"buttons\">{https_button}{go_back_button}{proceed_button}</div></div></div>\
+         </body></html>{color}",
+        html_class(&color),
+        arktos_logo()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,5 +301,53 @@ mod tests {
         );
         assert!(!html.contains("location.href"));
         assert!(html.contains(">G</button>"));
+    }
+
+    #[test]
+    fn https_warning_page_offers_upgrade_back_and_proceed() {
+        let html = build_https_warning_page(
+            "".into(),
+            "This site doesn't use HTTPS".into(),
+            "NET::ERR_CLEARTEXT_NOT_PERMITTED".into(),
+            "http://example.com/a?b=1".into(),
+            "Anyone on the network can see this page.".into(),
+            "Load over HTTPS".into(),
+            "https://example.com/a?b=1".into(),
+            "Proceed anyway".into(),
+            "arktos://insecure-allow?u=http%3A%2F%2Fexample.com%2Fa%3Fb%3D1".into(),
+            "Go back".into(),
+        );
+        // The upgrade button is the recommended (primary) action and
+        // preserves path + query.
+        assert!(html.contains(
+            "<button onclick=\"location.href = 'https://example.com/a?b=1';\" \
+             id=\"https-button\" class=\"primary\">Load over HTTPS</button>"
+        ));
+        // Proceeding routes through the consent marker, never straight
+        // to the cleartext URL.
+        assert!(html.contains(
+            "location.href = 'arktos://insecure-allow?u=http%3A%2F%2Fexample.com%2Fa%3Fb%3D1';"
+        ));
+        assert!(!html.contains("location.href = 'http://example.com"));
+        assert!(html.contains("window.history.back();"));
+        assert!(html.contains("class=\"danger\">Proceed anyway</button>"));
+        assert!(html.contains("<li>http://example.com/a?b=1</li>"));
+        assert!(html.contains("NET::ERR_CLEARTEXT_NOT_PERMITTED"));
+        assert!(html.contains("data:image/webp;base64,"));
+    }
+
+    #[test]
+    fn https_warning_page_dark_class_from_color() {
+        let dark = build_https_warning_page(
+            "<style>x</style>".into(), "t".into(), "e".into(), "u".into(), "h".into(),
+            "L".into(), "https://x/".into(), "P".into(), "p".into(), "G".into(),
+        );
+        assert!(dark.starts_with("<html class=\"arktos-dark\">"));
+        assert!(dark.ends_with("<style>x</style>"));
+        let light = build_https_warning_page(
+            "".into(), "t".into(), "e".into(), "u".into(), "h".into(),
+            "L".into(), "https://x/".into(), "P".into(), "p".into(), "G".into(),
+        );
+        assert!(light.starts_with("<html>"));
     }
 }

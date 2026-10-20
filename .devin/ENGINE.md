@@ -24,7 +24,7 @@ definition. A future refactor splits each into a neutral core + thin
 WebView adapter:
 
 - `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieView.kt` — tab object, WebView lifecycle, settings apply.
-- `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock seam), errors, downloads; error/interstitial pages emitted via `loadDataWithBaseURL` (upstream `SmartCookieKT.kt` folded in).
+- `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieWebClient.kt` — WebViewClient: interception (`shouldInterceptRequest` → adblock/malware/siteblock/offline/HTTPS-only seam), errors, downloads; error/interstitial pages emitted via `loadDataWithBaseURL` (upstream `SmartCookieKT.kt` folded in); SEC04 HTTPS-only warning interstitial + proceed-marker consent handled here (decision logic in engine-neutral `network/HttpsOnlyGate.kt`).
 - `app/src/main/java/com/arktosbrowser/mobile/view/ArktosCookieChromeClient.kt` — WebChromeClient: JS dialogs, file chooser, permissions, fullscreen.
 - `app/src/main/java/com/arktosbrowser/mobile/view/TabInitializer.kt` — per-tab init.
 - `app/src/main/java/com/arktosbrowser/mobile/view/NewWindowTransport.kt` — `onCreateWindow` transport-message deliverability check.

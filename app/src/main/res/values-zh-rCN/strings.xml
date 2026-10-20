@@ -360,7 +360,6 @@
     <string name="bookmark">书签已添加</string>
     <string name="error_title">哎呀！ &lt;br&gt; 无法载入该站点。</string>
     <string name="error_reload">重新载入</string>
-    <string name="https_title">哎呀！ &lt;br&gt;该站点不支持HTTPS，并且已启用阻止HTTP。</string>
     <string name="malware_title">哎呀！ &lt;br&gt;该网站似乎是恶意的。</string>
     <string name="malware_message">如果是错误，请联系 github.com/IT-Space-2026/Arktos-Mobile/issues。</string>
     <string name="blocked_title">哎呀！ &lt;br&gt;该站点已在设置中被阻止。</string>

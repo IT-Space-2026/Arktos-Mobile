@@ -351,7 +351,6 @@
     <string name="bookmark">Ознака је додата</string>
     <string name="error_title">Ох мрвице! &lt;бр&gt; Није могуће учитати ту страницу.</string>
     <string name="error_reload">Освежи</string>
-    <string name="https_title">Ох мрвице! &lt;бр&gt; Ова веб локација не подржава ХТТПС и блокира ХТТП.</string>
     <string name="malware_title">Ох мрвице! &lt;бр&gt; Чини се да је та страница злонамјерни софтвер.</string>
     <string name="malware_message">Ако је грешка, контактирајте суппорт@цоокиегамес.цо.ук.</string>
     <string name="blocked_title">Ох мрвице! &lt;бр&gt; Ова веб локација је блокирана у подешавањима.</string>

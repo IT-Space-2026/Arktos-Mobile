@@ -363,7 +363,6 @@
     <string name="bookmark">Закладка добавлена</string>
     <string name="error_title">О, нет! &lt;br&gt; Этот сайт не может быть загружен.</string>
     <string name="error_reload">Обновить</string>
-    <string name="https_title">О нет! &lt;br&gt; Этот сайт не поддерживает HTTPS и блокирует HTTP.</string>
     <string name="malware_title">О, крошки! &lt;br&gt; Этот сайт выглядит как вредоносный.</string>
     <string name="malware_message">Свяжитесь через github.com/IT-Space-2026/Arktos-Mobile/issues, если это ошибка.</string>
     <string name="blocked_title">О нет! &lt;br&gt; Этот сайт был заблокирован в настройках.</string>

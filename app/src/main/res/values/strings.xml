@@ -472,7 +472,9 @@
     <string name="error_page_hint">Check the address or your connection, then try again.</string>
     <string name="page_blocked_hint">This page was blocked for your protection.</string>
 
-    <string name="https_title">Oh crumbs! &lt;br&gt; That site doesn\'t support HTTPS and block HTTP is enabled.</string>
+    <string name="https_only_title">This site doesn\'t use HTTPS</string>
+    <string name="https_only_hint">Anyone on the network can see or change what you send to this site.</string>
+    <string name="https_only_upgrade">Load over HTTPS</string>
 
     <string name="malware_title">Oh crumbs! &lt;br&gt; That site appears to be malware.</string>
     <string name="malware_message">Contact github.com/IT-Space-2026/Arktos-Mobile/issues if this is a mistake.</string>

@@ -214,7 +214,7 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - Custom navbar colour
 - 'Force Zoom' option
 - 'Inject JavaScript' option
-- 'Force HTTPS' option
+- 'Force HTTPS' option (HTTPS-only mode: warns before loading cleartext sites)
 - 'Block mixed content' option (on by default; always on in incognito)
 - 'Always incognito' option
 - Cookie dialog blocker

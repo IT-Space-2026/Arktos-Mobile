@@ -378,7 +378,6 @@
     <string name="error_title">הו פירורים! &lt;br&gt; אתר זה לא ניתן לטעון.</string>
     <string name="error_reload">טען מחדש</string>
 
-    <string name="https_title">הו פירורים! &lt;br&gt; אתר זה אינו תומך ב- HTTPS וחסימה של HTTP מופעלת.</string>
 
     <string name="malware_title">הו פירורים! &lt;br&gt; נראה כי אתר זה הוא תוכנה זדונית.</string>
     <string name="malware_message">צור קשר עם github.com/IT-Space-2026/Arktos-Mobile/issues אם זו טעות.</string>
