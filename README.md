@@ -24,7 +24,21 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 
 - To get started with this project, import it into Android Studio or build from the command line with Gradle:
 
- `gradlew assembleDebug` or `./gradlew assembleDebug`
+ `./gradlew assembleScMainWebviewDebug` (Android WebView build) or
+ `./gradlew assembleScMainGeckoDebug` (GeckoView build).
+ `assembleDebug` builds every flavor combination.
+
+- **Engine flavors** (`engine` dimension, on top of the `capabilities`
+  channel dimension): `webview` ships the system WebView backend as
+  **Arktos Mobile Lite** (`com.arktosbrowser.mobile`); `gecko` ships the
+  GeckoView backend as **Arktos Mobile**
+  (`com.arktosbrowser.mobile.full`), so both can be installed side by
+  side. The backend is selected at build time by the flavor-scoped
+  `engine/EngineSelector.kt`; the shared UI shell talks only to the
+  neutral `Page`/`Profile`/`Backend` seam in `engine/BrowserEngine.kt`.
+  The gecko build is a skeleton — favicons, downloads, printing,
+  userscripts and the permission/cert-error UX are stubbed and tracked
+  in `.devin/ENGINE.md`.
 
 - The build cross-compiles the Rust core (`rust/arktos-core` →
   `libarktos.so`, consumed through UniFFI-generated Kotlin bindings).
@@ -36,6 +50,19 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 - Toolchain versions, dependency-verification setup and the unsigned
   release recipe for reproducible/F-Droid-style builds are documented
   in [REPRODUCIBLE.md](REPRODUCIBLE.md).
+
+### Gecko build size: AAB vs per-ABI APK
+
+GeckoView's `libxul.so` is ~60MB+ per ABI — a universal gecko APK lands
+~230MB (measured: 231MB debug, arm64-only). The `gecko` release scope
+is therefore **arm64-v8a only** (`ndk.abiFilters` on the flavor);
+armeabi-v7a and x86 devices should install the Lite flavor, which stays
+WebView-sized (~13MB per-device download, ~24MB universal release).
+An **AAB** (`bundleScMainGeckoRelease`) is the preferred distribution —
+bundletool/Play splits serve each device only its matching ABI slice —
+while a **per-ABI APK** works for direct downloads but must be
+published per supported ABI. A universal gecko APK is intentionally not
+produced.
 
 Signed APKs are published on the [Releases
 page](https://github.com/IT-Space-2026/Arktos-Mobile/releases). The

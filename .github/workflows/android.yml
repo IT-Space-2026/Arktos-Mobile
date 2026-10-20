@@ -46,15 +46,19 @@ jobs:
         "$SDKMANAGER" --install "ndk;$NDK_VERSION"
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Build scMain debug APK
-      run: ./gradlew assembleScMainDebug
+    # ENG03 — the engine dimension splits variants; build both to keep
+    # the gecko backend compiling, test the webview (Lite) variant.
+    - name: Build scMain WebView (Lite) debug APK
+      run: ./gradlew assembleScMainWebviewDebug
+    - name: Build scMain Gecko debug APK
+      run: ./gradlew assembleScMainGeckoDebug
     - name: Unit Test
-      run: ./gradlew testScMainDebugUnitTest
+      run: ./gradlew testScMainWebviewDebugUnitTest
     - name: Upload APK
       uses: actions/upload-artifact@v7
       with:
         name: app
-        path: app/build/outputs/apk/scMain/debug/*.apk
+        path: app/build/outputs/apk/scMainWebview/debug/*.apk
 
   security:
     name: Security gates

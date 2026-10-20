@@ -5,22 +5,28 @@ for a possible selectable-engine effort: the Android UI shell stays;
 the web engine underneath could become selectable per tab —
 **Android WebView today, Servo as a future candidate.**
 
-**The seam is live (ENG02).**
+**The seam is live (ENG02) and now carries two backends (ENG03).**
 `app/src/main/java/com/arktosbrowser/mobile/engine/BrowserEngine.kt`
 is the real boundary — `Backend` / `Profile` / `Page` plus neutral
 value types — and `engine/Engines.kt` is the process-wide registry.
-`BrowserApp` installs the WebView adapter at startup; every
-engine-neutral caller reaches engine services through `Engines.backend`
-/ `Engines.defaultProfile` / `Page` instead of `android.webkit` types.
-The adapter below is the only place the platform webview API may be
-referenced.
+`BrowserApp` installs whichever backend the build's `engine` flavor
+dimension selects through `engine/EngineSelector.kt` (one copy per
+flavor: `app/src/webview/` installs `WebViewEngine`, `app/src/gecko/`
+installs `GeckoEngine`); every engine-neutral caller reaches engine
+services through `Engines.backend` / `Engines.defaultProfile` / `Page`
+instead of `android.webkit` types. The tab shell (`TabsManager`,
+`BrowserPresenter`, `BrowserActivity`, the tabs views) is typed on
+`Page` — the interface carries the whole tab surface
+(foreground/new-tab flags, SSL state, timers, `toggleDesktopUA`,
+`find`, print) so a backend can stub what it lacks.
 
 ## Backends
 
 | # | Engine | Status |
 |---|--------|--------|
-| 0 | Android WebView | the only backend; adapter in `view/` implements `Backend`/`Profile`/`Page` |
-| 1 | Servo | not started — desktop ENG03 spike verdicts carried below; Android embedding viability is a separate open question (EGL surface, NDK lifecycle, no WebView-compat API) |
+| 0 | Android WebView | shipping adapter in `view/` implements `Backend`/`Profile`/`Page`; the `webview` flavor = "Arktos Mobile Lite" |
+| 1 | GeckoView | ENG03 skeleton in `app/src/gecko/java/.../gecko/` (below); the `gecko` flavor = "Arktos Mobile", arm64-v8a release scope |
+| 2 | Servo | not started — desktop ENG03 spike verdicts carried below; Android embedding viability is a separate open question (EGL surface, NDK lifecycle, no WebView-compat API) |
 
 ## Adapter boundary (where WebView types are allowed to live)
 
@@ -62,6 +68,38 @@ Everything else in `app/src/main` is engine-neutral: `browser/`
 talk to `Page`/`Profile`/`Backend` and the neutral `UrlUtils` helpers
 (`isFileUrl`, `isAboutUrl`, `isValidUrl`, `fileExtensionFromUrl`) — no
 `android.webkit`/`androidx.webkit` imports anywhere outside `view/`.
+
+## Gecko adapter (`app/src/gecko/java/com/arktosbrowser/mobile/gecko/`)
+
+Compiled only into `gecko`-flavor variants; imports
+`org.mozilla.geckoview.*`, never `android.webkit` (the audit still
+applies — WebKit types stay banned here).
+
+- `gecko/GeckoEngine.kt` — `Backend`: owns the process-wide
+  `GeckoRuntime` (remote debugging in debug builds; the `:incognito`
+  process gets private-mode sessions), `systemUserAgent`,
+  `defaultProfile`/`createProfile` (contextId partitioning),
+  `createPage`, `createView`, `engineNote` (GeckoView milestone).
+- `gecko/GeckoProfile.kt` — `Profile`: storage partition over
+  `GeckoSessionSettings.contextId` + `StorageController.clearData`;
+  `requestPolicy` is consumed by the page's navigation delegate.
+  Cookie get/set is a documented gap — GeckoView has no
+  CookieManager-style imperative API.
+- `gecko/GeckoPage.kt` — `Page`: a `GeckoSession` + lazily created
+  `GeckoView`; navigation/progress/content/history delegates emit the
+  neutral `Page` signals (url/title/progress/load-status/security);
+  supports load/loadData, back/forward, `gotoHistoryIndex`, find
+  (`SessionFinder`), `userAgentMode` for `toggleDesktopUA`, private
+  mode, session-state save/restore.
+  Stubs (ENG04/ENG05): favicons, `SslCertificate`/`SslState.Invalid`,
+  download handoff, JS eval + userscripts (move to WebExtensions),
+  printing, context-menu/permission/cert-error UX, proxy.
+- `engine/EngineSelector.kt` (in `src/gecko` and `src/webview`) —
+  flavor seam; `BrowserApp` calls `EngineSelector.createBackend(app)`
+  so `main` never names a flavor type.
+- `app/src/test/java/com/arktosbrowser/mobile/engine/EngineContractTest.kt`
+  — seam-purity test; its `android.webkit` literal is the forbidden
+  prefix it scans for, not a real WebView dependency.
 
 <!-- engine-audit-whitelist
 app/src/main/java/com/arktosbrowser/mobile/view/

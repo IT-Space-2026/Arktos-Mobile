@@ -63,7 +63,10 @@ class ManifestSecurityTest {
 
     private fun Element.resolvedName(): String {
         val raw = getAttributeNS(androidNs, "name")
-        val pkg = manifest.getAttribute("package").ifEmpty { BuildConfig.APPLICATION_ID }
+        // Component class names live in the fixed source package —
+        // BuildConfig.APPLICATION_ID varies per flavor (".full",
+        // ".beta" suffixes) and must not be used here (ENG03).
+        val pkg = manifest.getAttribute("package").ifEmpty { "com.arktosbrowser.mobile" }
         return when {
             raw.startsWith(".") -> pkg + raw
             "." !in raw -> "$pkg.$raw"
