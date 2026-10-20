@@ -222,5 +222,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Force HTTPS' option (HTTPS-only mode: warns before loading cleartext sites)
 - 'Block mixed content' option (on by default; always on in incognito)
 - 'Secure windows' option (blocks screenshots/recents thumbnails; always on in incognito)
+- Tapjacking protection on sensitive dialogs (locks, credentials, proxy, download confirm)
 - 'Always incognito' option
 - Cookie dialog blocker

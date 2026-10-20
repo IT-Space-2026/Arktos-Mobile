@@ -25,6 +25,7 @@ import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
+import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -332,7 +333,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         // PORT02 — the stored value is an argon2id hash now, so the
         // field can't be prefilled; an empty submission keeps the
         // existing credential and method.
-        BrowserDialog.showCustomDialog(activity) {
+        BrowserDialog.showCustomDialog(activity, TapjackingGuard.Surface.CREDENTIAL_SET) {
             setTitle(if (pin) R.string.set_pin else R.string.enter_password)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
@@ -458,7 +459,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         eProxyHost.text = userPreferences.proxyHost
         eProxyPort.text = userPreferences.proxyPort.toString()
 
-        BrowserDialog.showCustomDialog(activity) {
+        BrowserDialog.showCustomDialog(activity, TapjackingGuard.Surface.PROXY_HOST) {
             setTitle(R.string.manual_proxy)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
