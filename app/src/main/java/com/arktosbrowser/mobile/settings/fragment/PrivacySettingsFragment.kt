@@ -31,6 +31,7 @@ import com.arktosbrowser.mobile.utils.WebUtils
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import java.io.File
 import javax.inject.Inject
 
@@ -124,10 +125,10 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 onClick = ::showPasswordPicker
         )
 
-        clickablePreference(preference = SETTINGS_CLEARCACHE, onClick = this::clearCache)
+        clickablePreference(preference = SETTINGS_CLEARCACHE, onClick = this::clearCacheDialog)
         clickablePreference(preference = SETTINGS_CLEARHISTORY, onClick = this::clearHistoryDialog)
         clickablePreference(preference = SETTINGS_CLEARCOOKIES, onClick = this::clearCookiesDialog)
-        clickablePreference(preference = SETTINGS_CLEARWEBSTORAGE, onClick = this::clearWebStorage)
+        clickablePreference(preference = SETTINGS_CLEARWEBSTORAGE, onClick = this::clearWebStorageDialog)
 
         switchPreference(
             preference = SETTINGS_LOCATION,
@@ -323,7 +324,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     private fun updateProxyChoice(choice: ProxyChoice, activity: Activity, summaryUpdater: SummaryUpdater) {
         val sanitizedChoice = ProxyUtils.sanitizeProxyChoice(choice, activity)
         if (sanitizedChoice == ProxyChoice.MANUAL) {
+            // Only commit MANUAL once a valid host:port is confirmed —
+            // upstream saved the choice on radio click, so canceling the
+            // detail dialog left the browser proxying through whatever
+            // stale values happened to be stored.
             showManualProxyPicker(activity, summaryUpdater)
+            return
         }
 
         userPreferences.proxyChoice = sanitizedChoice
@@ -335,12 +341,6 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         val eProxyHost = v.findViewById<TextView>(R.id.proxyHost)
         val eProxyPort = v.findViewById<TextView>(R.id.proxyPort)
 
-        // Limit the number of characters since the port needs to be of type int
-        // Use input filters to limit the EditText length and determine the max
-        // length by using length of integer MAX_VALUE
-        val maxCharacters = Integer.MAX_VALUE.toString().length
-        eProxyPort.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(maxCharacters - 1))
-
         eProxyHost.text = userPreferences.proxyHost
         eProxyPort.text = userPreferences.proxyPort.toString()
 
@@ -348,17 +348,17 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
             setTitle(R.string.manual_proxy)
             setView(v)
             setPositiveButton(R.string.action_ok) { _, _ ->
-                val proxyHost = eProxyHost.text.toString()
-                val proxyPort = try {
-                    // Try/Catch in case the user types an empty string or a number
-                    // larger than max integer
-                    Integer.parseInt(eProxyPort.text.toString())
-                } catch (ignored: NumberFormatException) {
-                    userPreferences.proxyPort
+                val proxyHost = eProxyHost.text.toString().trim()
+                val proxyPort = eProxyPort.text.toString().toIntOrNull()
+
+                if (proxyHost.isBlank() || proxyPort == null || proxyPort !in 1..65535) {
+                    Toast.makeText(activity, R.string.invalid_proxy, Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
                 }
 
                 userPreferences.proxyHost = proxyHost
                 userPreferences.proxyPort = proxyPort
+                userPreferences.proxyChoice = ProxyChoice.MANUAL
                 summaryUpdater.updateSummary("$proxyHost:$proxyPort")
             }
         }
@@ -471,10 +471,16 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 clearHistory()
                     .subscribeOn(databaseScheduler)
                     .observeOn(mainScheduler)
-                    .subscribe {toastMessage?.cancel()
-                        toastMessage = Toast.makeText(activity, R.string.message_clear_history, Toast.LENGTH_LONG)
-                        toastMessage!!.show()
-                    }
+                    .subscribeBy(
+                        onComplete = {
+                            toastMessage?.cancel()
+                            toastMessage = Toast.makeText(activity, R.string.message_clear_history, Toast.LENGTH_LONG)
+                            toastMessage?.show()
+                        },
+                        onError = {
+                            Toast.makeText(activity, R.string.error, Toast.LENGTH_LONG).show()
+                        }
+                    )
             },
             negativeButton = DialogItem(title = R.string.action_no) {},
             onCancel = {}
@@ -490,11 +496,42 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 clearCookies()
                     .subscribeOn(databaseScheduler)
                     .observeOn(mainScheduler)
-                    .subscribe {
-                        toastMessage?.cancel()
-                        toastMessage = Toast.makeText(activity, R.string.message_cookies_cleared, Toast.LENGTH_LONG)
-                        toastMessage!!.show()
-                    }
+                    .subscribeBy(
+                        onComplete = {
+                            toastMessage?.cancel()
+                            toastMessage = Toast.makeText(activity, R.string.message_cookies_cleared, Toast.LENGTH_LONG)
+                            toastMessage?.show()
+                        },
+                        onError = {
+                            Toast.makeText(activity, R.string.error, Toast.LENGTH_LONG).show()
+                        }
+                    )
+            },
+            negativeButton = DialogItem(title = R.string.action_no) {},
+            onCancel = {}
+        )
+    }
+
+    private fun clearCacheDialog() {
+        BrowserDialog.showPositiveNegativeDialog(
+            activity = activity as Activity,
+            title = R.string.clear_cache,
+            message = R.string.clear,
+            positiveButton = DialogItem(title = R.string.action_yes) {
+                clearCache()
+            },
+            negativeButton = DialogItem(title = R.string.action_no) {},
+            onCancel = {}
+        )
+    }
+
+    private fun clearWebStorageDialog() {
+        BrowserDialog.showPositiveNegativeDialog(
+            activity = activity as Activity,
+            title = R.string.clear_web_storage,
+            message = R.string.clear,
+            positiveButton = DialogItem(title = R.string.action_yes) {
+                clearWebStorage()
             },
             negativeButton = DialogItem(title = R.string.action_no) {},
             onCancel = {}
@@ -601,7 +638,6 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"
-        private const val SETTINGS_CLEAR_ALL = "clear_all"
         private const val SETTINGS_PROXY = "proxy"
         private const val SETTINGS_USER_AGENT = "agent"
         private const val SETTINGS_JAVASCRIPT = "cb_javascript"

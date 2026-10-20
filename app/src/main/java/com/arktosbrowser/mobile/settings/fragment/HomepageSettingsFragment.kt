@@ -21,9 +21,9 @@ import javax.inject.Inject
 
 class HomepageSettingsFragment : AbstractSettingsFragment() {
 
-    private lateinit var themeOptions: Array<String>
-
     @Inject internal lateinit var userPreferences: UserPreferences
+
+    private var homepageTypePreference: androidx.preference.Preference? = null
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preference_homepage)
@@ -43,7 +43,7 @@ class HomepageSettingsFragment : AbstractSettingsFragment() {
                 summary = homePageUrlToDisplayTitle(userPreferences.homepage),
                 onClick = ::showHomePageDialog
         )
-        clickableDynamicPreference(
+        homepageTypePreference = clickableDynamicPreference(
                 preference = SETTINGS_HOMEPAGE_TYPE,
                 isEnabled = userPreferences.homepage == SCHEME_HOMEPAGE,
                 summary = homePageTypeToDisplayTitle(userPreferences.homepageType),
@@ -115,6 +115,11 @@ class HomepageSettingsFragment : AbstractSettingsFragment() {
                         showCustomHomePagePicker(summaryUpdater)
                     }
                 }
+                // The type picker is only meaningful for the built-in
+                // start page; reflect the new choice immediately instead
+                // of waiting for the next screen visit.
+                homepageTypePreference?.isEnabled =
+                    userPreferences.homepage == SCHEME_HOMEPAGE
             }
             setPositiveButton(resources.getString(R.string.action_ok), null)
         }
@@ -141,7 +146,8 @@ class HomepageSettingsFragment : AbstractSettingsFragment() {
                     userPreferences.homepage = "https://" + url
                     summaryUpdater.updateSummary("https://" + url)
                 }
-
+                homepageTypePreference?.isEnabled =
+                    userPreferences.homepage == SCHEME_HOMEPAGE
             }
         }
     }
