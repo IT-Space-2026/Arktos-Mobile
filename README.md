@@ -255,13 +255,13 @@ Arktos Mobile can optionally use online services to improve the browser. Informa
 
 ## Known limitations
 
-Arktos Mobile is built on Android WebView, so a few reported issues are platform limits we can't fix in app code — including WebRTC's ability to reveal your real IP, per-site timezone spoofing, background media playback, and DNT/Global-Privacy-Control signals reaching only top-level navigations (the gecko build covers every request). See [LIMITATIONS.md](LIMITATIONS.md) for details and workarounds.
+Arktos Light is built on Android WebView, so a few reported issues are platform limits we can't fix in app code — including WebRTC's ability to reveal your real IP, per-site timezone spoofing, background media playback, and DNT/Global-Privacy-Control signals reaching only top-level navigations (Arktos on GeckoView covers every request). See [LIMITATIONS.md](LIMITATIONS.md) for details and workarounds.
 
 ---
 
 ## Acknowledgements
 
-Arktos Mobile is a fork of [SmartCookieWeb](https://github.com/CookieJarApps/SmartCookieWeb), which is itself a fork of Lightning Browser. Changes since the fork include rebranding, removal of third-party hosted services, and updated dependencies.
+Arktos Mobile is a fork of [SmartCookieWeb](https://github.com/CookieJarApps/SmartCookieWeb), which is itself a fork of Lightning Browser. Changes since the fork include a full rebrand, a Rust core behind UniFFI, a dual-engine split (Arktos on GeckoView, Arktos Light on WebView), an app lock and encrypted backups, incognito hardening, and a modernization sweep that removed every deprecated API family. Dead upstream hosted services were removed; the online services that remain are optional and documented in [ONLINE.md](ONLINE.md).
 
 Upstream feature highlights inherited from SmartCookieWeb:
 
