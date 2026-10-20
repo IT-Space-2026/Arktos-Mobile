@@ -1,6 +1,8 @@
 # Pinned Rust toolchain for libarktos.so (SEC16 — reproducible
 # builds). rustup auto-installs this version + the Android targets
-# when any cargo command runs under rust/. Bump deliberately.
+# when any cargo command runs under rust/ (rustup walks up to find
+# this file), and dtolnay/rust-toolchain in CI auto-detects it at the
+# repository root. Bump deliberately.
 [toolchain]
 channel = "1.99.0"
 profile = "minimal"

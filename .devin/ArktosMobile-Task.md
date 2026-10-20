@@ -720,7 +720,7 @@ for F-Droid inclusion.
 
 Landed (this run): toolchain pinning — `distributionSha256Sum` added to
 gradle-wrapper.properties (official 9.6.0-bin hash from
-gradle.org/release-checksums); `rust/rust-toolchain.toml` pins
+gradle.org/release-checksums); `rust-toolchain.toml` (repo root) pins
 channel 1.99.0 + the three Android targets (rustup auto-installs); new
 `android.ndkVersion '28.2.13676358'` (CI installs exactly that pin now)
 and `buildToolsVersion 37.0.0` wired from the root ext — the ext value

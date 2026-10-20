@@ -19,8 +19,8 @@ jobs:
         distribution: temurin
         java-version: 21
     - name: Install Rust toolchain
-      # No toolchain input: rust/rust-toolchain.toml pins the channel
-      # and the Android targets (SEC16).
+      # No toolchain input: rust-toolchain.toml at the repo root pins
+      # the channel and the Android targets (SEC16).
       uses: dtolnay/rust-toolchain@master
     - name: Install cargo-ndk
       run: cargo install cargo-ndk --version 4.1.2 --locked
@@ -84,8 +84,10 @@ jobs:
     - name: Dependency vulnerability scan (OSV)
       # Covers Cargo.lock directly; Gradle deps are covered by
       # .github/dependabot.yml alerts (Groovy build.gradle is not
-      # an OSV-parseable manifest).
-      uses: google/osv-scanner-action@v2.7.0
+      # an OSV-parseable manifest). The step-level action lives in a
+      # subdirectory — the repo root action.yml has no runs: and only
+      # exists to document the reusable-workflow form.
+      uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
       with:
         scan-args: |-
           --recursive

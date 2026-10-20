@@ -17,7 +17,7 @@ see "Signing" below).
 | build-tools | 37.0.0 | root `build.gradle` ext → `android.buildToolsVersion` |
 | compileSdk | 37.2 | `app/build.gradle` `compileSdk` DSL |
 | Android NDK | 28.2.13676358 | `app/build.gradle` `ndkVersion`; `cargo-ndk` resolves `ndk/<ndkVersion>` first |
-| Rust | 1.99.0 + `aarch64/armv7/x86_64-linux-android` targets | `rust/rust-toolchain.toml` (rustup auto-installs) |
+| Rust | 1.99.0 + `aarch64/armv7/x86_64-linux-android` targets | `rust-toolchain.toml` at repo root (rustup auto-installs) |
 | cargo-ndk | 4.1.2 | installed via `cargo install cargo-ndk --version 4.1.2 --locked` |
 
 ## Dependency verification
