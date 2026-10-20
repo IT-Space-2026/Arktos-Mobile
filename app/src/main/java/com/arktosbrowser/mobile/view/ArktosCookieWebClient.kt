@@ -395,6 +395,17 @@ class ArktosCookieWebClient(
         if(userPreferences.noAmp){
             view.evaluateJavascript(noAMP.provideJs(activity), null)
         }
+
+        // The state decided at page-start can go stale when spurious
+        // navigations fire after the commit — settle it on the URL the
+        // page actually finished with.
+        if (url.startsWith("http")) {
+            sslState = if (!badsslList.contains(url)) {
+                if (URLUtil.isHttpsUrl(url)) SslState.Valid else SslState.None
+            } else {
+                SslState.Invalid(badsslErrors[badsslList.indexOf(url)])
+            }
+        }
     }
 
         fun stringContainsItemFromList(inputStr: String, items: Array<String>): Boolean {
@@ -616,15 +627,23 @@ class ArktosCookieWebClient(
             uiController.tabCloseClicked(0)
         }
 
+        // A cert that failed on a previous visit gets a fresh chance —
+        // a still-failing chain re-adds itself via onReceivedSslError.
+        badsslList.indexOf(url).takeIf { it >= 0 }?.let { idx ->
+            badsslList.removeAt(idx)
+            badsslErrors.removeAt(idx)
+        }
+
         // Only set the SSL state if there isn't an error for the current URL.
-        if (!badsslList.contains(url)) {
-            sslState = if (URLUtil.isHttpsUrl(url)) {
-                SslState.Valid
+        // javascript:/about:/data: navigations (e.g. the force-zoom injection
+        // below) never touch it — they used to flip an https page to "not
+        // secure" until the next reload.
+        if (url.startsWith("http")) {
+            sslState = if (!badsslList.contains(url)) {
+                if (URLUtil.isHttpsUrl(url)) SslState.Valid else SslState.None
             } else {
-                SslState.None
+                SslState.Invalid(badsslErrors[badsslList.indexOf(url)])
             }
-        } else{
-            sslState = SslState.Invalid(badsslErrors[badsslList.indexOf(url)])
         }
 
         arktosCookieView.titleInfo.setFavicon(null)

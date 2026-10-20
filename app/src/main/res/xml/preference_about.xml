@@ -27,6 +27,7 @@
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/licenses">
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/mpl_license"
             android:title="@string/app_name">
             <intent
@@ -38,6 +39,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/mpl_license"
             android:title="@string/app_lightning">
             <intent
@@ -49,6 +51,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/apache"
             android:title="@string/android_open_source_project">
             <intent
@@ -60,6 +63,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/license_gnu_gpl"
             android:title="@string/adguard_ad_server_list">
             <intent
@@ -71,6 +75,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/license_gnu"
             android:title="@string/library_netcipher">
             <intent
@@ -82,6 +87,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/license_gnu"
             android:title="@string/library_sora_editor">
             <intent
@@ -93,6 +99,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/apache"
             android:title="@string/library_okhttp">
             <intent
@@ -104,6 +111,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/apache"
             android:title="@string/library_i2p_helper">
             <intent
@@ -115,6 +123,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/mpl_or_mit_license"
             android:title="@string/library_uniffi">
             <intent
@@ -126,6 +135,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/apache_mit_license"
             android:title="@string/library_rust_crates">
             <intent
@@ -137,6 +147,7 @@
             </intent>
         </Preference>
         <Preference
+            android:layout="@layout/preference_license"
             android:summary="@string/mit_license"
             android:title="@string/jsoup">
             <intent
