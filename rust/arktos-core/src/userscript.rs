@@ -35,11 +35,23 @@ pub struct UserScriptMeta {
     /// `@description` — parsed upstream but never stored; kept for
     /// future metadata display.
     pub description: Option<String>,
+    /// `@namespace` — script namespace; used with `name` for identity.
+    pub namespace: Option<String>,
     /// Candidate URL regexes from `@include`/`@match`, in order.
     /// Kotlin compile-checks each before persisting.
     pub includes: Vec<String>,
+    /// URL regexes from `@exclude`, in order — a matching URL skips
+    /// the script even when an include matched.
+    pub excludes: Vec<String>,
     /// `@require` URLs, in order.
     pub requires: Vec<String>,
+    /// `@grant` directives (GM API names), in order.
+    pub grants: Vec<String>,
+    /// `@run-at` value verbatim (`document-start`/`document-end`/
+    /// `document-idle`/`context-menu`); `None` = default end.
+    pub run_at: Option<String>,
+    /// `@noframes` seen — script must not run in subframes.
+    pub no_frames: bool,
     /// Script body with the metadata block removed (empty when the
     /// source has no `==UserScript==` block — upstream quirk).
     pub code: String,
@@ -57,11 +69,16 @@ pub fn parse_userscript(source: String) -> UserScriptMeta {
 
     let mut meta = UserScriptMeta {
         name: None,
+        namespace: None,
         version: None,
         author: None,
         description: None,
         includes: Vec::new(),
+        excludes: Vec::new(),
         requires: Vec::new(),
+        grants: Vec::new(),
+        run_at: None,
+        no_frames: false,
         code: strip_metadata_block(&source),
         has_metadata_header: false,
     };
@@ -136,6 +153,8 @@ fn metadata_field(line: &str) -> Option<(&str, Option<&str>)> {
 fn apply_field(meta: &mut UserScriptMeta, field: &str, value: Option<&str>) {
     if field.eq_ignore_ascii_case("name") {
         meta.name = value.map(str::to_owned);
+    } else if field.eq_ignore_ascii_case("namespace") {
+        meta.namespace = value.map(str::to_owned);
     } else if field.eq_ignore_ascii_case("version") {
         meta.version = value.map(str::to_owned);
     } else if field.eq_ignore_ascii_case("author") {
@@ -154,6 +173,18 @@ fn apply_field(meta: &mut UserScriptMeta, field: &str, value: Option<&str>) {
         if let Some(pattern) = match_to_pattern(value) {
             meta.includes.push(pattern);
         }
+    } else if field.eq_ignore_ascii_case("exclude") {
+        if let Some(pattern) = url_to_pattern(value) {
+            meta.excludes.push(pattern);
+        }
+    } else if field.eq_ignore_ascii_case("grant") {
+        if let Some(v) = value {
+            meta.grants.push(v.to_owned());
+        }
+    } else if field.eq_ignore_ascii_case("run-at") {
+        meta.run_at = value.map(str::to_owned);
+    } else if field.eq_ignore_ascii_case("noframes") {
+        meta.no_frames = true;
     }
 }
 

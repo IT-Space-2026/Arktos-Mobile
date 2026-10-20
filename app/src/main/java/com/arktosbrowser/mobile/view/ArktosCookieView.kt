@@ -238,6 +238,9 @@ class ArktosCookieView(
             setNetworkAvailable(true)
             webChromeClient = ArktosCookieChromeClient(activity, this@ArktosCookieView)
             webViewClient = arktosCookieWebClient
+            arktosCookieWebClient.userScriptEngine.register(this) { url ->
+                uiController.handleNewTab(LightningDialogBuilder.NewTab.FOREGROUND, url)
+            }
 
             setDownloadListener(LightningDownloadListener(activity))
             setOnTouchListener(TouchListener())

@@ -108,7 +108,9 @@ class StoreMappingTest {
             time = null,
             permissions = null,
             code = "",
-            requirements = null
+            requirements = null,
+            runAt = null,
+            noFrames = false
         )
         assertTrue(store.toJavaScriptEntry().code.isEmpty())
     }

@@ -14,6 +14,7 @@
 //! stay slash-joined paths so "save into the open folder"
 //! (upstream #308) needs no schema gymnastics.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -93,6 +94,11 @@ pub struct StoreJavaScriptEntry {
     pub permissions: Option<String>,
     pub code: String,
     pub requirements: Option<String>,
+    /// `@run-at` verbatim (`document-start`/`document-end`/`document-idle`);
+    /// `None` for rows written before the column existed.
+    pub run_at: Option<String>,
+    /// `@noframes` — true when the script must not run in subframes.
+    pub no_frames: bool,
 }
 
 /// Ad-block filter-list subscription row (LIST01). `id` is the fetch
@@ -184,7 +190,15 @@ impl ArktosStore {
                 time TEXT,
                 permissions TEXT,
                 code TEXT,
-                requirements TEXT
+                requirements TEXT,
+                run_at TEXT,
+                no_frames INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS gm_value(
+                script TEXT NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                PRIMARY KEY(script, key)
             );
             CREATE TABLE IF NOT EXISTS adblock_subscription(
                 id TEXT PRIMARY KEY,
@@ -196,8 +210,21 @@ impl ArktosStore {
                 host_count INTEGER NOT NULL DEFAULT 0,
                 custom INTEGER NOT NULL DEFAULT 0
             );
-            PRAGMA user_version = 2;",
+            PRAGMA user_version = 3;",
         )?;
+        // Databases created before run_at existed: the CREATE above
+        // no-ops, so add the column if it isn't there.
+        for column in ["run_at TEXT", "no_frames INTEGER"] {
+            let name = column.split(' ').next().unwrap_or_default();
+            if conn
+                .prepare(&format!("SELECT {name} FROM javascript LIMIT 0"))
+                .is_err()
+            {
+                conn.execute_batch(&format!(
+                    "ALTER TABLE javascript ADD COLUMN {column}"
+                ))?;
+            }
+        }
         Ok(())
     }
 
@@ -643,7 +670,7 @@ impl ArktosStore {
         let search = format!("%{query}%");
         let mut stmt = conn.prepare(
             "SELECT name, namespace, author, version, include, exclude, time,
-                    permissions, code, requirements
+                    permissions, code, requirements, run_at, no_frames
              FROM javascript WHERE name LIKE ?1
              ORDER BY id DESC LIMIT 5",
         )?;
@@ -658,7 +685,7 @@ impl ArktosStore {
         let conn = self.db()?;
         let mut stmt = conn.prepare(
             "SELECT name, namespace, author, version, include, exclude, time,
-                    permissions, code, requirements
+                    permissions, code, requirements, run_at, no_frames
              FROM javascript ORDER BY id DESC LIMIT 100",
         )?;
         let rows = stmt.query_map([], row_to_javascript)?;
@@ -684,8 +711,9 @@ impl ArktosStore {
         }
         conn.execute(
             "INSERT INTO javascript(name, namespace, author, version, include,
-                                    exclude, time, permissions, code, requirements)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                                    exclude, time, permissions, code, requirements,
+                                    run_at, no_frames)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
                 entry.name,
                 entry.namespace,
@@ -697,9 +725,74 @@ impl ArktosStore {
                 entry.permissions,
                 entry.code,
                 entry.requirements,
+                entry.run_at,
+                entry.no_frames,
             ],
         )?;
         Ok(true)
+    }
+
+    // ---- GM_* script storage ----
+    // Values are stored as JSON text — the JS side keeps a snapshot
+    // mirror for synchronous `GM_getValue` and posts writes here.
+
+    pub fn gm_set_value(
+        &self,
+        script: String,
+        key: String,
+        value: String,
+    ) -> StoreResult<()> {
+        self.db()?.execute(
+            "INSERT OR REPLACE INTO gm_value(script, key, value)
+             VALUES (?1, ?2, ?3)",
+            params![script, key, value],
+        )?;
+        Ok(())
+    }
+
+    pub fn gm_delete_value(&self, script: String, key: String) -> StoreResult<()> {
+        self.db()?.execute(
+            "DELETE FROM gm_value WHERE script = ?1 AND key = ?2",
+            params![script, key],
+        )?;
+        Ok(())
+    }
+
+    /// Every stored key for a script — loaded once at inject time so
+    /// `GM_getValue` can answer synchronously from the snapshot.
+    pub fn gm_values_for_script(
+        &self,
+        script: String,
+    ) -> StoreResult<HashMap<String, String>> {
+        let conn = self.db()?;
+        let mut stmt = conn
+            .prepare("SELECT key, value FROM gm_value WHERE script = ?1")?;
+        let rows = stmt.query_map(params![script], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?;
+        rows.collect::<Result<HashMap<_, _>, _>>().map_err(Into::into)
+    }
+
+    /// All keys for a script, sorted for a stable `GM_listValues`.
+    pub fn gm_keys_for_script(
+        &self,
+        script: String,
+    ) -> StoreResult<Vec<String>> {
+        let conn = self.db()?;
+        let mut stmt = conn.prepare(
+            "SELECT key FROM gm_value WHERE script = ?1 ORDER BY key",
+        )?;
+        let rows = stmt.query_map(params![script], |r| r.get::<_, String>(0))?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    /// Remove a script's value store — called when it is uninstalled.
+    pub fn gm_delete_script_values(&self, script: String) -> StoreResult<()> {
+        self.db()?.execute(
+            "DELETE FROM gm_value WHERE script = ?1",
+            params![script],
+        )?;
+        Ok(())
     }
 
     pub fn javascript_count(&self) -> StoreResult<u64> {
@@ -835,6 +928,8 @@ fn row_to_javascript(
         permissions: r.get(7)?,
         code: r.get::<_, Option<String>>(8)?.unwrap_or_default(),
         requirements: r.get(9)?,
+        run_at: r.get(10)?,
+        no_frames: r.get::<_, Option<i64>>(11)?.unwrap_or(0) != 0,
     })
 }
 
@@ -1156,6 +1251,8 @@ mod tests {
             permissions: None,
             code: "console.log(1)".into(),
             requirements: Some("lib.js".into()),
+            run_at: Some("document-end".into()),
+            no_frames: false,
         };
         assert!(s.add_javascript_if_not_exists(entry.clone()).unwrap());
         assert!(!s.add_javascript_if_not_exists(entry.clone()).unwrap());
@@ -1172,6 +1269,38 @@ mod tests {
         s.add_javascript_if_not_exists(entry).unwrap();
         s.delete_all_javascript().unwrap();
         assert_eq!(s.javascript_count().unwrap(), 0);
+    }
+
+    #[test]
+    fn gm_value_roundtrip() {
+        let s = ArktosStore::in_memory();
+        s.gm_set_value("script".into(), "k1".into(), "\"v1\"".into())
+            .unwrap();
+        s.gm_set_value("script".into(), "k2".into(), "42".into())
+            .unwrap();
+        s.gm_set_value("other".into(), "k1".into(), "\"x\"".into())
+            .unwrap();
+
+        let vals = s.gm_values_for_script("script".into()).unwrap();
+        assert_eq!(vals.len(), 2);
+        assert_eq!(vals["k1"], "\"v1\"");
+        assert_eq!(s.gm_keys_for_script("script".into()).unwrap(),
+                   vec!["k1".to_string(), "k2".to_string()]);
+
+        // Overwrite keeps a single row.
+        s.gm_set_value("script".into(), "k1".into(), "\"v2\"".into())
+            .unwrap();
+        assert_eq!(s.gm_values_for_script("script".into()).unwrap()["k1"],
+                   "\"v2\"");
+
+        s.gm_delete_value("script".into(), "k2".into()).unwrap();
+        assert_eq!(s.gm_keys_for_script("script".into()).unwrap().len(), 1);
+
+        // Scoping: the other script's row is untouched by deletions on
+        // this script.
+        s.gm_delete_script_values("script".into()).unwrap();
+        assert!(s.gm_values_for_script("script".into()).unwrap().is_empty());
+        assert_eq!(s.gm_values_for_script("other".into()).unwrap().len(), 1);
     }
 
     // ---- ad-block subscriptions (LIST01) ----

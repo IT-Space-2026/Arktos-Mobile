@@ -6,6 +6,8 @@ import android.widget.ArrayAdapter
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
+import com.arktosbrowser.mobile.uniffi.ArktosStore
+import com.arktosbrowser.mobile.view.UserScriptEngine
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.injector
@@ -20,6 +22,7 @@ class ExtensionsSettingsFragment : AbstractSettingsFragment() {
 
     @Inject lateinit var userPreferences: UserPreferences
     @Inject internal lateinit var javascriptRepository: JavaScriptRepository
+    @Inject internal lateinit var store: ArktosStore
 
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: io.reactivex.rxjava3.core.Scheduler
     @Inject @field:MainScheduler internal lateinit var mainScheduler: io.reactivex.rxjava3.core.Scheduler
@@ -63,7 +66,12 @@ class ExtensionsSettingsFragment : AbstractSettingsFragment() {
             javascriptRepository.deleteJavaScriptEntry(jsList[which].name)
                     .subscribeOn(databaseScheduler)
                     .observeOn(mainScheduler)
-                    .subscribe()
+                    .subscribe {
+                        UserScriptEngine.notifyScriptsChanged()
+                        databaseScheduler.scheduleDirect {
+                            runCatching { store.gmDeleteScriptValues(jsList[which].name) }
+                        }
+                    }
         }
 
         builderSingle.setPositiveButton(resources.getString(R.string.action_cancel)) { dialog: DialogInterface, which: Int -> dialog.dismiss() }
