@@ -47,7 +47,7 @@ dom_smoothie = "=0.18.2"
 # RANK01 — pure-Rust DEFLATE for extracting the *.csv member out of
 # the Tranco top-1m.csv.zip download (same pin the desktop rustcore
 # uses for its zip member walk).
-miniz_oxide = "=0.8.9"
+miniz_oxide = "=0.9.1"
 # PORT02 — app-lock / parental-control password hashing (argon2id +
 # versioned stored format replacing the plaintext SharedPreferences).
 argon2 = "=0.5.3"
