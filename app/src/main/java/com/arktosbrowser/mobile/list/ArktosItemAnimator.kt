@@ -28,13 +28,26 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import com.arktosbrowser.mobile.interpolator.BezierDecelerateInterpolator
 
 /**
- * This implementation of [RecyclerView.ItemAnimator] provides basic
- * animations on remove, add, and move events that happen to the items in
- * a RecyclerView. RecyclerView uses a VerticalItemAnimator by default.
+ * Item animator for the tab lists — add/remove slide along [slide],
+ * moves and changes animate both axes. Merges the old twin
+ * Vertical/HorizontalItemAnimator classes which differed only in the
+ * slide axis.
  *
  * @see RecyclerView.setItemAnimator
  */
-class VerticalItemAnimator : SimpleItemAnimator() {
+class ArktosItemAnimator(private val slide: Slide) : SimpleItemAnimator() {
+
+    enum class Slide { HORIZONTAL, VERTICAL }
+
+    private fun slideOffset(view: View) =
+        if (slide == Slide.HORIZONTAL) -view.width / 2f else view.height.toFloat()
+
+    private fun ViewPropertyAnimatorCompat.slideTo(value: Float): ViewPropertyAnimatorCompat =
+        if (slide == Slide.HORIZONTAL) translationX(value) else translationY(value)
+
+    private fun setSlide(view: View, value: Float) =
+        if (slide == Slide.HORIZONTAL) ViewCompat.setTranslationX(view, value)
+        else ViewCompat.setTranslationY(view, value)
 
     private val pendingRemovals = ArrayList<ViewHolder>()
     private val pendingAdditions = ArrayList<ViewHolder>()
@@ -173,7 +186,7 @@ class VerticalItemAnimator : SimpleItemAnimator() {
         val animation = ViewCompat.animate(view)
         removeAnimations.add(holder)
         animation.setDuration(removeDuration)
-            .alpha(0f).translationX(-holder.itemView.width / 2f)
+            .alpha(0f).slideTo(slideOffset(view))
             .setInterpolator(AccelerateInterpolator()).setListener(object : VpaListenerAdapter() {
                 override fun onAnimationStart(view: View) {
                     dispatchRemoveStarting(holder)
@@ -182,7 +195,7 @@ class VerticalItemAnimator : SimpleItemAnimator() {
                 override fun onAnimationEnd(view: View) {
                     animation.setListener(null)
                     ViewCompat.setAlpha(view, 1f)
-                    ViewCompat.setTranslationX(view, 0f)
+                    setSlide(view, 0f)
                     dispatchRemoveFinished(holder)
                     removeAnimations.remove(holder)
                     dispatchFinishedWhenDone()
@@ -193,7 +206,7 @@ class VerticalItemAnimator : SimpleItemAnimator() {
     override fun animateAdd(holder: ViewHolder): Boolean {
         resetAnimation(holder)
         ViewCompat.setAlpha(holder.itemView, 0f)
-        ViewCompat.setTranslationX(holder.itemView, -holder.itemView.width / 2f)
+        setSlide(holder.itemView, slideOffset(holder.itemView))
         pendingAdditions.add(holder)
         return true
     }
@@ -202,7 +215,7 @@ class VerticalItemAnimator : SimpleItemAnimator() {
         val view = holder.itemView
         val animation = ViewCompat.animate(view)
         addAnimations.add(holder)
-        animation.alpha(1f).translationX(0f).setDuration(addDuration)
+        animation.alpha(1f).slideTo(0f).setDuration(addDuration)
             .setInterpolator(BezierDecelerateInterpolator())
             .setListener(object : VpaListenerAdapter() {
                 override fun onAnimationStart(view: View) {
@@ -211,7 +224,7 @@ class VerticalItemAnimator : SimpleItemAnimator() {
 
                 override fun onAnimationCancel(view: View) {
                     ViewCompat.setAlpha(view, 1f)
-                    ViewCompat.setTranslationX(view, 0f)
+                    setSlide(view, 0f)
                 }
 
                 override fun onAnimationEnd(view: View) {

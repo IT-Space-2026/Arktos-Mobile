@@ -12,7 +12,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.TabsView
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.extensions.inflater
-import com.arktosbrowser.mobile.list.HorizontalItemAnimator
+import com.arktosbrowser.mobile.list.ArktosItemAnimator
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import com.arktosbrowser.mobile.rust.ArktosCore
@@ -49,7 +49,7 @@ class TabsDesktopView @JvmOverloads constructor(
 
         val layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
 
-        val animator = HorizontalItemAnimator().apply {
+        val animator = ArktosItemAnimator(ArktosItemAnimator.Slide.VERTICAL).apply {
             supportsChangeAnimations = false
             addDuration = 200
             changeDuration = 0

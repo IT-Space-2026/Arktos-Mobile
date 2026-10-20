@@ -12,7 +12,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.browser.TabsView
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.extensions.inflater
-import com.arktosbrowser.mobile.list.VerticalItemAnimator
+import com.arktosbrowser.mobile.list.ArktosItemAnimator
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.engine.Page
 
@@ -65,7 +65,7 @@ class TabsDrawerView @JvmOverloads constructor(
         actionBack = findViewById(R.id.action_back)
         actionForward = findViewById(R.id.action_forward)
 
-        val animator = VerticalItemAnimator().apply {
+        val animator = ArktosItemAnimator(ArktosItemAnimator.Slide.HORIZONTAL).apply {
             supportsChangeAnimations = false
             addDuration = 200
             changeDuration = 0
