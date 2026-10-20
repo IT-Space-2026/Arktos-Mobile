@@ -1,0 +1,8 @@
+# osv-scanner config — SEC14 dependency vulnerability gate.
+# Accepted advisories live here so the CI gate fails on NEW findings
+# only. Each entry needs a reason; ignoreUntil forces re-review.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0374"
+reason = "basic-toml is flagged unmaintained (no fix exists). It is a build-time-only transitive dep of askama_derive used for template codegen — never linked into libarktos.so. Revisit on the next askama upgrade."
+ignoreUntil = 2027-10-20
