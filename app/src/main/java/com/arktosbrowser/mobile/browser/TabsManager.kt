@@ -18,6 +18,7 @@ import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import javax.inject.Inject
 
 /**
@@ -318,7 +319,7 @@ class TabsManager @Inject constructor(
      * @param position The position of the tab to remove.
      */
     private fun removeTab(position: Int) {
-        if (position >= tabList.size) {
+        if (position < 0 || position >= tabList.size) {
             return
         }
         val tab = tabList.removeAt(position)
@@ -389,7 +390,7 @@ class TabsManager @Inject constructor(
             }
         FileUtils.writeBundleToStorage(application, outState, BUNDLE_STORAGE)
             .subscribeOn(diskScheduler)
-            .subscribe()
+            .subscribeBy(onError = { logger.log(TAG, "Failed to save tab state", it) })
     }
 
     /**
@@ -408,6 +409,10 @@ class TabsManager @Inject constructor(
         .flattenAsObservable { bundle ->
             bundle.keySet()
                 .filter { it.startsWith(BUNDLE_KEY) }
+                // Bundle is backed by ArrayMap, which iterates in
+                // key-hash order — sort explicitly or tabs restore
+                // in a scrambled order once there are >9 of them.
+                .sortedBy { it.removePrefix(BUNDLE_KEY).toIntOrNull() ?: Int.MAX_VALUE }
                 .mapNotNull(bundle::getBundle)
         }
         .doOnNext { logger.log(TAG, "Restoring previous WebView state now") }

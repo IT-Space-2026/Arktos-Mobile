@@ -65,6 +65,24 @@ class BrowserPresenter(
                     view.updateTabNumber(tabsModel.size())
                     tabChanged(tabsModel.positionOf(it))
                     openChangelogOncePerUpgrade(intent)
+                },
+                onError = {
+                    // Corrupt saved state or an initializer failure must not
+                    // leave the browser with zero tabs — fall back to a fresh
+                    // homepage tab so the app stays usable.
+                    logger.log(TAG, "Failed to initialize tabs", it)
+                    if (tabsModel.size() == 0) {
+                        newTab(
+                            if (isIncognito) {
+                                UrlInitializer("$FILE${incognitoPageFactory.createIncognitoPage()}")
+                            } else {
+                                UrlInitializer(mapHomepageToCurrentUrl())
+                            },
+                            true
+                        )
+                    }
+                    view.notifyTabViewInitialized()
+                    view.updateTabNumber(tabsModel.size())
                 }
             )
 
@@ -197,13 +215,9 @@ class BrowserPresenter(
         if (tabsModel.size() == 1
             && currentTab != null
             && URLUtil.isFileUrl(currentTab.url)
-            && currentTab.url == mapHomepageToCurrentUrl()) {
-            if(userPreferences.closeOnLastTab) {
-                view.closeActivity()
-            }
-            else if(!userPreferences.closeOnLastTab && tabsModel.currentTab == null && !isIncognito) {
-                newTab(UrlInitializer(mapHomepageToCurrentUrl()), true)
-            }
+            && currentTab.url == mapHomepageToCurrentUrl()
+            && userPreferences.closeOnLastTab) {
+            view.closeActivity()
             return
         } else {
             if (isShown) {
