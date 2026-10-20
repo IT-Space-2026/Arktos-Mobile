@@ -114,10 +114,38 @@ pub struct RankListSource {
     pub last_update_ms: u64,
 }
 
-/// The loaded table — one merged `domain -> best rank` map.
+/// Per-source ranks for one host — 0 means that source doesn't list it.
+/// One map keyed by host keeps the Tranco/Majestic split from doubling
+/// key storage.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct SourceRanks {
+    tranco: u32,
+    majestic: u32,
+}
+
+impl SourceRanks {
+    /// Best rank across sources — the merged verdict `site_rank` gives.
+    fn merged(self) -> u32 {
+        match (self.tranco, self.majestic) {
+            (0, m) => m,
+            (t, 0) => t,
+            (t, m) => t.min(m),
+        }
+    }
+
+    fn absorb(&mut self, rank: u32, majestic: bool) {
+        let slot = if majestic { &mut self.majestic } else { &mut self.tranco };
+        if *slot == 0 || rank < *slot {
+            *slot = rank;
+        }
+    }
+}
+
+/// The loaded table — `domain -> per-source ranks`; the merged probe is
+/// the min of the non-zero slots.
 #[derive(Debug)]
 struct RankTable {
-    ranks: HashMap<String, u32>,
+    ranks: HashMap<String, SourceRanks>,
 }
 
 /// The active table — Option so the seed parse only happens on first
@@ -214,7 +242,7 @@ fn majestic_entry_from_line(line: &str) -> Option<(String, u32)> {
 /// Returns the count of usable entries seen (pre-merge — a file whose
 /// domains all duplicate the seed still counts as a healthy parse).
 fn absorb_lines<S: AsRef<str>>(
-    ranks: &mut HashMap<String, u32>,
+    ranks: &mut HashMap<String, SourceRanks>,
     lines: impl Iterator<Item = S>,
     majestic: bool,
 ) -> usize {
@@ -232,8 +260,12 @@ fn absorb_lines<S: AsRef<str>>(
             parsed += 1;
             ranks
                 .entry(host)
-                .and_modify(|r| *r = (*r).min(rank))
-                .or_insert(rank);
+                .and_modify(|r| r.absorb(rank, majestic))
+                .or_insert_with(|| {
+                    let mut r = SourceRanks::default();
+                    r.absorb(rank, majestic);
+                    r
+                });
         }
     }
     parsed
@@ -242,7 +274,7 @@ fn absorb_lines<S: AsRef<str>>(
 /// Fold an in-memory body into `ranks` — used for zip members and
 /// test fixtures. Lossy UTF-8 like the desktop (bad bytes can't
 /// forge a domain through the ASCII gate).
-fn absorb_blob(ranks: &mut HashMap<String, u32>, blob: &[u8], majestic: bool) -> usize {
+fn absorb_blob(ranks: &mut HashMap<String, SourceRanks>, blob: &[u8], majestic: bool) -> usize {
     let text;
     let body = if !majestic && blob.starts_with(b"PK\x03\x04") {
         match zip_member_by_suffix(blob, ".csv", MAX_MEMBER) {
@@ -270,7 +302,7 @@ fn absorb_blob(ranks: &mut HashMap<String, u32>, blob: &[u8], majestic: bool) ->
 /// central-directory walk instead. Returns the usable-entry count
 /// (0 = absent, unreadable, oversized or junk — it contributes
 /// nothing either way).
-fn absorb_file(ranks: &mut HashMap<String, u32>, path: &Path, majestic: bool) -> usize {
+fn absorb_file(ranks: &mut HashMap<String, SourceRanks>, path: &Path, majestic: bool) -> usize {
     let meta = std::fs::metadata(path).ok();
     match meta {
         Some(m) if m.is_file() && m.len() <= MAX_FILE => {}
@@ -322,26 +354,33 @@ impl RankTable {
     /// ancestor wins (Tranco entries are pay-level domains, so the
     /// first hit going up is the registrable name). Allocation-free
     /// via `HostNorm`'s stack buffer.
-    fn rank_of(&self, host: &str) -> Option<u32> {
-        let h = HostNorm::new(host)?;
+    /// Per-source ranks for the most specific listed ancestor of
+    /// [host] — zeros for unranked sources and unranked hosts.
+    fn ranks_of(&self, host: &str) -> SourceRanks {
+        let Some(h) = HostNorm::new(host) else { return SourceRanks::default() };
         let host = h.as_str();
         // IP literals and dot-less names are never ranked.
         if host.parse::<IpAddr>().is_ok() || !host.contains('.') {
-            return None;
+            return SourceRanks::default();
         }
         for candidate in h.suffixes() {
             // Entries all contain a dot — the TLD alone is never an
             // answer.
             if !candidate.contains('.') {
-                return None;
+                return SourceRanks::default();
             }
             if candidate.parse::<IpAddr>().is_err() {
                 if let Some(&rank) = self.ranks.get(candidate) {
-                    return Some(rank);
+                    return rank;
                 }
             }
         }
-        None
+        SourceRanks::default()
+    }
+
+    fn rank_of(&self, host: &str) -> Option<u32> {
+        let merged = self.ranks_of(host).merged();
+        (merged != 0).then_some(merged)
     }
 }
 
@@ -524,6 +563,22 @@ pub fn site_rank(host: String) -> u32 {
     active_table().rank_of(&host).unwrap_or(0)
 }
 
+/// The host's per-source ranks — 0 in a slot means that list doesn't
+/// rank it. Powers the padlock dialog's two rank rows.
+#[derive(uniffi::Record)]
+pub struct SiteRankDetail {
+    /// Tranco rank (vendored top-100k ∪ the downloaded top-1M).
+    pub tranco: u32,
+    /// Majestic Million rank.
+    pub majestic: u32,
+}
+
+#[uniffi::export]
+pub fn site_rank_detail(host: String) -> SiteRankDetail {
+    let r = active_table().ranks_of(&host);
+    SiteRankDetail { tranco: r.tranco, majestic: r.majestic }
+}
+
 /// Entry count of the active table — diagnostics/settings.
 #[uniffi::export]
 pub fn site_rank_entry_count() -> u64 {
@@ -693,12 +748,12 @@ mod tests {
         let zip_store = test_zip("top-1m.csv", csv, false);
         let mut ranks = HashMap::new();
         assert_eq!(absorb_blob(&mut ranks, &zip_store, false), 1);
-        assert_eq!(ranks.get("updated.example"), Some(&7));
+        assert_eq!(ranks.get("updated.example"), Some(&SourceRanks { tranco: 7, majestic: 0 }));
         // Deflated member — the real top-1m.csv.zip shape.
         let zip_defl = test_zip("top-1m.csv", csv, true);
         let mut ranks = HashMap::new();
         assert_eq!(absorb_blob(&mut ranks, &zip_defl, false), 1);
-        assert_eq!(ranks.get("updated.example"), Some(&7));
+        assert_eq!(ranks.get("updated.example"), Some(&SourceRanks { tranco: 7, majestic: 0 }));
         // A zip with no .csv member and a garbage blob both parse
         // empty — the caller treats that as "no usable update".
         let zip_other = test_zip("readme.txt", csv, false);
@@ -726,8 +781,8 @@ mod tests {
               xx,1,notarank.example,com\n",
             true,
         );
-        assert_eq!(ranks.get("google.com"), Some(&1));
-        assert_eq!(ranks.get("mj.example"), Some(&42));
+        assert_eq!(ranks.get("google.com"), Some(&SourceRanks { tranco: 0, majestic: 1 }));
+        assert_eq!(ranks.get("mj.example"), Some(&SourceRanks { tranco: 0, majestic: 42 }));
         // Short row (no Domain field), rank-0, IP literal and
         // non-numeric-rank rows all drop out.
         assert_eq!(parsed, 2);

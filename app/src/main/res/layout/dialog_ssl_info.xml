@@ -103,18 +103,35 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/material_grid_margin"
-        android:text="@string/ssl_info_site_rank"
+        android:text="@string/ssl_rank_tranco"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/ssl_layout_site_rank"
+        android:id="@+id/ssl_layout_rank_tranco"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/material_grid_unit"
         android:paddingStart="@dimen/material_grid_unit"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
         tools:text="#1,234" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_margin"
+        android:text="@string/ssl_rank_majestic"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/ssl_layout_rank_majestic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/material_grid_unit"
+        android:paddingStart="@dimen/material_grid_unit"
+        android:textAppearance="?android:attr/textAppearanceListItemSmall"
+        tools:text="#567" />
 
     <TextView
         android:id="@+id/algorithm"

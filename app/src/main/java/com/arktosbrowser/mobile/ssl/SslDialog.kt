@@ -28,13 +28,17 @@ fun Context.showSslDialog(
     sslCertificate: SslCertificate?,
     sslState: SslState,
     host: String,
-    rank: Long,
+    trancoRank: Long,
+    majesticRank: Long,
     darkTheme: Boolean,
     cookieCount: Int,
     blockingEnabled: Boolean,
     javaScriptEnabled: Boolean
 ) {
     val dateFormat = DateFormat.getDateFormat(applicationContext)
+    // The verdict color follows the merged (best) rank — same number
+    // the toolbar icon's tint uses.
+    val mergedRank = listOf(trancoRank, majesticRank).filter { it > 0 }.minOrNull() ?: 0
 
     val contentView = inflater.inflate(R.layout.dialog_ssl_info, null, false).apply {
         val connectionText = findViewById<TextView>(R.id.ssl_layout_connection)
@@ -43,7 +47,7 @@ fun Context.showSslDialog(
             sslState is SslState.Valid -> getString(R.string.connection_secure_https)
             else -> getString(R.string.connection_not_secure_http)
         }
-        connectionText.setTextColor(sslVerdictColor(sslState, rank, darkTheme))
+        connectionText.setTextColor(sslVerdictColor(sslState, mergedRank, darkTheme))
 
         if (sslCertificate != null) {
             findViewById<TextView>(R.id.ssl_layout_issue_by).text = sslCertificate.issuedBy.cName
@@ -71,11 +75,12 @@ fun Context.showSslDialog(
             ).forEach { findViewById<TextView>(it).visibility = View.GONE }
         }
 
-        findViewById<TextView>(R.id.ssl_layout_site_rank).apply {
-            text = if (rank > 0) "#${String.format("%,d", rank)}"
-                   else getString(R.string.ssl_rank_unranked)
-            setTextColor(sslVerdictColor(sslState, rank, darkTheme))
-        }
+        findViewById<TextView>(R.id.ssl_layout_rank_tranco).text =
+            if (trancoRank > 0) "#${String.format("%,d", trancoRank)}"
+            else getString(R.string.ssl_rank_unranked)
+        findViewById<TextView>(R.id.ssl_layout_rank_majestic).text =
+            if (majesticRank > 0) "#${String.format("%,d", majesticRank)}"
+            else getString(R.string.ssl_rank_unranked)
         findViewById<TextView>(R.id.ssl_layout_cookies).text =
             getString(R.string.cookies_count, cookieCount)
         findViewById<TextView>(R.id.ssl_layout_blocking).text =
@@ -85,7 +90,7 @@ fun Context.showSslDialog(
     }
 
     val icon = createSslDrawableForState(sslState)?.mutate()?.apply {
-        setColorFilter(sslVerdictColor(sslState, rank, darkTheme), android.graphics.PorterDuff.Mode.SRC_IN)
+        setColorFilter(sslVerdictColor(sslState, mergedRank, darkTheme), android.graphics.PorterDuff.Mode.SRC_IN)
     }
 
     val dialog = MaterialAlertDialogBuilder(this)
