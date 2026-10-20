@@ -36,6 +36,8 @@ import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.extensions.overrideOpenTransition
+import com.arktosbrowser.mobile.extensions.overrideCloseTransition
 import com.arktosbrowser.mobile.dialog.BrowserDialog.setDialogSize
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
@@ -80,7 +82,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         this.injector.inject(this)
-        overridePendingTransition(R.anim.slide_in_from_right, R.anim.fade_out_scale)
+        overrideOpenTransition(R.anim.slide_in_from_right, R.anim.fade_out_scale)
         invertColors = userPreferences.invertColors
         tts = TextToSpeech(this, this)
         val color: Int
@@ -268,7 +270,7 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onPause() {
         super.onPause()
         if (isFinishing) {
-            overridePendingTransition(R.anim.fade_in_scale, R.anim.slide_out_to_right)
+            overrideCloseTransition(R.anim.fade_in_scale, R.anim.slide_out_to_right)
         }
     }
 

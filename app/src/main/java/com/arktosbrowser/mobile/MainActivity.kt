@@ -5,6 +5,7 @@ import android.os.Build
 import android.view.KeyEvent
 import android.view.Menu
 import com.arktosbrowser.mobile.browser.activity.BrowserActivity
+import com.arktosbrowser.mobile.extensions.overrideOpenTransition
 import com.arktosbrowser.mobile.engine.Engines
 import io.reactivex.rxjava3.core.Completable
 
@@ -62,7 +63,7 @@ class MainActivity : BrowserActivity() {
                     // Open a new private window
                     if (event.isShiftPressed) {
                         startActivity(IncognitoActivity.createIntent(this))
-                        overridePendingTransition(R.anim.slide_up_in, R.anim.fade_out_scale)
+                        overrideOpenTransition(R.anim.slide_up_in, R.anim.fade_out_scale)
                         return true
                     }
             }

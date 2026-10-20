@@ -11,6 +11,7 @@ import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.extensions.isNightMode
+import com.arktosbrowser.mobile.extensions.overrideOpenTransition
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.settings.fragment.SettingsFragment
 import javax.inject.Inject
@@ -65,7 +66,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         toolbar.title = getString(R.string.settings)
         getSupportFragmentManager().beginTransaction().replace(R.id.container, SettingsFragment()).commit()
-        overridePendingTransition(R.anim.slide_in_from_right, R.anim.fade_out_scale)
+        overrideOpenTransition(R.anim.slide_in_from_right, R.anim.fade_out_scale)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

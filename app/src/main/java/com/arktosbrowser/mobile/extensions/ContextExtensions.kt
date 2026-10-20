@@ -2,6 +2,7 @@
 
 package com.arktosbrowser.mobile.extensions
 
+import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
@@ -58,3 +59,28 @@ val Context.preferredLocale: Locale
 inline val Context.isNightMode: Boolean
     get() = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
         Configuration.UI_MODE_NIGHT_YES
+
+/**
+ * overridePendingTransition replacement (deprecated in API 34): applies
+ * the open/close window transition on API 34+ via overrideActivityTransition.
+ */
+fun Activity.overrideOpenTransition(@AnimRes enterAnim: Int, @AnimRes exitAnim: Int) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, enterAnim, exitAnim)
+    } else {
+        @Suppress("DEPRECATION")
+        overridePendingTransition(enterAnim, exitAnim)
+    }
+}
+
+/**
+ * Same as [overrideOpenTransition] but for the activity-closing direction.
+ */
+fun Activity.overrideCloseTransition(@AnimRes enterAnim: Int, @AnimRes exitAnim: Int) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, enterAnim, exitAnim)
+    } else {
+        @Suppress("DEPRECATION")
+        overridePendingTransition(enterAnim, exitAnim)
+    }
+}

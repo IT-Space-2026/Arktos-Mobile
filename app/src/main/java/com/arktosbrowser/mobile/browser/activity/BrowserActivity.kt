@@ -1838,7 +1838,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         if (isIncognito() && isFinishing) {
-            overridePendingTransition(R.anim.fade_in_scale, R.anim.slide_down_out)
+            overrideCloseTransition(R.anim.fade_in_scale, R.anim.slide_down_out)
         }
     }
 
@@ -2559,7 +2559,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 binding.drawerLayout.closeDrawers()
                 val intent = IncognitoActivity.createIntent(this, url.toUri())
                 startActivity(intent)
-                overridePendingTransition(R.anim.slide_up_in, R.anim.fade_out_scale)
+                overrideOpenTransition(R.anim.slide_up_in, R.anim.fade_out_scale)
             }
         }
     }
