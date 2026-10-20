@@ -142,6 +142,7 @@
     <string name="message_certificate_untrusted">Certificate is not trusted</string>
     <string name="title_form_resubmission">Form resubmission</string>
     <string name="message_form_resubmission">Would you like to resend the submitted data?</string>
+    <string name="message_leaving_confirm">Leave this page? Changes you made may not be saved.</string>
     <string name="message_location">\nWould like to use your location</string>
     <string name="action_allow">Allow</string>
     <string name="action_dont_allow">Don\'t allow</string>
@@ -383,6 +384,10 @@
     <!-- permissions request -->
     <string name="title_permission_request">Permission request</string>
     <string name="message_permission_request">%1$s  would like to use:  %2$s</string>
+    <string name="notification_permission">notifications</string>
+    <string name="autoplay_permission">media autoplay</string>
+    <string name="storage_access_permission">cross-site storage access</string>
+    <string name="permission_generic">a site permission</string>
 
     <!-- Ad block -->
     <string name="block_ad_source">Hosts file source</string>

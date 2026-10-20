@@ -2,9 +2,20 @@ package com.arktosbrowser.mobile.gecko
 
 import android.app.Activity
 import android.graphics.Bitmap
+import android.net.Uri
 import android.net.http.SslCertificate
+import android.net.http.SslError
 import android.os.Bundle
 import android.view.View
+import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
+import com.arktosbrowser.mobile.adblock.RankListLoader
+import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
+import com.arktosbrowser.mobile.browser.SiteSettings
+import com.arktosbrowser.mobile.browser.TabsManager
+import com.arktosbrowser.mobile.controller.UIController
+import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
+import com.arktosbrowser.mobile.dialog.LightningDialogBuilder.NewTab
 import com.arktosbrowser.mobile.engine.CertificateErrorAction
 import com.arktosbrowser.mobile.engine.CertificateErrorInfo
 import com.arktosbrowser.mobile.engine.ContextMenuInfo
@@ -22,42 +33,64 @@ import com.arktosbrowser.mobile.engine.RequestAction
 import com.arktosbrowser.mobile.engine.ResourceType
 import com.arktosbrowser.mobile.engine.UserScript
 import com.arktosbrowser.mobile.log.Logger
+import com.arktosbrowser.mobile.network.ConnectivityGate
+import com.arktosbrowser.mobile.network.FrameNavigation
+import com.arktosbrowser.mobile.network.NavigationDecision
+import com.arktosbrowser.mobile.network.NavigationPolicy
+import com.arktosbrowser.mobile.network.NavigationPolicyConfig
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
+import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
+import com.arktosbrowser.mobile.utils.isSpecialUrl
+import com.arktosbrowser.mobile.utils.isFileUrl
+import com.arktosbrowser.mobile.utils.isBookmarkUrl
+import com.arktosbrowser.mobile.utils.isDownloadsUrl
+import com.arktosbrowser.mobile.utils.resolveTabUrl
 import com.arktosbrowser.mobile.view.BookmarkPageInitializer
 import com.arktosbrowser.mobile.view.DownloadPageInitializer
 import com.arktosbrowser.mobile.view.HistoryPageInitializer
 import com.arktosbrowser.mobile.view.HomePageInitializer
 import com.arktosbrowser.mobile.view.IncognitoPageInitializer
+import com.arktosbrowser.mobile.view.LightningDownloadListener
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.io.File
 import java.nio.charset.Charset
 import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.GeckoPreferenceController
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
 import org.mozilla.geckoview.StorageController
+import org.mozilla.geckoview.WebRequestError
 import org.mozilla.geckoview.WebResponse
 
 /**
  * A tab on the GeckoView backend — a [GeckoSession] + a lazily created
- * [GeckoView] behind the [Page] contract (ENG03 skeleton).
+ * [GeckoView] behind the [Page] contract.
  *
- * Working surface: load/loadData, stop/reload, back/forward/history
- * nav, per-page JS toggle, find-in-page, private-mode storage, and the
- * progress/title/url/security signals reaching the shell through the
- * `Page` callbacks. `Profile.requestPolicy` is consulted on
- * main-frame navigations (Allow/Deny/Redirect).
+ * ENG04 parity surface: the navigation delegates run the shared
+ * [NavigationPolicy] (HTTPS-only consent marker, SafeSearch, strict/
+ * prefer HTTPS, external-app handoff, request verdicts, offline pages,
+ * referrer trimming), `onLoadError` serves the generated SSL/generic
+ * interstitials as `data:` pages, the content delegate routes context
+ * menus to the same long-press dialogs the WebView uses and external
+ * responses to `DownloadHandler` via `LightningDownloadListener`, the
+ * prompt/permission delegates cover JS dialogs, file pickers,
+ * HTTP auth, runtime/content/media permissions, `SessionFinder`
+ * backs find-in-page, and `SessionState` rides `saveState`.
  *
- * Stubs (feature gaps, tracked by ENG04/ENG05): favicons (GeckoView
- * has no favicon delegate), `SslCertificate`/`SslState.Invalid` (no
- * WebView-style cert object), the cookie get/set surface, downloads
- * (the signal fires; the DownloadManager handoff is unimplemented),
- * JS evaluation + userscript injection (moves to WebExtensions),
- * printing, context-menu/permission/cert-error UX wiring, and the
- * proxy settings.
+ * `Profile.requestPolicy` still runs ahead of the shared policy so
+ * backend-level verdicts (the engine seam contract) keep working.
+ *
+ * Remaining gaps (ENG05/deferred): favicons (no delegate), JS
+ * evaluation + userscript injection (WebExtensions), cookie get/set,
+ * proxy plumbing, printing, per-request subresource blocking (GeckoView
+ * exposes frame navigations only — subresource filtering needs a
+ * WebExtension), and certificate-error *bypass* (GeckoView cannot
+ * proceed past bad certs — the interstitial can only go back).
  */
 class GeckoPage(
     private val activity: Activity,
@@ -70,7 +103,13 @@ class GeckoPage(
     private val downloadPageInitializer: DownloadPageInitializer,
     private val historyPageInitializer: HistoryPageInitializer,
     private val userPreferences: UserPreferences,
-    private val logger: Logger
+    private val logger: Logger,
+    private val dialogBuilder: LightningDialogBuilder,
+    private val allowListModel: AllowListModel,
+    private val connectivityGate: ConnectivityGate,
+    private val siteSettings: SiteSettings,
+    blocklistLoader: BlocklistLoader,
+    rankListLoader: RankListLoader
 ) : Page {
 
     override val id = View.generateViewId()
@@ -82,6 +121,12 @@ class GeckoPage(
     internal var view: GeckoView? = null
         private set
 
+    private val uiController: UIController = activity as UIController
+    private val errorPages = GeckoErrorPages(activity, userPreferences)
+    private val navigationPolicy = NavigationPolicy()
+    private val externalLauncher = GeckoExternalLauncher(activity, this, logger)
+
+    private var committedUrl = ""
     private var currentUrl = ""
     private var currentTitle = ""
     private var backable = false
@@ -94,10 +139,26 @@ class GeckoPage(
     private val sslSubject = PublishSubject.create<SslState>()
     private val pageScripts = mutableListOf<UserScript>()
 
+    /**
+     * The real URL a generated error/interstitial page replaced — the
+     * `data:` commit must never be reported or persisted (upstream
+     * #281, mirrors `errorPageOriginalUrl` on the WebView client).
+     */
+    private var generatedPageOriginalUrl: String? = null
+
+    /** Verdict-denied sub-frame loads this page — the shield count. */
+    private var blockedCountThisPage = 0
+
     init {
+        // Same warm-up as the WebView client — the Rust verdict engine
+        // must be ready before the first request.
+        blocklistLoader.ensureInitialized()
+        rankListLoader.ensureInitialized()
+
         session = GeckoSession(
             GeckoSessionSettings.Builder()
                 .usePrivateMode(profile.isOffTheRecord)
+                .suspendMediaWhenInactive(true)
                 .apply {
                     profile.contextId()?.let { contextId(it) }
                     if (profile.userAgent.isNotEmpty()) {
@@ -111,6 +172,13 @@ class GeckoPage(
         session.progressDelegate = GeckoProgressDelegate()
         session.contentDelegate = GeckoContentDelegate()
         session.historyDelegate = GeckoHistoryDelegate()
+        session.promptDelegate = GeckoPromptDelegate(activity, uiController, logger)
+        session.permissionDelegate =
+            GeckoPermissionDelegate(activity, uiController, userPreferences)
+        session.finder.setDisplayFlags(
+            GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL or
+                GeckoSession.FINDER_DISPLAY_DIM_PAGE
+        )
         initializePreferences()
         initializer.initialize(this, emptyMap())
     }
@@ -125,16 +193,16 @@ class GeckoPage(
     // ---- load / navigation ---------------------------------------------
 
     override fun load(url: String, headers: Map<String, String>) {
-        if (headers.isEmpty()) {
-            session.loadUri(url)
-        } else {
-            session.load(
-                GeckoSession.Loader()
-                    .uri(url)
-                    .additionalHeaders(headers)
-                    .headerFilter(GeckoSession.HEADER_FILTER_UNRESTRICTED_UNSAFE)
-            )
-        }
+        session.load(
+            GeckoSession.Loader()
+                .uri(url)
+                .apply {
+                    if (headers.isNotEmpty()) {
+                        additionalHeaders(headers)
+                        headerFilter(GeckoSession.HEADER_FILTER_UNRESTRICTED_UNSAFE)
+                    }
+                }
+        )
     }
 
     override fun loadData(
@@ -145,7 +213,7 @@ class GeckoPage(
         historyUrl: String?
     ) {
         // Loader.data has no base/history URL — pages needing relative
-        // resource resolution are a parity gap (ENG04).
+        // resource resolution are a parity gap.
         val charset = runCatching { Charset.forName(encoding) }.getOrNull()
             ?: Charsets.UTF_8
         session.load(GeckoSession.Loader().data(data.toByteArray(charset), mimeType))
@@ -153,10 +221,19 @@ class GeckoPage(
 
     override fun stop() = session.stop()
 
-    override fun reload() = session.reload()
+    override fun reload() {
+        // Reloading a generated error/interstitial page reloads the
+        // `data:` document — re-issue the real navigation instead,
+        // like `reloadIncludingErrorPage` on the WebView client.
+        generatedPageOriginalUrl?.let { session.loadUri(it) } ?: session.reload()
+    }
 
     override val url: String
-        get() = currentUrl
+        get() = resolveTabUrl(committedUrl, generatedPageOriginalUrl)
+
+    /** Mirrors `isShowingErrorPage` on ArktosCookieView. */
+    private val isShowingGeneratedPage: Boolean
+        get() = generatedPageOriginalUrl != null && committedUrl.isGeneratedPageUrl()
 
     override val canGoBack: Boolean
         get() = backable
@@ -177,14 +254,20 @@ class GeckoPage(
         session.gotoHistoryIndex(entry.index)
     }
 
-    override fun saveState(): Bundle {
-        val state = latestSessionState
-        return Bundle(GeckoSession.SessionState::class.java.classLoader).also {
-            if (state != null) {
-                it.putParcelable(STATE_KEY, state)
+    /**
+     * Save the session. While a generated page is shown, only its
+     * original URL is persisted — a `data:` history entry must never
+     * be serialized (upstream #281), so the restore path reloads the
+     * real URL via `BundleInitializer`/`UrlInitializer`.
+     */
+    override fun saveState(): Bundle =
+        Bundle(GeckoSession.SessionState::class.java.classLoader).also {
+            if (isShowingGeneratedPage) {
+                it.putString(TabsManager.URL_KEY, url)
+            } else {
+                latestSessionState?.let { state -> it.putParcelable(STATE_KEY, state) }
             }
         }
-    }
 
     override fun restoreState(state: Bundle) {
         // SessionState is a GeckoView Parcelable — the bundle needs this
@@ -234,10 +317,14 @@ class GeckoPage(
 
     override fun scripts(): List<UserScript> = pageScripts.toList()
 
+    /**
+     * Context-menu/explicit downloads — the same
+     * `LightningDownloadListener` handoff the WebView uses: the
+     * confirm dialog, the DownloadRisk warning and the
+     * `DownloadManager` enqueue all ride along.
+     */
     override fun download(url: String) {
-        // The onExternalResponse delegate decides whether the response
-        // is delivered as a download.
-        session.loadUri(url)
+        LightningDownloadListener(activity).onDownloadStart(url, userAgent(), "", "", 0)
     }
 
     override fun clearCache() {
@@ -288,13 +375,18 @@ class GeckoPage(
     // ---- shell-facing tab surface ----------------------------------------
 
     override var isForegroundTab: Boolean = false
+        set(isForeground) {
+            field = isForeground
+            uiController.tabChanged(this)
+        }
+
     override var isNewTab: Boolean = false
 
     override val title: String
-        get() = currentTitle
+        get() = currentTitle.ifEmpty { activity.getString(R.string.untitled) }
 
     // GeckoView has no favicon delegate — tab icons come from a fetch
-    // service (ENG04/05 gap).
+    // service (ENG05 gap).
     override val favicon: Bitmap?
         get() = null
 
@@ -312,11 +404,30 @@ class GeckoPage(
 
     override fun sslStateObservable(): Observable<SslState> = sslSubject
 
-    // Blocked-request counting rides the blocklist RequestPolicy — ENG04.
-    override fun blockedThisPage(): Int = 0
+    override fun blockedThisPage(): Int = blockedCountThisPage
 
+    /**
+     * Re-apply preference-dependent settings — JS, and the mixed-content
+     * policy which Gecko takes as a gecko pref (passive/displayed mixed
+     * content is what the WebView toggle controls; active mixed content
+     * Gecko always blocks). The pref is runtime-global, so incognito's
+     * always-block rule wins by re-applying on every session's init —
+     * documented approximation of the per-WebView setting (SEC03).
+     */
     override fun initializePreferences() {
         session.settings.setAllowJavascript(userPreferences.javaScriptEnabled)
+        applyMixedContentPref()
+    }
+
+    private fun applyMixedContentPref() {
+        val block = profile.isOffTheRecord || userPreferences.blockMixedContentEnabled
+        GeckoPreferenceController.setGeckoPref(
+            PREF_BLOCK_DISPLAYED_MIXED_CONTENT, block,
+            GeckoPreferenceController.PREF_BRANCH_USER
+        ).accept(
+            { },
+            { logger.log(TAG, "could not set $PREF_BLOCK_DISPLAYED_MIXED_CONTENT: $it") }
+        )
     }
 
     override fun onPause() = session.setActive(false)
@@ -382,6 +493,10 @@ class GeckoPage(
         )
     }
 
+    /** The UA downloads carry — the session override or the runtime default. */
+    private fun userAgent(): String =
+        session.settings.userAgentOverride ?: GeckoSession.getDefaultUserAgent()
+
     override fun find(text: String): FindResults {
         session.finder.find(text, GeckoSession.FINDER_FIND_FORWARD)
         return object : FindResults {
@@ -404,6 +519,57 @@ class GeckoPage(
         logger.log(TAG, "createWebPagePrint: unimplemented on gecko")
     }
 
+    // ---- the navigation-policy plumbing ------------------------------------
+
+    /**
+     * The preference snapshot the shared [NavigationPolicy] decides
+     * against — resolved per navigation so settings flips apply at once.
+     */
+    private fun policyConfig(): NavigationPolicyConfig =
+        NavigationPolicyConfig(
+            safeSearchForced = userPreferences.safeSearchForced,
+            forceHttps = userPreferences.forceHTTPSenabled,
+            preferHttps = userPreferences.preferHTTPSenabled,
+            referrerMode = userPreferences.referrerMode,
+            blockIntent = userPreferences.blockIntent,
+            incognito = profile.isOffTheRecord,
+            connected = connectivityGate.isConnected(),
+            adsAllowedOnPage = allowListModel.isUrlAllowedAds(currentUrl)
+        )
+
+    /**
+     * Serve a generated interstitial in place of [originalUrl] — the
+     * `Loader.data` equivalent of the WebView's `blockedPageResponse`/
+     * `loadDataWithBaseURL` paths.
+     */
+    private fun serveInterstitial(
+        page: NavigationDecision.GeneratedPage,
+        originalUrl: String
+    ) {
+        generatedPageOriginalUrl = originalUrl
+        session.load(
+            GeckoSession.Loader().data(
+                errorPages.interstitialHtml(page, originalUrl)
+                    .toByteArray(Charsets.UTF_8), "text/html"
+            )
+        )
+    }
+
+    /**
+     * Re-issue [url] as an embedder load — SafeSearch rewrites, HTTPS
+     * upgrades, the consent-marker target and the referrer takeover.
+     * [referrer] rides `Loader.referrer`; a null referrer on an
+     * embedder-initiated load sends no Referer header (the STRIP
+     * behavior).
+     */
+    private fun reissue(url: String, referrer: String?) {
+        session.load(
+            GeckoSession.Loader().uri(url).apply {
+                referrer?.let { referrer(Uri.parse(it)) }
+            }
+        )
+    }
+
     // ---- delegates → Page signals ----------------------------------------
 
     private inner class GeckoNavigationDelegate : GeckoSession.NavigationDelegate {
@@ -413,55 +579,231 @@ class GeckoPage(
             perms: MutableList<GeckoSession.PermissionDelegate.ContentPermission>,
             hasUserGesture: Boolean
         ) {
-            if (url != null) {
+            if (url == null) return
+            committedUrl = url
+            if (url.isGeneratedPageUrl()) {
+                // Generated commit — keep reporting the original URL
+                // (upstream #281); the real address stays in currentUrl.
+            } else {
+                generatedPageOriginalUrl = null
                 currentUrl = url
-                onUrlChanged?.invoke(url)
+                navigationPolicy.onNavigationCommitted(url, false)
+            }
+            val reported = this@GeckoPage.url
+            onUrlChanged?.invoke(reported)
+            if (isShown) {
+                uiController.updateUrl(reported, loading)
             }
         }
 
         override fun onCanGoBack(session: GeckoSession, canGoBack: Boolean) {
             backable = canGoBack
+            if (isShown) uiController.setBackButtonEnabled(canGoBack)
         }
 
         override fun onCanGoForward(session: GeckoSession, canGoForward: Boolean) {
             forwardable = canGoForward
+            if (isShown) uiController.setForwardButtonEnabled(canGoForward)
         }
 
         override fun onLoadRequest(
             session: GeckoSession,
             request: GeckoSession.NavigationDelegate.LoadRequest
         ): GeckoResult<AllowOrDeny> {
-            val policy = profile.requestPolicy
-                ?: return GeckoResult.fromValue(AllowOrDeny.ALLOW)
-            val decision = policy.decide(
-                NavigationRequest(
-                    url = request.uri,
-                    isMainFrame = true,
-                    isRedirect = request.isRedirect,
-                    type = if (request.isRedirect) {
-                        NavigationType.Redirect
-                    } else {
-                        NavigationType.Other
-                    },
-                    resourceType = ResourceType.MainFrame
+            // A target=_blank / window.open load carries TARGET_WINDOW_NEW —
+            // onNewSession owns those; everything else is a main-frame
+            // navigation through the shared policy.
+            if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
+                return GeckoResult.fromValue(AllowOrDeny.DENY)
+            }
+            // Bundled app pages (the start/bookmark/history/incognito/
+            // download pages) live under filesDir — GeckoView can't open
+            // `file:///data/...` paths, so they're served as data loads
+            // instead. A `resource://` variant can't work either (it only
+            // resolves APK assets); the commit is a data: URI and the
+            // generated-page tracking keeps reporting the file URL.
+            if (request.uri.isFileUrl() && request.uri.isSpecialUrl()) {
+                val file = File(request.uri.removePrefix("file://"))
+                runCatching { file.readText() }.getOrNull()?.let { html ->
+                    generatedPageOriginalUrl = request.uri
+                    session.load(
+                        GeckoSession.Loader().data(
+                            html.toByteArray(Charsets.UTF_8), "text/html"
+                        )
+                    )
+                }
+                return GeckoResult.fromValue(AllowOrDeny.DENY)
+            }
+
+            // The engine-seam policy first (ENG02 contract), then the
+            // composed parity gates.
+            profile.requestPolicy?.let { policy ->
+                val decision = policy.decide(
+                    NavigationRequest(
+                        url = request.uri,
+                        isMainFrame = true,
+                        isRedirect = request.isRedirect,
+                        type = if (request.isRedirect) {
+                            NavigationType.Redirect
+                        } else {
+                            NavigationType.Other
+                        },
+                        resourceType = ResourceType.MainFrame
+                    )
                 )
+                when (decision.action) {
+                    RequestAction.Allow -> Unit
+                    RequestAction.Block -> return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    RequestAction.Redirect -> {
+                        decision.redirectUrl?.let { reissue(it, null) }
+                        return GeckoResult.fromValue(AllowOrDeny.DENY)
+                    }
+                }
+            }
+
+            val nav = FrameNavigation(
+                url = request.uri,
+                isMainFrame = true,
+                isRedirect = request.isRedirect,
+                hasUserGesture = request.hasUserGesture,
+                // The page that initiated the load — referrer source and
+                // verdict context, `triggerUrl`/`currentUrl` on WebView.
+                triggerUrl = request.triggerUri ?: currentUrl.takeIf {
+                    !request.isDirectNavigation
+                }
             )
-            return when (decision.action) {
-                RequestAction.Allow -> GeckoResult.fromValue(AllowOrDeny.ALLOW)
-                RequestAction.Block -> GeckoResult.fromValue(AllowOrDeny.DENY)
-                RequestAction.Redirect -> {
-                    decision.redirectUrl?.let(session::loadUri)
+            return when (val decision =
+                navigationPolicy.decideMainFrame(nav, policyConfig()) { url ->
+                    externalLauncher.launch(url)
+                }
+            ) {
+                NavigationDecision.Proceed -> GeckoResult.fromValue(AllowOrDeny.ALLOW)
+                NavigationDecision.Deny -> GeckoResult.fromValue(AllowOrDeny.DENY)
+                is NavigationDecision.Redirect -> {
+                    reissue(decision.url, decision.referrer)
+                    GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+                is NavigationDecision.Interstitial -> {
+                    serveInterstitial(decision.page, decision.originalUrl)
                     GeckoResult.fromValue(AllowOrDeny.DENY)
                 }
             }
         }
+
+        override fun onSubframeLoadRequest(
+            session: GeckoSession,
+            request: GeckoSession.NavigationDelegate.LoadRequest
+        ): GeckoResult<AllowOrDeny> {
+            return when (
+                navigationPolicy.decideSubFrame(
+                    request.uri, currentUrl,
+                    allowListModel.isUrlAllowedAds(currentUrl)
+                )
+            ) {
+                NavigationDecision.Proceed -> GeckoResult.fromValue(AllowOrDeny.ALLOW)
+                else -> {
+                    blockedCountThisPage++
+                    GeckoResult.fromValue(AllowOrDeny.DENY)
+                }
+            }
+        }
+
+        /**
+         * `target=_blank`/`window.open` — the WebView's `onCreateWindow`
+         * makes a new tab for the transport; gecko wants a session, so
+         * deny it and hand the URL to the shell's tab factory instead
+         * (the ResultMessage/WebViewTransport transport has no gecko
+         * equivalent — documented gap).
+         */
+        override fun onNewSession(
+            session: GeckoSession,
+            uri: String
+        ): GeckoResult<GeckoSession> {
+            if (uri.isNotEmpty()) {
+                uiController.handleNewTab(NewTab.FOREGROUND, uri, true)
+            }
+            return GeckoResult.fromValue(null)
+        }
+
+        /**
+         * The SSL/generic error path — `onReceivedError` +
+         * `onReceivedSslError` parity: a certificate failure produces
+         * the warning interstitial (GeckoView offers no
+         * `SslErrorHandler.proceed`, so bypass is impossible —
+         * documented gap), other failures the offline/generic page.
+         */
+        override fun onLoadError(
+            session: GeckoSession,
+            uri: String?,
+            error: WebRequestError
+        ): GeckoResult<String>? {
+            val url = uri ?: return null
+            val html = if (isCertificateError(error)) {
+                sslState = SslState.Invalid(sslErrorFor(error))
+                sslSubject.onNext(sslState)
+                // The signal exists for the seam; the action is ignored
+                // because GeckoView can't proceed past cert errors.
+                onCertificateError?.invoke(
+                    CertificateErrorInfo(url, "error ${error.code}", false)
+                )
+                errorPages.certErrorPage(url, error)
+            } else {
+                generatedPageOriginalUrl = url
+                errorPages.loadErrorPage(
+                    url, error,
+                    ConnectivityGate.isOfflineError(
+                        connectivityGate.isConnected(), "error ${error.code}"
+                    )
+                )
+            }
+            return GeckoResult.fromValue(GeckoErrorPages.dataUri(html))
+        }
+
+        private fun isCertificateError(error: WebRequestError): Boolean =
+            error.category == WebRequestError.ERROR_CATEGORY_SECURITY
+
+        /**
+         * Map the gecko cert error onto a WebView-shaped `SslError` so
+         * `SslState.Invalid` keeps working for the shell UI — the best
+         * fidelity gecko's category/code surface allows.
+         */
+        private fun sslErrorFor(error: WebRequestError): SslError {
+            val code = when (error.code) {
+                WebRequestError.ERROR_SECURITY_BAD_CERT -> SslError.SSL_UNTRUSTED
+                WebRequestError.ERROR_BAD_HSTS_CERT -> SslError.SSL_DATE_INVALID
+                else -> SslError.SSL_INVALID
+            }
+            @Suppress("DEPRECATION")
+            return SslError(code, sslCertificateOrStub())
+        }
+
+        private fun sslCertificateOrStub(): SslCertificate {
+            val x509 = latestSecurity?.certificate
+            @Suppress("DEPRECATION")
+            return if (x509 != null) {
+                SslCertificate(x509)
+            } else {
+                SslCertificate("", "", "", "")
+            }
+        }
     }
+
+    /** The last security info — for cert detail on the error path. */
+    private var latestSecurity: GeckoSession.ProgressDelegate.SecurityInformation? = null
 
     private inner class GeckoProgressDelegate : GeckoSession.ProgressDelegate {
         override fun onPageStart(session: GeckoSession, url: String) {
             loading = true
             pageProgress = 0
+            blockedCountThisPage = 0
+            // Per-site JS override, like the WebView client's onPageStarted.
+            session.settings.setAllowJavascript(siteSettings.javaScriptEnabled(url))
             onLoadStatusChanged?.invoke(LoadStatus.Started)
+            if (isShown) {
+                uiController.updateUrl(this@GeckoPage.url, true)
+                uiController.showActionBar()
+            }
+            uiController.tabChanged(this@GeckoPage)
         }
 
         override fun onPageStop(session: GeckoSession, success: Boolean) {
@@ -470,19 +812,26 @@ class GeckoPage(
             onLoadStatusChanged?.invoke(
                 if (success) LoadStatus.Succeeded else LoadStatus.Failed
             )
+            if (isShown) {
+                uiController.updateUrl(this@GeckoPage.url, false)
+                uiController.setBackButtonEnabled(backable)
+                uiController.setForwardButtonEnabled(forwardable)
+            }
         }
 
         override fun onProgressChange(session: GeckoSession, progress: Int) {
             pageProgress = progress
             onProgressChanged?.invoke(progress)
+            if (isShown) uiController.updateProgress(progress)
         }
 
         override fun onSecurityChange(
             session: GeckoSession,
             info: GeckoSession.ProgressDelegate.SecurityInformation
         ) {
-            // No WebView-style SslError to carry — Valid or None is all
-            // the SslState enum can express for gecko (ENG04 gap).
+            latestSecurity = info
+            // Broken TLS surfaces through onLoadError instead; here
+            // Valid/None mirrors the WebView's page-start/finish states.
             sslState = if (info.isSecure) SslState.Valid else SslState.None
             sslSubject.onNext(sslState)
         }
@@ -498,9 +847,18 @@ class GeckoPage(
     private inner class GeckoContentDelegate : GeckoSession.ContentDelegate {
         override fun onTitleChange(session: GeckoSession, title: String?) {
             currentTitle = title.orEmpty()
-            onTitleChanged?.invoke(currentTitle)
+            onTitleChanged?.invoke(this@GeckoPage.title)
+            uiController.tabChanged(this@GeckoPage)
+            if (this@GeckoPage.url.isNotEmpty()) {
+                uiController.updateHistory(title, this@GeckoPage.url)
+            }
         }
 
+        /**
+         * Long-press → the same dialogs the WebView's `longClickPage`
+         * shows: bookmark/download entries on their special pages,
+         * the image menu, and the link menu.
+         */
         override fun onContextMenu(
             session: GeckoSession,
             screenX: Int,
@@ -517,14 +875,80 @@ class GeckoPage(
                     isEditable = false
                 )
             )
+            val pageUrl = this@GeckoPage.url
+            if (pageUrl.isSpecialUrl()) {
+                val target = element.linkUri ?: element.srcUri ?: return
+                if (pageUrl.isBookmarkUrl()) {
+                    dialogBuilder.showLongPressedDialogForBookmarkUrl(
+                        activity, uiController, target
+                    )
+                } else if (pageUrl.isDownloadsUrl()) {
+                    dialogBuilder.showLongPressedDialogForDownloadUrl(
+                        activity, uiController, target
+                    )
+                }
+                return
+            }
+            val link = element.linkUri
+            // TYPE_IMAGE covers both bare images and images inside a
+            // link — linkUri disambiguates (SRC_IMAGE_ANCHOR vs IMAGE).
+            val media = element.srcUri.takeIf {
+                element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_IMAGE ||
+                    element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_VIDEO ||
+                    element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_AUDIO
+            }
+            when {
+                link != null && media != null ->
+                    dialogBuilder.showLongPressImageDialog(
+                        activity, uiController, link, media, userAgent()
+                    )
+                media != null ->
+                    dialogBuilder.showLongPressImageDialog(
+                        activity, uiController, media, media, userAgent()
+                    )
+                link != null ->
+                    dialogBuilder.showLongPressLinkDialog(activity, uiController, link)
+            }
         }
 
+        /**
+         * `onExternalResponse` — a response Gecko isn't rendering gets
+         * the full `LightningDownloadListener` flow: confirm dialog,
+         * DownloadRisk warning, DownloadManager enqueue.
+         */
         override fun onExternalResponse(session: GeckoSession, response: WebResponse) {
+            val url = response.uri.orEmpty()
             onDownloadRequested?.invoke(GeckoDownloadRequest(response))
+            LightningDownloadListener(activity).onDownloadStart(
+                url,
+                userAgent(),
+                response.headerValue("Content-Disposition").orEmpty(),
+                response.headerValue("Content-Type")?.substringBefore(';')?.trim()
+                    .orEmpty(),
+                response.headerValue("Content-Length")?.toLongOrNull() ?: -1L
+            )
         }
 
         override fun onCrash(session: GeckoSession) {
             onCrashed?.invoke()
+        }
+
+        /**
+         * Fullscreen video — the GeckoView itself goes into the shell's
+         * fullscreen container (the standard GeckoView pattern; the
+         * WebView supplies a dedicated custom view instead).
+         */
+        override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
+            if (fullScreen) {
+                ensureView()
+                view?.let { v ->
+                    uiController.onShowCustomView(
+                        v, callback = { session.exitFullScreen() }
+                    )
+                }
+            } else {
+                uiController.onHideCustomView()
+            }
         }
     }
 
@@ -539,7 +963,8 @@ class GeckoPage(
 
     /**
      * [DownloadRequest] over GeckoView's `onExternalResponse` — the
-     * signal reaches the shell; the DownloadManager handoff is ENG04.
+     * signal surface; the DownloadManager handoff rides
+     * `LightningDownloadListener` directly.
      */
     private class GeckoDownloadRequest(
         private val response: WebResponse
@@ -556,10 +981,7 @@ class GeckoPage(
             response.headerValue("Content-Length")?.toLongOrNull() ?: -1L
         override val isFinished: Boolean = false
 
-        private fun WebResponse.headerValue(name: String): String? =
-            headers?.entries?.firstOrNull { it.key.equals(name, true) }?.value
-
-        override fun accept(filePath: String) = Unit // ENG04 — no stream handoff yet
+        override fun accept(filePath: String) = Unit // no stream handoff
         override fun cancel() = Unit
         override fun pause() = Unit
         override fun resume() = Unit
@@ -568,5 +990,12 @@ class GeckoPage(
     companion object {
         private const val TAG = "GeckoPage"
         private const val STATE_KEY = "GECKO_SESSION_STATE"
+
+        /** Gecko pref toggled by the mixed-content setting (SEC03). */
+        private const val PREF_BLOCK_DISPLAYED_MIXED_CONTENT =
+            "security.mixed_content.block_displayed_content"
     }
 }
+
+private fun WebResponse.headerValue(name: String): String? =
+    headers?.entries?.firstOrNull { it.key.equals(name, true) }?.value

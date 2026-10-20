@@ -86,14 +86,31 @@ applies — WebKit types stay banned here).
   Cookie get/set is a documented gap — GeckoView has no
   CookieManager-style imperative API.
 - `gecko/GeckoPage.kt` — `Page`: a `GeckoSession` + lazily created
-  `GeckoView`; navigation/progress/content/history delegates emit the
-  neutral `Page` signals (url/title/progress/load-status/security);
-  supports load/loadData, back/forward, `gotoHistoryIndex`, find
-  (`SessionFinder`), `userAgentMode` for `toggleDesktopUA`, private
-  mode, session-state save/restore.
-  Stubs (ENG04/ENG05): favicons, `SslCertificate`/`SslState.Invalid`,
-  download handoff, JS eval + userscripts (move to WebExtensions),
-  printing, context-menu/permission/cert-error UX, proxy.
+  `GeckoView`; navigation/progress/content/history/prompt/permission
+  delegates emit the neutral `Page` signals; supports load/loadData,
+  back/forward, `gotoHistoryIndex`, find (`SessionFinder`),
+  `userAgentMode` for `toggleDesktopUA`, private mode, session-state
+  save/restore. ENG04 parity: `NavigationPolicy` (network/, engine-
+  neutral) composes proceed-marker → changelog → SafeSearch →
+  HTTPS-only → prefer-HTTPS → external-scheme → scheme check →
+  referrer → verdict → connectivity (same ordering the WebView's
+  override-then-intercept phases imply), the seam
+  `requestPolicy` runs first, `onLoadError` serves generated pages
+  (block/offline/LAN/malware/HTTPS-only/cert via `GeckoErrorPages`),
+  context menus map `ContextElement`s onto `LightningDialogBuilder`,
+  `onExternalResponse` → `LightningDownloadListener` →
+  `DownloadHandler`/DownloadManager, `GeckoPromptDelegate` covers
+  JS dialogs/auth/`<select>`/file-chooser/repost/beforeunload,
+  `GeckoPermissionDelegate` covers runtime/geolocation/media/content
+  permissions, `GeckoExternalLauncher` handles mailto/intent/custom
+  schemes. Documented gaps: SSL bypass impossible (no
+  `SslErrorHandler.proceed` equivalent), cert detail is a stub
+  `SslCertificate`, window.open transport, media fullscreen uses the
+  whole GeckoView, mixed content is a runtime-global gecko pref not
+  per-session.
+  Stubs (ENG05): favicons, JS eval + userscripts (move to
+  WebExtensions), printing, cookie get/set, proxy, Sec-GPC/DNT on
+  subresources.
 - `engine/EngineSelector.kt` (in `src/gecko` and `src/webview`) —
   flavor seam; `BrowserApp` calls `EngineSelector.createBackend(app)`
   so `main` never names a flavor type.

@@ -44,7 +44,16 @@ class GeckoEngine(
     private val downloadPageInitializer: DownloadPageInitializer,
     private val historyPageInitializer: HistoryPageInitializer,
     private val userPreferences: UserPreferences,
-    private val logger: Logger
+    private val logger: Logger,
+    // ENG04 — the WebView-client parity collaborators each page needs
+    // (context menus, allowlist verdicts, connectivity probe, per-site
+    // settings, blocklist warm-up).
+    private val dialogBuilder: com.arktosbrowser.mobile.dialog.LightningDialogBuilder,
+    private val allowListModel: com.arktosbrowser.mobile.adblock.allowlist.AllowListModel,
+    private val connectivityGate: com.arktosbrowser.mobile.network.ConnectivityGate,
+    private val siteSettings: com.arktosbrowser.mobile.browser.SiteSettings,
+    private val blocklistLoader: com.arktosbrowser.mobile.adblock.BlocklistLoader,
+    private val rankListLoader: com.arktosbrowser.mobile.adblock.RankListLoader
 ) : Backend {
 
     override val id = "gecko"
@@ -106,7 +115,13 @@ class GeckoEngine(
         downloadPageInitializer,
         historyPageInitializer,
         userPreferences,
-        logger
+        logger,
+        dialogBuilder,
+        allowListModel,
+        connectivityGate,
+        siteSettings,
+        blocklistLoader,
+        rankListLoader
     )
 
     override fun createView(page: Page): View? = (page as? GeckoPage)?.ensureView()

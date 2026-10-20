@@ -26,7 +26,13 @@ object EngineSelector {
             component.downloadPageInitializer(),
             component.historyPageInitializer(),
             component.userPreferences(),
-            component.logger()
+            component.logger(),
+            component.lightningDialogBuilder(),
+            component.allowListModel(),
+            component.connectivityGate(),
+            component.siteSettings(),
+            component.blocklistLoader(),
+            component.rankListLoader()
         )
     }
 

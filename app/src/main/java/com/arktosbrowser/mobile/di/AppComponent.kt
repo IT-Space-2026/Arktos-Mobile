@@ -16,8 +16,13 @@ import com.arktosbrowser.mobile.view.ArktosCookieChromeClient
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.ArktosCookieWebClient
 import android.app.Application
+import com.arktosbrowser.mobile.adblock.BlocklistLoader
+import com.arktosbrowser.mobile.adblock.RankListLoader
+import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
+import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
 import com.arktosbrowser.mobile.history.HistoryActivity
+import com.arktosbrowser.mobile.network.ConnectivityGate
 import com.arktosbrowser.mobile.popup.PopUpClass
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -127,4 +132,21 @@ interface AppComponent {
     fun logger(): Logger
 
     fun buildInfo(): BuildInfo
+
+    // ---- gecko ENG04 page collaborators ---------------------------------
+    // GeckoPage can't get a flavor-specific inject() method (the graph
+    // lives in main), so its WebView-client parity collaborators are
+    // exposed here for EngineSelector to hand over.
+
+    fun lightningDialogBuilder(): LightningDialogBuilder
+
+    fun allowListModel(): AllowListModel
+
+    fun connectivityGate(): ConnectivityGate
+
+    fun siteSettings(): SiteSettings
+
+    fun blocklistLoader(): BlocklistLoader
+
+    fun rankListLoader(): RankListLoader
 }

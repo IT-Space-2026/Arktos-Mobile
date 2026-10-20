@@ -87,7 +87,7 @@ NO SUDO — everything user-local.
 | SEC16 | Reproducible/verified build investigation — details below | done | 0 | wrapper sha256 + rust-toolchain.toml (1.99.0) + ndkVersion/buildToolsVersion pins + gradle verification-metadata.xml + cargo --locked + RUSTFLAGS remap-path-prefix (142 dep paths normalized in release .so); REPRODUCIBLE.md recipe + residual-gap doc — ReproducibleBuildTest 7/7, 357 unit tests 0 fail, assembleScMainDebug/Release + engine-audit PASS |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | done | 0 | Backend/Profile/Page live; engine-audit PASS, assembleScMainDebug + unit suite green |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | done | 0 | engine dim (webview=Lite / gecko=Full .full, arm64-only release); GeckoEngine/Profile/Page skeleton in src/gecko behind Page seam (tab shell retyped off ArktosCookieView); assembleScMainWebviewDebug + assembleScMainGeckoDebug + both unit suites (366) + engine-audit PASS |
-| ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | in_progress | 0 | — |
+| ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | done | 0 | engine-neutral NavigationPolicy + full GeckoPage delegate wiring (nav/progress/content/history/prompt/permission), GeckoErrorPages/Prompt/Permission/ExternalLauncher delegates; NavigationPolicyTest 15/15 both flavors, assembleScMainWebviewDebug + assembleScMainGeckoDebug + engine-audit PASS |
 | ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
 
 ## Task details
@@ -798,6 +798,35 @@ offline pages and the intent-scheme allowlist all work identically;
 SSL error interstitial path; context menus; find-in-page
 (SessionFinder); file chooser + permission prompts; save/restore tab
 state; external-response → DownloadManager. needs:tool:java
+
+Outcome (2026-10-20): `network/NavigationPolicy.kt` (engine-neutral,
+in `main`) reproduces the WebView client's gate order — proceed-marker
+→ changelog → SafeSearch → HTTPS-only → prefer-HTTPS → external-app →
+scheme check → referrer takeover → verdict (blocklist/offline via
+ArktosCore+ConnectivityGate). `GeckoPage` runs seam `requestPolicy`
+then `NavigationPolicy` in `onLoadRequest`, verdicts in
+`onSubframeLoadRequest`; `onLoadError` serves generated pages via
+`GeckoErrorPages` (block/malware/LAN/offline/HTTPS-only/cert, asset
+overrides at `resource://android/assets/`); `onContextMenu` maps
+`ContextElement` onto `LightningDialogBuilder`; `onExternalResponse`
+→ `LightningDownloadListener`/`DownloadHandler` → DownloadManager;
+`onNewSession` → `uiController.handleNewTab`; `GeckoPromptDelegate`
+(JS dialogs, HTTP auth, `<select>`, file chooser via
+`uiController.showFileChooser`, repost/beforeunload/popup);
+`GeckoPermissionDelegate` (runtime perms, geolocation,
+notification/autoplay/storage-access, getUserMedia gated on
+`webRtcEnabled`); `SessionFinder` find-in-page; session-state
+save/restore incl. generated-page original-URL tracking (restores as
+URL_KEY like WebView). Mixed content via gecko pref
+`security.mixed_content.block_displayed_content`
+(OTR‖blockMixedContent). AppComponent exposes dialogBuilder/
+allowListModel/connectivityGate/siteSettings/blocklistLoader/
+rankListLoader for the manually-built GeckoEngine. Documented gaps:
+no SSL proceed equivalent, cert detail stub SslCertificate,
+window.open transport, runtime-global mixed-content pref, favicons/
+cookies/scripts/proxy → ENG05. Note: a class-local `typealias` in
+GeckoPromptDelegate crashed the KSP2 AA worker (bare
+IllegalStateException) — replaced with explicit types.
 
 ### ENG05
 GeckoEngine parity pass B (storage & UX): cookie/storage clear paths
