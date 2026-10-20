@@ -171,7 +171,9 @@ class LightningDialogBuilder @Inject constructor(
         getUrl.setText(entry.url)
         val getFolder = dialogLayout.findViewById<AutoCompleteTextView>(R.id.bookmark_folder)
         getFolder.setHint(R.string.folder)
-        getFolder.setText(entry.folder.title)
+        // #308: a bookmark saved while the drawer's last-viewed folder
+        // is open lands in that folder, not always at root.
+        getFolder.setText(entry.folder.title.ifBlank { userPreferences.lastBookmarkFolder })
 
         val ignored = bookmarkManager.getFolderNames()
             .subscribeOn(databaseScheduler)

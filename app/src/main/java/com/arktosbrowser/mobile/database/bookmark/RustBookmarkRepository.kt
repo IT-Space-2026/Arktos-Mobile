@@ -81,6 +81,11 @@ class RustBookmarkRepository @Inject constructor(
             store.bookmarksInFolder(folder).map { it.toBookmarkEntry() }
         }
 
+    override fun getBookmarksFromFolderByDate(folder: String?): Single<List<Bookmark>> =
+        Single.fromCallable {
+            store.bookmarksInFolderByDate(folder).map { it.toBookmarkEntry() }
+        }
+
     override fun getFoldersSorted(): Single<List<Bookmark.Folder>> = Single.fromCallable {
         store.folderNames().map(String::asFolder)
     }

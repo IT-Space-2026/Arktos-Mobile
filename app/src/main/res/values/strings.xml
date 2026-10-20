@@ -161,6 +161,7 @@
     <string name="shield_clear_data">Clear site data</string>
     <string name="shield_data_cleared">Site data cleared</string>
     <string name="shield_view_certificate">Certificate</string>
+    <string name="bookmark_sort_date">Sort bookmarks by date added</string>
     <string name="ssl_info_connection">Connection</string>
     <string name="ssl_info_cookies">Cookies</string>
     <string name="ssl_info_blocking">Content blocking</string>

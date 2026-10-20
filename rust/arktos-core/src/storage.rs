@@ -348,6 +348,23 @@ impl ArktosStore {
         )
     }
 
+    /// Same rows as [Self::bookmarks_in_folder] but newest first —
+    /// the #156 "sort by date added" order. Rows stamped 0 (data
+    /// predating the column) fall back to id order at the tail.
+    pub fn bookmarks_in_folder_by_date(
+        &self,
+        folder: Option<String>,
+    ) -> StoreResult<Vec<StoreBookmark>> {
+        let conn = self.db()?;
+        query_bookmarks(
+            &conn,
+            "SELECT url, title, folder, position, created_at FROM bookmark
+             WHERE folder = ?1
+             ORDER BY created_at DESC, id DESC",
+            params![folder.unwrap_or_default()],
+        )
+    }
+
     /// All non-root folder paths, sorted — the folder tree for
     /// #308-style "save into folder" pickers is derivable by splitting
     /// on '/'.
@@ -944,6 +961,14 @@ mod tests {
         // position ties → case-insensitive title order
         assert_eq!(
             dev.iter().map(|b| b.url.as_str()).collect::<Vec<_>>(),
+            vec!["https://a.com", "https://b.com"]
+        );
+
+        // #156: by-date order puts the newest insert first — a.com was
+        // added after b.com (same-second stamps resolve by id DESC).
+        let dev_by_date = s.bookmarks_in_folder_by_date(Some("Dev".into())).unwrap();
+        assert_eq!(
+            dev_by_date.iter().map(|b| b.url.as_str()).collect::<Vec<_>>(),
             vec!["https://a.com", "https://b.com"]
         );
 

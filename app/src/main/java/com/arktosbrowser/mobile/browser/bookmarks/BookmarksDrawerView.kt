@@ -53,7 +53,7 @@ class BookmarksDrawerView @JvmOverloads constructor(
         private val activity: Activity,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0,
-        userPreferences: UserPreferences
+        private val userPreferences: UserPreferences
 ) : LinearLayout(context, attrs, defStyleAttr), BookmarksView {
 
     @Inject internal lateinit var bookmarkModel: BookmarkRepository
@@ -192,8 +192,14 @@ class BookmarksDrawerView @JvmOverloads constructor(
     }
 
     private fun setBookmarksShown(folder: String?, animate: Boolean) {
+        // Remember the folder for #308's "save into the folder I'm
+        // in" prefill on the add-bookmark dialog.
+        userPreferences.lastBookmarkFolder = folder.orEmpty()
         bookmarksSubscription?.dispose()
-        bookmarksSubscription = bookmarkModel.getBookmarksFromFolderSorted(folder)
+        bookmarksSubscription = (
+            if (userPreferences.bookmarkSortByDate) bookmarkModel.getBookmarksFromFolderByDate(folder)
+            else bookmarkModel.getBookmarksFromFolderSorted(folder)
+            )
             .concatWith(Single.defer {
                 if (folder == null) {
                     bookmarkModel.getFoldersSorted()
