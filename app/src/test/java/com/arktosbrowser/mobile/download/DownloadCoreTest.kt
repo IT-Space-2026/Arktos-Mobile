@@ -33,7 +33,7 @@ class DownloadCoreTest {
     fun `downloadFileName prefers the header`() {
         assertEquals(
             "r.pdf",
-            DownloadHandler.getFileNameFromURL(
+            DownloadNaming.resolveFileName(
                 "https://x.com/get?id=1",
                 "attachment; filename=\"r.pdf\"",
                 "application/pdf"
@@ -46,7 +46,7 @@ class DownloadCoreTest {
         // Upstream #270-class bug: a filename*-only header was ignored.
         assertEquals(
             "report.pdf",
-            DownloadHandler.getFileNameFromURL(
+            DownloadNaming.resolveFileName(
                 "https://x.com/dl",
                 "attachment; filename*=UTF-8''report.pdf",
                 null
@@ -58,11 +58,11 @@ class DownloadCoreTest {
     fun `downloadFileName falls back to url path and mime`() {
         assertEquals(
             "pic.png",
-            DownloadHandler.getFileNameFromURL("https://x.com/a/b/pic.png?x=1", null, null)
+            DownloadNaming.resolveFileName("https://x.com/a/b/pic.png?x=1", null, null)
         )
         assertEquals(
             "d.txt",
-            DownloadHandler.getFileNameFromURL("https://x.com/d", null, "text/plain")
+            DownloadNaming.resolveFileName("https://x.com/d", null, "text/plain")
         )
     }
 

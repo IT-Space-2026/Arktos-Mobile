@@ -17,7 +17,6 @@ import com.arktosbrowser.mobile.view.ArktosCookieChromeClient
 import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.ArktosCookieWebClient
 import android.app.Application
-import com.arktosbrowser.mobile.download.DownloadActivity
 import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
 import com.arktosbrowser.mobile.history.HistoryActivity
 import com.arktosbrowser.mobile.popup.PopUpClass
@@ -42,8 +41,6 @@ interface AppComponent {
     }
 
     fun inject(activity: BrowserActivity)
-
-    fun inject(activity: DownloadActivity)
 
     fun inject(activity: HistoryActivity)
 

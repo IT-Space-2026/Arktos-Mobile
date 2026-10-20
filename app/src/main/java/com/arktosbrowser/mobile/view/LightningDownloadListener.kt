@@ -3,6 +3,7 @@
 package com.arktosbrowser.mobile.view
 
 import com.arktosbrowser.mobile.download.DownloadHandler
+import com.arktosbrowser.mobile.download.DownloadNaming
 
 import android.Manifest
 import android.app.Activity
@@ -51,7 +52,7 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
     override fun onDownloadStart(url: String, userAgent: String,
                                  contentDisposition: String, mimetype: String, contentLength: Long) {
         val fileName =
-            DownloadHandler.getFileNameFromURL(url, contentDisposition, mimetype)
+            DownloadNaming.resolveFileName(url, contentDisposition, mimetype)
         val downloadSize: String = if (contentLength > 0) {
             Formatter.formatFileSize(mActivity, contentLength)
         } else {

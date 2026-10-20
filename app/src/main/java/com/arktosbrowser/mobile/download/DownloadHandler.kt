@@ -3,8 +3,10 @@
 
 package com.arktosbrowser.mobile.download
 
-import android.app.*
-import android.content.*
+import android.app.Activity
+import android.app.DownloadManager
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
@@ -50,26 +52,37 @@ class DownloadHandler @Inject constructor(
         logger.log(TAG, "DOWNLOAD: MimeType: $mimeType")
         logger.log(TAG, "DOWNLOAD: User agent: $userAgent")
 
-        if (contentDisposition == null || !contentDisposition.regionMatches(0, "attachment", 0, 10, ignoreCase = true)) {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setDataAndType(Uri.parse(url), mimeType)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            intent.addCategory(Intent.CATEGORY_BROWSABLE)
-            intent.component = null
-            intent.selector = null
-            val info = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            if (info != null) {
-                if (BuildConfig.APPLICATION_ID == info.activityInfo.packageName || MainActivity::class.java.name == info.activityInfo.name) {
-                    try {
-                        context.startActivity(intent)
-                        return
-                    } catch (ex: ActivityNotFoundException) {
-                    }
-                }
-            }
+        if (contentDisposition?.regionMatches(0, "attachment", 0, 10, ignoreCase = true) != true
+            && opensInThisApp(context, url, mimeType)) {
+            return
         }
 
         onDownloadStartNoStream(context, manager, url, userAgent, contentDisposition, mimeType, contentSize, referer)
+    }
+
+    /**
+     * When the URL + MIME type resolves back to this app (a streamable
+     * resource the browser can render), open it in a tab rather than
+     * downloading it. Returns true when the hand-off happened.
+     */
+    private fun opensInThisApp(context: Activity, url: String, mimeType: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse(url), mimeType)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addCategory(Intent.CATEGORY_BROWSABLE)
+        }
+        val info = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            ?: return false
+        if (BuildConfig.APPLICATION_ID != info.activityInfo.packageName
+            && MainActivity::class.java.name != info.activityInfo.name) {
+            return false
+        }
+        return try {
+            context.startActivity(intent)
+            true
+        } catch (ex: ActivityNotFoundException) {
+            false
+        }
     }
 
     fun onDownloadStartNoStream(
@@ -92,23 +105,18 @@ class DownloadHandler @Inject constructor(
             // type is often application/octet-stream and the URL may still be
             // an interstitial that redirects to the actual file.
             val proxy = ProxyUtils.connectionProxy(manager)
-            Maybe.fromCallable { DownloadHttpProbe.probe(url, cookies, userAgent, referer, proxy) }
+            val enqueue = { probe: DownloadHttpProbe.Result? ->
+                enqueueRequest(
+                    context, url, userAgent, cookies, referer,
+                    contentDisposition, mimeType, contentSize, probe
+                )
+            }
+            Maybe.fromCallable {
+                    DownloadHttpProbe.probe(url, cookies, userAgent, referer, proxy)
+                }
                 .subscribeOn(networkScheduler)
                 .observeOn(mainScheduler)
-                .subscribe(
-                    { probe ->
-                        enqueueRequest(context, url, userAgent, cookies, referer,
-                            contentDisposition, mimeType, contentSize, probe)
-                    },
-                    {
-                        enqueueRequest(context, url, userAgent, cookies, referer,
-                            contentDisposition, mimeType, contentSize, null)
-                    },
-                    {
-                        enqueueRequest(context, url, userAgent, cookies, referer,
-                            contentDisposition, mimeType, contentSize, null)
-                    }
-                )
+                .subscribe(enqueue, { enqueue(null) }, { enqueue(null) })
         }
     }
 
@@ -269,12 +277,5 @@ class DownloadHandler @Inject constructor(
         private const val COOKIE_REQUEST_HEADER = "Cookie"
         private const val USER_AGENT_REQUEST_HEADER = "User-Agent"
         private const val REFERER_REQUEST_HEADER = "Referer"
-
-        fun getFileNameFromURL(url: String?, contentDisposition: String?, mimeType: String?): String {
-            return DownloadNaming.resolveFileName(url, contentDisposition, mimeType)
-        }
-
-        internal fun sanitizeFileName(name: String?): String =
-            DownloadNaming.sanitizeFileName(name)
     }
 }
