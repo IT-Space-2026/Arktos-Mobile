@@ -191,3 +191,15 @@ Security:
   Auto Backup's database inclusion was removed at the same time so
   history/bookmarks/downloads no longer ship to the cloud in
   plaintext (SEC02).
+
+Search suggestions:
+- Provider list rebuilt: Baidu (HTTP-only, GBK wire format) and Naver
+  removed; Startpage (OpenSearch JSON via www.startpage.com/
+  osuggestions) and Qwant (api.qwant.com/v3/suggest) added — all
+  remaining providers are HTTPS (SUGG01).
+- New installs default to DuckDuckGo; stored choices for removed
+  providers migrate to DuckDuckGo rather than silently switching to
+  Google (SUGG01).
+- Qwant suggestion requests carry the device locale
+  (language_COUNTRY, e.g. de_DE, pt-BR → pt_BR) instead of a
+  hardcoded en_US; unknown locales fall back to en_US (SUGG02).
