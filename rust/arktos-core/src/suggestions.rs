@@ -1,7 +1,7 @@
 //! Search suggestion core (PORT01).
 //!
-//! Port of the four `*SuggestionsModel` classes (Google / DuckDuckGo /
-//! Baidu / Naver): the Rust core owns the query-URL construction and
+//! Port of the upstream `*SuggestionsModel` classes: the Rust core owns
+//! the query-URL construction and
 //! response parsing; the Kotlin shell keeps the actual HTTP fetch
 //! (OkHttp + request factory + RxJava threading).
 //!
@@ -11,11 +11,10 @@
 //!   `<suggestion data="...">` via `html5gum` (entity references in the
 //!   attribute are resolved like XmlPullParser did).
 //! * DuckDuckGo — UTF-8 JSON array of `{"phrase": "..."}` objects.
-//! * Baidu — JSON `[query, [suggestions]]`; the wire encoding is GBK
-//!   (upstream's `responseBody.string()` decoded it as UTF-8 and
-//!   garbled non-ASCII — the port decodes GBK properly via
-//!   `encoding_rs`).
-//! * Naver — UTF-8 JSON `{"items":[[[...suggestions...]]]}`.
+//! * Startpage — OpenSearch JSON `[query, [suggestions]]` via the
+//!   documented `osuggestions` endpoint.
+//! * Qwant — UTF-8 JSON `{"data":{"items":[{"value":...}]}}` via the
+//!   `api.qwant.com/v3/suggest` endpoint.
 //!
 //! Malformed responses return an empty list — upstream let the parse
 //! exception propagate through RxJava's `onError` which the adapter
@@ -28,8 +27,8 @@ use html5gum::{Token, Tokenizer};
 pub enum SuggestionProvider {
     Google,
     Duck,
-    Baidu,
-    Naver,
+    Startpage,
+    Qwant,
 }
 
 /// Build the suggestion endpoint URL for an already URL-encoded query.
@@ -48,13 +47,11 @@ pub fn suggestion_query_url(
             "https://suggestqueries.google.com/complete/search?output=toolbar&q={encoded_query}"
         ),
         SuggestionProvider::Duck => format!("https://duckduckgo.com/ac/?q={encoded_query}"),
-        SuggestionProvider::Baidu => {
-            format!("http://suggestion.baidu.com/s?wd={encoded_query}&action=opensearch")
+        SuggestionProvider::Startpage => {
+            format!("https://www.startpage.com/osuggestions?q={encoded_query}")
         }
-        SuggestionProvider::Naver => format!(
-            "https://ac.search.naver.com/nx/ac?q={encoded_query}\
-             &q_enc=UTF-8&st=100&frm=nv&r_format=json&r_enc=UTF-8\
-             &r_unicode=0&t_koreng=1&ans=2&run=2&rev=4&con=1"
+        SuggestionProvider::Qwant => format!(
+            "https://api.qwant.com/v3/suggest?q={encoded_query}&locale=en_US&version=2"
         ),
     }
 }
@@ -66,8 +63,8 @@ pub fn parse_suggestions(provider: SuggestionProvider, body: Vec<u8>) -> Vec<Str
     match provider {
         SuggestionProvider::Google => parse_google(&body),
         SuggestionProvider::Duck => parse_duck(&body),
-        SuggestionProvider::Baidu => parse_baidu(&body),
-        SuggestionProvider::Naver => parse_naver(&body),
+        SuggestionProvider::Startpage => parse_startpage(&body),
+        SuggestionProvider::Qwant => parse_qwant(&body),
     }
 }
 
@@ -112,10 +109,9 @@ fn parse_duck(body: &[u8]) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn parse_baidu(body: &[u8]) -> Vec<String> {
-    // Baidu serves GBK; `serde_json` needs UTF-8 so transcode first.
-    let (decoded, _, _) = encoding_rs::GBK.decode(body);
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(&decoded) else {
+fn parse_startpage(body: &[u8]) -> Vec<String> {
+    // OpenSearch suggestions format: ["query", ["sug1", "sug2", ...]]
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
         return Vec::new();
     };
     value
@@ -132,19 +128,18 @@ fn parse_baidu(body: &[u8]) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn parse_naver(body: &[u8]) -> Vec<String> {
+fn parse_qwant(body: &[u8]) -> Vec<String> {
     let Ok(value) = serde_json::from_slice::<serde_json::Value>(body) else {
         return Vec::new();
     };
     value
-        .get("items")
+        .get("data")
+        .and_then(|d| d.get("items"))
         .and_then(|items| items.as_array())
-        .and_then(|items| items.first())
-        .and_then(|first| first.as_array())
         .map(|items| {
             items
                 .iter()
-                .filter_map(|entry| entry.as_array()?.first()?.as_str())
+                .filter_map(|item| item.get("value").and_then(|v| v.as_str()))
                 .map(str::to_owned)
                 .collect()
         })
@@ -166,13 +161,12 @@ mod tests {
             "https://duckduckgo.com/ac/?q=ab"
         );
         assert_eq!(
-            suggestion_query_url(SuggestionProvider::Baidu, "cd".into(), "en".into()),
-            "http://suggestion.baidu.com/s?wd=cd&action=opensearch"
+            suggestion_query_url(SuggestionProvider::Startpage, "gh".into(), "en".into()),
+            "https://www.startpage.com/osuggestions?q=gh"
         );
         assert_eq!(
-            suggestion_query_url(SuggestionProvider::Naver, "ef".into(), "en".into()),
-            "https://ac.search.naver.com/nx/ac?q=ef&q_enc=UTF-8&st=100&frm=nv\
-             &r_format=json&r_enc=UTF-8&r_unicode=0&t_koreng=1&ans=2&run=2&rev=4&con=1"
+            suggestion_query_url(SuggestionProvider::Qwant, "ij".into(), "en".into()),
+            "https://api.qwant.com/v3/suggest?q=ij&locale=en_US&version=2"
         );
     }
 
@@ -208,32 +202,20 @@ mod tests {
     }
 
     #[test]
-    fn baidu_parses_second_array_element() {
+    fn startpage_parses_opensearch_second_array() {
         let body = br#"["query",["one","two","three"],{"extra":true}]"#.to_vec();
         assert_eq!(
-            parse_suggestions(SuggestionProvider::Baidu, body),
+            parse_suggestions(SuggestionProvider::Startpage, body),
             vec!["one", "two", "three"]
         );
     }
 
     #[test]
-    fn baidu_decodes_gbk_body() {
-        // GBK-encoded JSON: ["q",["\xD6\xD0\xB9\xFA"]] → ["q",["中国"]]
-        let mut body = br#"["q",[""#.to_vec();
-        body.extend_from_slice(&[0xD6, 0xD0, 0xB9, 0xFA]);
-        body.extend_from_slice(b"\"]]");
+    fn qwant_parses_data_items_value() {
+        let body = br#"{"status":"success","data":{"items":[{"value":"alpha"},{"value":"beta"},{"other":1}]}}"#.to_vec();
         assert_eq!(
-            parse_suggestions(SuggestionProvider::Baidu, body),
-            vec!["中国"]
-        );
-    }
-
-    #[test]
-    fn naver_parses_items_nested_arrays() {
-        let body = br#"{"items":[[["soup","0"],["sugar","0"],["salt","0"]]]}"#.to_vec();
-        assert_eq!(
-            parse_suggestions(SuggestionProvider::Naver, body),
-            vec!["soup", "sugar", "salt"]
+            parse_suggestions(SuggestionProvider::Qwant, body),
+            vec!["alpha", "beta"]
         );
     }
 
@@ -242,8 +224,8 @@ mod tests {
         for provider in [
             SuggestionProvider::Google,
             SuggestionProvider::Duck,
-            SuggestionProvider::Baidu,
-            SuggestionProvider::Naver,
+            SuggestionProvider::Startpage,
+            SuggestionProvider::Qwant,
         ] {
             assert!(parse_suggestions(provider, b"{{{not valid".to_vec()).is_empty());
             assert!(parse_suggestions(provider, Vec::new()).is_empty());

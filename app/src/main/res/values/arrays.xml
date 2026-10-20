@@ -63,8 +63,8 @@
     <string-array name="suggestions">
         <item>@string/powered_by_google</item>
         <item>@string/powered_by_duck</item>
-        <item>@string/powered_by_baidu</item>
-        <item>@string/powered_by_naver</item>
+        <item>@string/powered_by_startpage</item>
+        <item>@string/powered_by_qwant</item>
         <item>@string/search_suggestions_off</item>
     </string-array>
 

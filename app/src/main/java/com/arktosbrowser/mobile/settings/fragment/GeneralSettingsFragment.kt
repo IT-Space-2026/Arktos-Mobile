@@ -298,8 +298,8 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
         when (choice) {
             Suggestions.GOOGLE -> getString(R.string.powered_by_google)
             Suggestions.DUCK -> getString(R.string.powered_by_duck)
-            Suggestions.BAIDU -> getString(R.string.powered_by_baidu)
-            Suggestions.NAVER -> getString(R.string.powered_by_naver)
+            Suggestions.STARTPAGE -> getString(R.string.powered_by_startpage)
+            Suggestions.QWANT -> getString(R.string.powered_by_qwant)
             Suggestions.NONE -> getString(R.string.search_suggestions_off)
         }
 
@@ -310,8 +310,8 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
             val currentChoice = when (Suggestions.from(userPreferences.searchSuggestionChoice)) {
                 Suggestions.GOOGLE -> 0
                 Suggestions.DUCK -> 1
-                Suggestions.BAIDU -> 2
-                Suggestions.NAVER -> 3
+                Suggestions.STARTPAGE -> 2
+                Suggestions.QWANT -> 3
                 Suggestions.NONE -> 4
             }
 
@@ -319,10 +319,10 @@ class GeneralSettingsFragment : AbstractSettingsFragment() {
                 val suggestionsProvider = when (which) {
                     0 -> Suggestions.GOOGLE
                     1 -> Suggestions.DUCK
-                    2 -> Suggestions.BAIDU
-                    3 -> Suggestions.NAVER
+                    2 -> Suggestions.STARTPAGE
+                    3 -> Suggestions.QWANT
                     4 -> Suggestions.NONE
-                    else -> Suggestions.GOOGLE
+                    else -> Suggestions.DUCK
                 }
                 userPreferences.searchSuggestionChoice = suggestionsProvider.index
                 summaryUpdater.updateSummary(searchSuggestionChoiceToTitle(suggestionsProvider))

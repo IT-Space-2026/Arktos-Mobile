@@ -31,11 +31,12 @@ class  SearchEngineProvider @Inject constructor(
     fun provideSearchSuggestions(): SuggestionsRepository =
         when (userPreferences.searchSuggestionChoice) {
             0 -> RustSuggestionsModel(SuggestionProvider.GOOGLE, okHttpClient, requestFactory, application, logger)
-            1 -> RustSuggestionsModel(SuggestionProvider.DUCK, okHttpClient, requestFactory, application, logger)
-            2 -> RustSuggestionsModel(SuggestionProvider.BAIDU, okHttpClient, requestFactory, application, logger)
-            3 -> RustSuggestionsModel(SuggestionProvider.NAVER, okHttpClient, requestFactory, application, logger)
+            // 2 (Baidu), 3 (Naver) were removed — those saved indices
+            // fall through to the DuckDuckGo default.
             5 -> NoOpSuggestionsRepository()
-            else -> RustSuggestionsModel(SuggestionProvider.GOOGLE, okHttpClient, requestFactory, application, logger)
+            6 -> RustSuggestionsModel(SuggestionProvider.STARTPAGE, okHttpClient, requestFactory, application, logger)
+            7 -> RustSuggestionsModel(SuggestionProvider.QWANT, okHttpClient, requestFactory, application, logger)
+            else -> RustSuggestionsModel(SuggestionProvider.DUCK, okHttpClient, requestFactory, application, logger)
         }
 
     /**

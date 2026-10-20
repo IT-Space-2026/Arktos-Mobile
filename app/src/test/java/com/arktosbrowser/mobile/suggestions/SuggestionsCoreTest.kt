@@ -23,13 +23,12 @@ class SuggestionsCoreTest {
             ArktosCore.suggestionQueryUrl(SuggestionProvider.DUCK, "abc", "en")
         )
         assertEquals(
-            "http://suggestion.baidu.com/s?wd=abc&action=opensearch",
-            ArktosCore.suggestionQueryUrl(SuggestionProvider.BAIDU, "abc", "en")
+            "https://www.startpage.com/osuggestions?q=abc",
+            ArktosCore.suggestionQueryUrl(SuggestionProvider.STARTPAGE, "abc", "en")
         )
         assertEquals(
-            "https://ac.search.naver.com/nx/ac?q=abc&q_enc=UTF-8&st=100&frm=nv" +
-                "&r_format=json&r_enc=UTF-8&r_unicode=0&t_koreng=1&ans=2&run=2&rev=4&con=1",
-            ArktosCore.suggestionQueryUrl(SuggestionProvider.NAVER, "abc", "en")
+            "https://api.qwant.com/v3/suggest?q=abc&locale=en_US&version=2",
+            ArktosCore.suggestionQueryUrl(SuggestionProvider.QWANT, "abc", "en")
         )
     }
 
@@ -46,15 +45,15 @@ class SuggestionsCoreTest {
     }
 
     @Test
-    fun `baidu json body parses`() {
+    fun `startpage opensearch body parses`() {
         val body = """["q",["one","two"]]"""
-        assertEquals(listOf("one", "two"), ArktosCore.parseSuggestions(SuggestionProvider.BAIDU, body.toByteArray()))
+        assertEquals(listOf("one", "two"), ArktosCore.parseSuggestions(SuggestionProvider.STARTPAGE, body.toByteArray()))
     }
 
     @Test
-    fun `naver json body parses`() {
-        val body = """{"items":[[["soup","0"],["sugar","0"]]]}"""
-        assertEquals(listOf("soup", "sugar"), ArktosCore.parseSuggestions(SuggestionProvider.NAVER, body.toByteArray()))
+    fun `qwant json body parses`() {
+        val body = """{"status":"success","data":{"items":[{"value":"a"},{"value":"b"}]}}"""
+        assertEquals(listOf("a", "b"), ArktosCore.parseSuggestions(SuggestionProvider.QWANT, body.toByteArray()))
     }
 
     @Test

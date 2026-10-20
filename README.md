@@ -121,7 +121,7 @@ SmartCookieWeb#314).
   encrypted SQLite, keyed by an Android Keystore-wrapped random key)
   behind the existing repository interfaces;
   Netscape bookmark imports are parsed in Rust too
-- Search suggestions (Google, DuckDuckGo, Baidu, Naver), userscript
+- Search suggestions (DuckDuckGo, Google, Startpage, Qwant), userscript
   metadata parsing, download filename/MIME resolution, legacy
   bookmark imports/exports and reading-mode article extraction
   (`dom_smoothie`) all run in the Rust core
@@ -166,7 +166,7 @@ rust/arktos-core/     Rust browser-core library (libarktos.so) — UniFFI crate
   src/download.rs       download filename/MIME resolution
   src/netscape.rs       Netscape bookmark-file import/export
   src/readability.rs    reading-mode extraction (dom_smoothie)
-  src/suggestions.rs    search-suggestion client (Google/DDG/Baidu/Naver)
+  src/suggestions.rs    search-suggestion client (DDG/Google/Startpage/Qwant)
   src/userscript.rs     Greasemonkey metadata parsing + @require resolution
   src/translate.rs      LibreTranslate-compatible request/response format
   src/password.rs       Argon2id app-lock / parental-control hashing
