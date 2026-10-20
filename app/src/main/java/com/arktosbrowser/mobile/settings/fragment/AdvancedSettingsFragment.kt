@@ -1,8 +1,11 @@
 package com.arktosbrowser.mobile.settings.fragment
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.EditText
+import android.widget.Toast
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.TEXT_ENCODINGS
 import com.arktosbrowser.mobile.di.injector
@@ -54,6 +57,30 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
                 preference = SETTINGS_BLOCK_INTENT,
                 isChecked = userPreferences.blockIntent,
                 onCheckChange = { userPreferences.blockIntent = it }
+        )
+
+        // The label reads "use integrated download manager" — ON means
+        // internal, so the third-party pref stores the inverse.
+        switchPreference(
+                preference = SETTINGS_LEGACY_DOWNLOADER,
+                isChecked = !userPreferences.useThirdPartyDownloaderApps,
+                onCheckChange = { userPreferences.useThirdPartyDownloaderApps = !it }
+        )
+
+        // The XML intent action only exists where the WebView dev UI
+        // is installed — bind in code so a missing handler degrades to
+        // a toast instead of an ActivityNotFoundException crash.
+        clickablePreference(
+                preference = SETTINGS_WEBVIEW_DEVTOOLS,
+                onClick = {
+                    val intent = Intent("com.android.webview.SHOW_DEV_UI")
+                        .putExtra("SOURCE", "SELF")
+                    try {
+                        startActivity(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(activity, R.string.webview_devtools_unavailable, Toast.LENGTH_SHORT).show()
+                    }
+                }
         )
     }
 
@@ -125,12 +152,11 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
                 .setPositiveButton(R.string.action_ok
                 ) { _, _ ->
                     userPreferences.translationEndpoint = editText.text.toString()
+                    summaryUpdater.updateSummary(editText.text.toString())
                 }
 
         val dialog = editorDialog.show()
         BrowserDialog.setDialogSize(requireContext(), dialog)
-
-        summaryUpdater.updateSummary(editText.text.toString())
     }
 
     companion object {
@@ -139,6 +165,7 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_TEXT_ENCODING = "text_encoding"
         private const val SETTINGS_BLOCK_INTENT = "block_intent"
         private const val SETTINGS_LEGACY_DOWNLOADER = "downloader"
+        private const val SETTINGS_WEBVIEW_DEVTOOLS = "webview_devtools"
         private const val SETTINGS_TRANSLATION_ENDPOINT = "translation_endpoint"
     }
 

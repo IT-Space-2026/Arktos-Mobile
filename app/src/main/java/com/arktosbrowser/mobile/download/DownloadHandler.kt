@@ -80,8 +80,9 @@ class DownloadHandler @Inject constructor(
         logger.log(TAG, "DOWNLOAD: MimeType: $mimeType")
         logger.log(TAG, "DOWNLOAD: User agent: $userAgent")
 
-        if (manager.useThirdPartyDownloaderApps) {
-            // Show dialog listing third party downloaders
+        if (manager.useThirdPartyDownloaderApps && handOffToExternalDownloader(context, url, mimeType)) {
+            // Handed off to an external downloader app via ACTION_VIEW.
+            return
         } else {
             val cookies = runCatching { CookieManager.getInstance().getCookie(url) }.getOrNull()
 
@@ -106,6 +107,25 @@ class DownloadHandler @Inject constructor(
                             contentDisposition, mimeType, contentSize, null)
                     }
                 )
+        }
+    }
+
+    /**
+     * Pass the URL to an external downloader app via `ACTION_VIEW`
+     * with the probed mime type. Returns false when no activity can
+     * handle it — the caller then falls back to the internal path.
+     */
+    private fun handOffToExternalDownloader(context: Activity, url: String, mimeType: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse(url), mimeType.ifBlank { "*/*" })
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return try {
+            context.startActivity(Intent.createChooser(intent, null))
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
         }
     }
 

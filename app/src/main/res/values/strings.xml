@@ -710,6 +710,7 @@
     <string name="recover_app_lock">Clear the app\'s data in the system settings, or reinstall the app, to reset your app lock password.</string>
 
     <string name="webview_devtools">WebView DevTools</string>
+    <string name="webview_devtools_unavailable">WebView DevTools is not available on this device</string>
 
     <string name="error">Error</string>
 
