@@ -33,14 +33,15 @@ pub enum SuggestionProvider {
 
 /// Build the suggestion endpoint URL for an already URL-encoded query.
 ///
-/// `language` is currently unused — upstream dropped the `hl` Google
-/// parameter and none of the other providers consume it; kept in the
-/// signature so the Kotlin call shape matches `createQueryUrl`.
+/// `language` carries the device locale (`en`, `de_DE`, ...) — only
+/// Qwant consumes it today (its `locale` parameter); the other
+/// providers' endpoints don't take one. Kept on the signature so the
+/// Kotlin call shape matches `createQueryUrl`.
 #[uniffi::export]
 pub fn suggestion_query_url(
     provider: SuggestionProvider,
     encoded_query: String,
-    _language: String,
+    language: String,
 ) -> String {
     match provider {
         SuggestionProvider::Google => format!(
@@ -51,9 +52,36 @@ pub fn suggestion_query_url(
             format!("https://www.startpage.com/osuggestions?q={encoded_query}")
         }
         SuggestionProvider::Qwant => format!(
-            "https://api.qwant.com/v3/suggest?q={encoded_query}&locale=en_US&version=2"
+            "https://api.qwant.com/v3/suggest?q={encoded_query}&locale={}&version=2",
+            qwant_locale(&language)
         ),
     }
+}
+
+/// Normalize a device locale into Qwant's `lang_REGION` shape.
+/// `de-DE`/`de_DE` pass through; a bare `de` maps to `de_DE` via the
+/// language's usual region; anything unrecognized falls back to en_US.
+fn qwant_locale(language: &str) -> String {
+    let normalized = language.replace('-', "_");
+    if normalized.contains('_') {
+        return normalized;
+    }
+    let region = match normalized.as_str() {
+        "en" => "US",
+        "de" => "DE",
+        "fr" => "FR",
+        "es" => "ES",
+        "it" => "IT",
+        "pt" => "PT",
+        "nl" => "NL",
+        "pl" => "PL",
+        "ru" => "RU",
+        "ko" => "KR",
+        "ja" => "JP",
+        "zh" => "CN",
+        _ => return "en_US".to_string(),
+    };
+    format!("{normalized}_{region}")
 }
 
 /// Parse a provider response body into bare suggestion strings (the
@@ -167,6 +195,18 @@ mod tests {
         assert_eq!(
             suggestion_query_url(SuggestionProvider::Qwant, "ij".into(), "en".into()),
             "https://api.qwant.com/v3/suggest?q=ij&locale=en_US&version=2"
+        );
+        assert_eq!(
+            suggestion_query_url(SuggestionProvider::Qwant, "ij".into(), "de_DE".into()),
+            "https://api.qwant.com/v3/suggest?q=ij&locale=de_DE&version=2"
+        );
+        assert_eq!(
+            suggestion_query_url(SuggestionProvider::Qwant, "ij".into(), "fr".into()),
+            "https://api.qwant.com/v3/suggest?q=ij&locale=fr_FR&version=2"
+        );
+        assert_eq!(
+            suggestion_query_url(SuggestionProvider::Qwant, "ij".into(), "pt-BR".into()),
+            "https://api.qwant.com/v3/suggest?q=ij&locale=pt_BR&version=2"
         );
     }
 

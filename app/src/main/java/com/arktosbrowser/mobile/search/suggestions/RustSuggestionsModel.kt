@@ -32,8 +32,11 @@ class RustSuggestionsModel(
 ) : SuggestionsRepository {
 
     private val searchSubtitle = application.getString(R.string.suggestion)
-    private val language =
-        application.preferredLocale.language.takeIf(String::isNotEmpty) ?: DEFAULT_LANGUAGE
+    private val language = run {
+        val locale = application.preferredLocale
+        val lang = locale.language.takeIf(String::isNotEmpty) ?: DEFAULT_LANGUAGE
+        if (locale.country.isNotEmpty()) "${lang}_${locale.country}" else lang
+    }
 
     override fun resultsForSearch(rawQuery: String): Single<List<SearchSuggestion>> =
         okHttpClient.flatMap { client ->
