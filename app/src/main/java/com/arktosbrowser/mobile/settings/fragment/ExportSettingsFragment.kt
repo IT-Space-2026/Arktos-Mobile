@@ -19,7 +19,7 @@ import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.bookmark.LegacyBookmarkImporter
 import com.arktosbrowser.mobile.bookmark.NetscapeBookmarkFormatImporter
-import com.arktosbrowser.mobile.browser.activity.BrowserActivity
+import com.arktosbrowser.mobile.browser.PendingTabTransfer
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
@@ -181,15 +181,10 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                             return@subscribeBy
                         }
                         // Tabs must be created inside the browser activity —
-                        // hand the URL list over and let it doAfterInitialization.
-                        startActivity(
-                            Intent(context, MainActivity::class.java).apply {
-                                putStringArrayListExtra(
-                                    BrowserActivity.EXTRA_IMPORT_TABS,
-                                    ArrayList(urls)
-                                )
-                            }
-                        )
+                        // hand the URL list over (in-process handoff, SEC09)
+                        // and let it doAfterInitialization.
+                        PendingTabTransfer.post(PendingTabTransfer.Request.Import(urls))
+                        startActivity(Intent(context, MainActivity::class.java))
                     },
                     onError = {
                         logger.log(TAG, "onError: importing tabs", it)
@@ -230,12 +225,10 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
             }
             // The TabsManager injected here is a fresh instance — only
             // the browser activity holds the live tab list, so hand it
-            // the destination URI and let it serialize.
-            startActivity(
-                Intent(context, MainActivity::class.java).apply {
-                    putExtra(BrowserActivity.EXTRA_EXPORT_TABS_URI, uri)
-                }
-            )
+            // the destination URI (in-process handoff, SEC09) and let
+            // it serialize.
+            PendingTabTransfer.post(PendingTabTransfer.Request.Export(uri))
+            startActivity(Intent(context, MainActivity::class.java))
         }
 
     private fun clearSettings() {

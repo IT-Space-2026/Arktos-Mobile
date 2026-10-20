@@ -622,8 +622,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 intent = null
             }
             presenter?.setupTabs(intent)
-            maybeImportTabs(intent)
-            maybeExportTabs(intent)
+            handlePendingTabTransfer()
             setIntent(null)
 
         }
@@ -1596,67 +1595,60 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     protected fun handleNewIntent(intent: Intent) {
-        maybeImportTabs(intent)
-        maybeExportTabs(intent)
+        handlePendingTabTransfer()
         presenter?.onNewIntent(intent)
     }
 
     /**
-     * Settings → Export tabs delivers the picked destination URI through
-     * this extra; the live TabsManager only exists here. Settings →
-     * Import tabs arrives as [EXTRA_IMPORT_TABS]. Both are consumed once
-     * initialization finishes so they work on re-delivered and
-     * cold-start intents alike.
+     * Settings → Import/Export tabs hand their payload over through
+     * [PendingTabTransfer] (process memory) instead of intent extras —
+     * MainActivity is exported, so extras on a delivered intent could
+     * be forged by any app: an attacker `Export` URI would leak the
+     * open-tab list, an `Import` list would open scheme-unfiltered
+     * tabs (SEC09). The request is consumed once initialization
+     * finishes so it works on both the cold-start and re-delivered
+     * intent paths.
      */
-    private fun maybeExportTabs(intent: Intent?) {
-        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent?.getParcelableExtra(EXTRA_EXPORT_TABS_URI, android.net.Uri::class.java)
-        } else {
-            @Suppress("DEPRECATION") intent?.getParcelableExtra(EXTRA_EXPORT_TABS_URI)
-        } ?: return
-        intent?.removeExtra(EXTRA_EXPORT_TABS_URI)
-        tabsManager.doAfterInitialization {
-            val tabs = tabsManager.allTabs.map { it.url to it.title }
-            Completable.fromAction {
-                contentResolver.openOutputStream(uri)?.use { out ->
-                    BufferedWriter(OutputStreamWriter(out)).use { writer ->
-                        tabs.forEach { (url, title) ->
-                            writer.write(
-                                JSONObject().put("url", url).put("title", title).toString()
-                            )
-                            writer.newLine()
+    private fun handlePendingTabTransfer() {
+        when (val request = PendingTabTransfer.drain()) {
+            is PendingTabTransfer.Request.Export -> tabsManager.doAfterInitialization {
+                val tabs = tabsManager.allTabs.map { it.url to it.title }
+                Completable.fromAction {
+                    contentResolver.openOutputStream(request.uri)?.use { out ->
+                        BufferedWriter(OutputStreamWriter(out)).use { writer ->
+                            tabs.forEach { (url, title) ->
+                                writer.write(
+                                    JSONObject().put("url", url).put("title", title).toString()
+                                )
+                                writer.newLine()
+                            }
                         }
-                    }
-                } ?: throw java.io.IOException("Could not open $uri")
+                    } ?: throw java.io.IOException("Could not open ${request.uri}")
+                }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(mainScheduler)
+                    .subscribeBy(
+                        onComplete = { toast(R.string.action_ok) },
+                        onError = {
+                            logger.log(TAG, "tab export failed", it)
+                            toast(R.string.bookmark_export_failure)
+                        }
+                    )
             }
-                .subscribeOn(Schedulers.io())
-                .observeOn(mainScheduler)
-                .subscribeBy(
-                    onComplete = { toast(R.string.action_ok) },
-                    onError = {
-                        logger.log(TAG, "tab export failed", it)
-                        toast(R.string.bookmark_export_failure)
+            is PendingTabTransfer.Request.Import -> tabsManager.doAfterInitialization {
+                request.urls.forEachIndexed { index, url ->
+                    // Defense in depth: the allowlist already gates
+                    // external intents, keep it on internal payloads too.
+                    if (IncomingIntents.isAllowed(url)) {
+                        handleNewTab(
+                            if (index == 0) LightningDialogBuilder.NewTab.FOREGROUND
+                            else LightningDialogBuilder.NewTab.BACKGROUND,
+                            url, false
+                        )
                     }
-                )
-        }
-    }
-
-    /**
-     * Settings → Import tabs delivers a URL list through this extra.
-     * Tabs are opened once initialization finishes so the call works on
-     * both re-delivered intents and the cold-start intent below.
-     */
-    private fun maybeImportTabs(intent: Intent?) {
-        val urls = intent?.getStringArrayListExtra(EXTRA_IMPORT_TABS) ?: return
-        intent.removeExtra(EXTRA_IMPORT_TABS)
-        tabsManager.doAfterInitialization {
-            urls.forEachIndexed { index, url ->
-                handleNewTab(
-                    if (index == 0) LightningDialogBuilder.NewTab.FOREGROUND
-                    else LightningDialogBuilder.NewTab.BACKGROUND,
-                    url, false
-                )
+                }
             }
+            null -> Unit
         }
     }
 
@@ -2656,8 +2648,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         private const val TAG = "BrowserActivity"
 
         const val INTENT_PANIC_TRIGGER = "info.guardianproject.panic.action.TRIGGER"
-        const val EXTRA_IMPORT_TABS = "com.arktosbrowser.mobile.IMPORT_TABS"
-        const val EXTRA_EXPORT_TABS_URI = "com.arktosbrowser.mobile.EXPORT_TABS_URI"
 
         private const val FILE_CHOOSER_REQUEST_CODE = 1111
 

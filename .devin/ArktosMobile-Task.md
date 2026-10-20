@@ -77,7 +77,7 @@ NO SUDO — everything user-local.
 | SEC06 | Enforce userscript @connect for GM_xmlhttpRequest — details below | done | 0 | Rust parser now captures @connect → new javascript.connects column (ALTER-migrated) → JavaScriptEntry; GmConnectPolicy (same-host always, */self/domain+subdomains, URL/port-normalized) + per-script policy map gates ALL GM bridge ops on installed-script + include/exclude origin match — spec's "parser already captures" was wrong, plumbed end-to-end; cargo 133/133, 278 unit tests 0 fail (GmConnectPolicyTest 9/9), assembleScMainDebug + engine-audit PASS |
 | SEC07 | FLAG_SECURE for incognito + optional whole-app toggle — details below | done | 0 | SecureWindowPolicy (incognito always secure; regular windows iff secureWindowsEnabled) applied in BrowserActivity.onCreate pre-setContentView + BrowserApp onActivityCreated callback for every app window; secure_windows switch in Privacy→Security — SecureWindowPolicyTest 4/4, 282 unit tests 0 fail, assembleScMainDebug + engine-audit PASS |
 | SEC08 | Tapjacking protection on sensitive dialogs — details below | done | 0 | TapjackingGuard (Surface enum + filterTouchesWhenObscured on decorView, S+ setHideOverlayWindows) applied to app-lock unlock/biometric-retry, parental gate + password set, credential set, manual proxy, download-confirm, backup password dialogs; showCustomDialog gained surface param — TapjackingGuardTest 4/4, assembleScMainDebug + engine-audit PASS |
-| SEC09 | Audit exported components + incoming intent validation — details below | pending | 0 | — |
+| SEC09 | Audit exported components + incoming intent validation — details below | done | 0 | IncomingIntents.extractUrl gates cold-start + warm intent URLs (was: raw dataString on cold start); PROCESS_TEXT now handled; import/export-tabs moved off intent extras to in-process PendingTabTransfer (forged-extra tab-list leak closed); manifest kept: MainActivity+DownloadCompleteReceiver need export, rest already internal — 12 new tests, assembleScMainDebug + engine-audit PASS |
 | SEC10 | Release R8/minify + resource shrinking — details below | pending | 0 | — |
 | SEC11 | Download risk warnings (executable ext, MIME mismatch) — details below | pending | 0 | — |
 | SEC12 | IDN/homograph punycode warning in URL bar — details below | pending | 0 | — |
@@ -579,6 +579,41 @@ Audit every `android:exported="true"` component in the manifest:
 confirm each really needs to be reachable, validate incoming
 actions/extras (open-url intents, panic trigger), and drop exported
 where internal-only. needs:tool:java
+
+Audit result (this run):
+- `MainActivity` stays exported — required for LAUNCHER plus the
+  BROWSABLE VIEW / WEB_SEARCH / PROCESS_TEXT / panic TRIGGER filters.
+  Fixes landed: cold-start `TabsManager.initializeTabs` used to feed
+  raw `intent.dataString` into `UrlInitializer` (a VIEW intent with
+  `javascript:`/`data:` bypassed the allowlist that only
+  `onNewIntent` applied) — both entry points now share
+  `IncomingIntents.extractUrl` (query extras run through
+  smartUrlFilter, everything is scheme-allowlisted);
+  `ACTION_PROCESS_TEXT` was declared but dropped on the floor, now
+  handled via `EXTRA_PROCESS_TEXT` like a search query;
+  `EXTRA_IMPORT_TABS` / `EXTRA_EXPORT_TABS_URI` were internal-only
+  payloads riding the exported activity's extras — any app could
+  forge them (export URI = open-tab-list exfil to an attacker
+  provider, import = scheme-unfiltered tab opens) — moved to the
+  in-process `PendingTabTransfer` handoff; panic TRIGGER stays
+  externally triggerable by design (panic-button apps are the whole
+  point of the filter); `INTENT_ORIGIN` retargeting accepted
+  (unguessable tab hash, URL already scheme-validated).
+- `DownloadCompleteReceiver` stays exported — `DOWNLOAD_COMPLETE` is
+  a protected broadcast delivered by the platform download provider
+  (not the system uid), so a non-exported receiver would never see
+  it; `onReceive` re-verifies everything against `DownloadManager`
+  queries and the local meta store regardless.
+- `IncognitoActivity` / `SettingsActivity` / `ReadingActivity` were
+  already `exported="false"` (their custom actions only resolve
+  in-app); `DownloadActivity` / `HistoryActivity` have no filters →
+  implicitly non-exported; `FileProvider` non-exported with
+  grantUriPermissions.
+- Library-merged surface (not ours to unexport):
+  `androidx.profileinstaller.ProfileInstallReceiver` is
+  permission-gated (signature `android.permission.DUMP`);
+  `androidx.compose.ui.tooling.PreviewActivity` is a stub from the
+  compose tooling dep; LeakCanary components are debug-only.
 
 ### SEC10
 Check release buildType: enable `minifyEnabled` (R8) +

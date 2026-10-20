@@ -2,7 +2,6 @@ package com.arktosbrowser.mobile.browser
 
 import android.app.Activity
 import android.content.Intent
-import android.util.Log
 import android.webkit.URLUtil
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
@@ -107,7 +106,7 @@ class BrowserPresenter(
             // Restored session already carries the changelog tab.
             return
         }
-        val hadIntentUrl = intent?.action == Intent.ACTION_WEB_SEARCH || intent?.dataString != null
+        val hadIntentUrl = tabsModel.extractUrlFromIntent(intent) != null
         newTab(UrlInitializer(ChangelogPage.URL), !hadIntentUrl)
     }
 
@@ -271,18 +270,10 @@ class BrowserPresenter(
      * @param intent the intent to handle, may be null.
      */
     fun onNewIntent(intent: Intent?) = tabsModel.doAfterInitialization {
-        val url = if (intent?.action == Intent.ACTION_WEB_SEARCH) {
-            tabsModel.extractSearchFromIntent(intent)
-        } else {
-            intent?.dataString
-        }
-        // Only well-known content schemes may arrive via external intents —
-        // javascript:, data: and other exotic schemes would run attacker
-        // content in a page context or confuse the tab loader.
-        if (url != null && !isIntentUrlAllowed(url)) {
-            Log.w("BrowserPresenter", "Rejected intent URL with disallowed scheme: ${url.substringBefore(':')}")
-            return@doAfterInitialization
-        }
+        // SEC09 — extraction + scheme allowlist live in IncomingIntents
+        // via TabsManager, shared with the cold-start initializeTabs
+        // path so both entry points validate identically.
+        val url = tabsModel.extractUrlFromIntent(intent)
         val tabHashCode = intent?.extras?.getInt(INTENT_ORIGIN, 0) ?: 0
         if (tabHashCode != 0 && url != null) {
             tabsModel.getTabForHashCode(tabHashCode)?.loadUrl(url)
