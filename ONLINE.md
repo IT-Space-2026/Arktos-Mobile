@@ -1,12 +1,8 @@
 Some Arktos Mobile features can use online services. Below, the data used by these is detailed.
 
-# News
-
-Arktos Mobile has a homepage news feed. The news endpoint is disabled by default (empty) and can be set in the advanced settings to any compatible endpoint you operate or trust.
-
 # Translation
 
-The Reading Mode translator requires a compatible translation endpoint. No endpoint is configured by default, so the feature makes no network requests until you set one in the advanced settings. The endpoint must accept POST requests with `text` and `lang` form fields and return a JSON translation.
+The Reading Mode translator requires a compatible translation endpoint. The feature is off by default so it makes no network requests until enabled; the endpoint defaults to `https://libretranslate.de` and can be changed in the advanced settings. The endpoint must accept POST requests with `text` and `lang` form fields and return a JSON translation.
 
 # Search Suggestions
 
