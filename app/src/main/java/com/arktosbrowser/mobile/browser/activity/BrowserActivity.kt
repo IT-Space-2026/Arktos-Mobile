@@ -377,9 +377,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             userPreferences.translationEndpoint.contains("smartcookieweb.com")){
             userPreferences.translationEndpoint = ""
         }
-        if(userPreferences.newsEndpoint.contains("smartcookieweb.com")){
-            userPreferences.newsEndpoint = ""
-        }
 
         //TODO make sure dark theme flag gets set correctly
         isDarkTheme = userPreferences.resolvedTheme(this).isDark || isIncognito()

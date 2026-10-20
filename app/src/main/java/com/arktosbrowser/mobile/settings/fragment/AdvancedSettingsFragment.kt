@@ -27,12 +27,6 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         injector.inject(this)
 
         clickableDynamicPreference(
-                preference = SETTINGS_NEWS_ENDPOINT,
-                summary = userPreferences.newsEndpoint,
-                onClick = this::showNewsEndpointPicker
-        )
-
-        clickableDynamicPreference(
                 preference = SETTINGS_TRANSLATION_ENDPOINT,
                 summary = userPreferences.translationEndpoint,
                 onClick = this::showTranslationEndpointPicker
@@ -116,29 +110,6 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         RenderingMode.INCREASE_CONTRAST -> R.string.name_increase_contrast
     })
 
-    private fun showNewsEndpointPicker(summaryUpdater: SummaryUpdater) {
-        val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_edit_text, null)
-        val editText = dialogView.findViewById<EditText>(R.id.dialog_edit_text)
-
-        editText.setText(userPreferences.newsEndpoint)
-
-        val editorDialog = MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.news_endpoint)
-                .setView(dialogView)
-                .setCancelable(false)
-                .setNegativeButton(R.string.action_back) { dialog, which ->
-                }
-                .setPositiveButton(R.string.action_ok
-                ) { _, _ ->
-                    userPreferences.newsEndpoint = editText.text.toString()
-                }
-
-        val dialog = editorDialog.show()
-        BrowserDialog.setDialogSize(requireContext(), dialog)
-
-        summaryUpdater.updateSummary(editText.text.toString())
-    }
-
     private fun showTranslationEndpointPicker(summaryUpdater: SummaryUpdater) {
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_edit_text, null)
         val editText = dialogView.findViewById<EditText>(R.id.dialog_edit_text)
@@ -146,7 +117,7 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         editText.setText(userPreferences.translationEndpoint)
 
         val editorDialog = MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.news_endpoint)
+                .setTitle(R.string.translation_endpoint)
                 .setView(dialogView)
                 .setCancelable(false)
                 .setNegativeButton(R.string.action_back) { dialog, which ->
@@ -169,7 +140,6 @@ class AdvancedSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_BLOCK_INTENT = "block_intent"
         private const val SETTINGS_LEGACY_DOWNLOADER = "downloader"
         private const val SETTINGS_TRANSLATION_ENDPOINT = "translation_endpoint"
-        private const val SETTINGS_NEWS_ENDPOINT = "news_endpoint"
     }
 
 }

@@ -444,7 +444,7 @@ class UserPreferences @Inject constructor(
 
     // API endpoints
     var translationEndpoint by preferences.stringPreference(TRANSLATION_ENDPOINT, "https://libretranslate.de")
-    var newsEndpoint by preferences.stringPreference(NEWS_ENDPOINT, "")
+
 
     var useThirdPartyDownloaderApps by preferences.booleanPreference(USE_THIRD_PARTY_DOWNLOADER_APPS, false)
 
@@ -581,7 +581,6 @@ private const val SECOND_BAR = "secondBar"
 private const val NO_AMP = "noAmp"
 private const val SHOW_DOWNLOAD_CONFIRMATION = "showDownloadConfirmation"
 private const val TRANSLATION_ENDPOINT = "translationEndpoint"
-private const val NEWS_ENDPOINT = "newsEndpoint"
 private const val HOMEPAGE_TYPE = "homepageType"
 private const val STACK_FROM_BOTTOM = "stackFromBottom"
 private const val DRAWER_OFFSET = "drawerOffset"

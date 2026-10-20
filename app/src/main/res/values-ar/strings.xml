@@ -497,13 +497,11 @@
     <string name="tts">قراءة الصفحة</string>
     <string name="stop_tts">إيقاف القراءة</string>
     <string name="translation_endpoint">نقاط نهاية الترجمة</string>
-    <string name="news_endpoint">نقطة النهاية للأخبار</string>
     <string name="select_translate_text">يرجى إدخال النص الذي تريد ترجمته</string>
     <string name="select_tts_text">يرجى إدخال النص الذي تريد ترجمته</string>
     <!-- homepage type -->
     <string name="homepage_type">نزوع الصفحة الرئيسية</string>
     <string name="focused">مركّز</string>
-    <string name="informational">معلومات</string>
     <!-- tab export -->
     <string name="export_to_file">تصدير إلى ملف</string>
     <string name="export_as_html">التصدير إلى HTML</string>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Auto Backup rules for API 30 and below (fullBackupContent).
+     Databases carry arktos.db — history, bookmarks, downloads,
+     allowlist, userscripts, adblock subscriptions all live in the
+     Rust store. Shared prefs carry every setting. Files are included
+     minus regenerable bulk (downloaded rank lists, adblock caches,
+     generated pages) that would exhaust the 25MB quota. -->
+<full-backup-content>
+    <include domain="database" path="." />
+    <include domain="sharedpref" path="." />
+    <include domain="file" path="." />
+    <exclude domain="file" path="site-rank" />
+    <exclude domain="file" path="adblock_subscriptions" />
+    <exclude domain="file" path="homepage.html" />
+    <exclude domain="file" path="private.html" />
+    <exclude domain="file" path="downloads.html" />
+    <exclude domain="root" path="app_webview" />
+</full-backup-content>

@@ -493,13 +493,11 @@
     <string name="tts">Lire la page</string>
     <string name="stop_tts">Arrêter la lecture</string>
     <string name="translation_endpoint">URL de l’outil de traduction</string>
-    <string name="news_endpoint">URL du fil d’actualités</string>
     <string name="select_translate_text">Veuillez sélectionner le texte à traduire</string>
     <string name="select_tts_text">Veuillez sélectionner le texte à lire</string>
     <!-- homepage type -->
     <string name="homepage_type">Contenu de la page d’accueil</string>
     <string name="focused">Horloge et météo</string>
-    <string name="informational">Actualités</string>
     <!-- tab export -->
     <string name="export_to_file">Exporter en tant que fichier</string>
     <string name="export_as_html">Exporter en tant que page HTML</string>

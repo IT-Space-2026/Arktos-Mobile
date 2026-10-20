@@ -492,13 +492,11 @@
     <string name="tts">语音播报页面</string>
     <string name="stop_tts">停止播报</string>
     <string name="translation_endpoint">翻译端点</string>
-    <string name="news_endpoint">新闻端点</string>
     <string name="select_translate_text">请选择你想翻译的文本</string>
     <string name="select_tts_text">请选择你想进行语音播报的文本</string>
     <!-- homepage type -->
     <string name="homepage_type">主页类型</string>
     <string name="focused">专注</string>
-    <string name="informational">信息丰富</string>
     <!-- tab export -->
     <string name="export_to_file">导出到文件</string>
     <string name="export_as_html">导出为 HTML</string>
