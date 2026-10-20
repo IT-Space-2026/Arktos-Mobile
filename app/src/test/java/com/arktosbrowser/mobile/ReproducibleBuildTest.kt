@@ -43,7 +43,7 @@ class ReproducibleBuildTest {
 
     @Test
     fun `rust toolchain file pins an exact rustc and android targets`() {
-        val toolchain = repoFile("rust/rust-toolchain.toml").readText()
+        val toolchain = repoFile("rust-toolchain.toml").readText()
         assertTrue(
             "toolchain channel must be an exact version, not a moving tag",
             Regex("channel\\s*=\\s*\"\\d+\\.\\d+\\.\\d+\"").containsMatchIn(toolchain)
