@@ -16,5 +16,7 @@ data class JavaScriptEntry(
     val time: String?,
     val permissions: String?,
     val code: String,
-    val requirements: String?
+    val requirements: String?,
+    val runAt: String? = null,
+    val noFrames: Boolean = false
 )

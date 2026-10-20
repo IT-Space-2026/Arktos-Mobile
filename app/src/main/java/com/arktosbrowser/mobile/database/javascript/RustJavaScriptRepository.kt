@@ -50,7 +50,9 @@ internal fun JavaScriptEntry.toStoreEntry() = StoreJavaScriptEntry(
     time = time,
     permissions = permissions,
     code = code,
-    requirements = requirements
+    requirements = requirements,
+    runAt = runAt,
+    noFrames = noFrames
 )
 
 internal fun StoreJavaScriptEntry.toJavaScriptEntry() = JavaScriptEntry(
@@ -63,5 +65,7 @@ internal fun StoreJavaScriptEntry.toJavaScriptEntry() = JavaScriptEntry(
     time = time,
     permissions = permissions,
     code = code,
-    requirements = requirements
+    requirements = requirements,
+    runAt = runAt,
+    noFrames = noFrames
 )

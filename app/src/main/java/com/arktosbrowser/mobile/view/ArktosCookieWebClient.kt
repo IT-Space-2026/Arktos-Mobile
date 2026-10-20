@@ -114,6 +114,7 @@ class ArktosCookieWebClient(
     @Inject internal lateinit var sslWarningPreferences: SslWarningPreferences
     @Inject internal lateinit var whitelistModel: AllowListModel
     @Inject internal lateinit var logger: Logger
+    @Inject lateinit var userScriptEngine: UserScriptEngine
     @Inject internal lateinit var textReflowJs: TextReflow
     @Inject internal lateinit var invertPageJs: InvertPage
     @Inject internal lateinit var darkMode: DarkMode
@@ -324,13 +325,20 @@ class ArktosCookieWebClient(
         val inc = meta.includes
             .filter { pattern -> runCatching { Pattern.compile(pattern) }.isSuccess }
             .joinToString(",")
+        val exc = meta.excludes
+            .filter { pattern -> runCatching { Pattern.compile(pattern) }.isSuccess }
+            .joinToString(",")
         val reqs = meta.requires.joinToString(",")
+        val grants = meta.grants.joinToString(",")
 
-        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, "", meta.version, meta.author, inc, "", "", "", meta.code, reqs))
+        javascriptRepository.addJavaScriptIfNotExists(JavaScriptEntry(name, meta.namespace ?: "", meta.version, meta.author, inc, exc, "", grants, meta.code, reqs, meta.runAt, meta.noFrames))
                 .subscribeOn(databaseScheduler)
                 .subscribe { aBoolean: Boolean? ->
                     if (!aBoolean!!) {
                         logger.log("ArktosCookieWebClient", "error saving script to database")
+                    } else {
+                        UserScriptEngine.notifyScriptsChanged()
+                        arktosCookieView.webView?.let { userScriptEngine.refreshIfStale(it) }
                     }
                 }
     }
@@ -428,6 +436,13 @@ class ArktosCookieWebClient(
         }
 
     override fun onPageCommitVisible(view: WebView?, url: String?) {
+        // Modern path: the UserScriptEngine document-start bootstrap
+        // handles injection. Keep the legacy evaluateJavascript path
+        // only for WebView builds without DOCUMENT_START_SCRIPT.
+        if (UserScriptEngine.documentStartSupported()) {
+            super.onPageCommitVisible(view, url)
+            return
+        }
         var jsList = emptyList<JavaScriptEntry>()
         javascriptRepository.lastHundredVisitedJavaScriptEntries()
             .subscribe { list ->
@@ -522,6 +537,7 @@ class ArktosCookieWebClient(
     }
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+        userScriptEngine.refreshIfStale(view)
         sslWarningDialog?.cancel()
         sslWarningDialog = null
         sslWarningGate.reset()
