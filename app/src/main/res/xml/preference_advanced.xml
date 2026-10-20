@@ -22,14 +22,7 @@
             android:summary="@string/legacy_download_manager_desc"/>
         <Preference
             android:key="webview_devtools"
-            android:title="@string/webview_devtools">
-            <intent
-                android:action="com.android.webview.SHOW_DEV_UI">
-                <extra
-                    android:name="SOURCE"
-                    android:value="SELF" />
-            </intent>
-        </Preference>
+            android:title="@string/webview_devtools" />
         <Preference
             android:key="text_encoding"
             android:singleLineTitle="false"

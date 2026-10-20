@@ -29,6 +29,6 @@ const val DEFAULT_ENCODING = UTF8
 
 // Allowable text encodings for the WebView
 @JvmField
-val TEXT_ENCODINGS = arrayOf("ISO-8859-1", UTF8, "GBK", "Big5", "ISO-2022-JP", "SHIFT_JS", "EUC-JP", "EUC-KR")
+val TEXT_ENCODINGS = arrayOf("ISO-8859-1", UTF8, "GBK", "Big5", "ISO-2022-JP", "SHIFT_JIS", "EUC-JP", "EUC-KR")
 
 const val INTENT_ORIGIN = "URL_INTENT_ORIGIN"
