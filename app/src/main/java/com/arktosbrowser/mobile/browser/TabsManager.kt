@@ -2,7 +2,6 @@ package com.arktosbrowser.mobile.browser
 
 import android.app.Activity
 import android.app.Application
-import android.app.SearchManager
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.URLUtil
@@ -100,13 +99,7 @@ class TabsManager @Inject constructor(
      */
     fun initializeTabs(activity: Activity, intent: Intent?, incognito: Boolean): Single<ArktosCookieView> =
         Single
-            .just(Option.fromNullable(
-                if (intent?.action == Intent.ACTION_WEB_SEARCH) {
-                    extractSearchFromIntent(intent)
-                } else {
-                    intent?.dataString
-                }
-            ))
+            .just(Option.fromNullable(extractUrlFromIntent(intent)))
             .doOnSuccess { shutdown() }
             .subscribeOn(mainScheduler)
             .observeOn(databaseScheduler)
@@ -147,19 +140,19 @@ class TabsManager @Inject constructor(
             .defaultIfEmpty(homePageInitializer)
 
     /**
-     * Returns the URL for a search [Intent]. If the query is empty, then a null URL will be
-     * returned.
+     * Returns the URL [intent] asks the browser to open, or null when
+     * it carries nothing — or nothing the browser may load. Extraction
+     * and the scheme allowlist live in [IncomingIntents] so the
+     * cold-start path here and the warm `onNewIntent` path validate
+     * incoming intents identically (SEC09).
      */
-    fun extractSearchFromIntent(intent: Intent): String? {
-        val query = intent.getStringExtra(SearchManager.QUERY)
-        val searchUrl = "${searchEngineProvider.provideSearchEngine().queryUrl}$QUERY_PLACE_HOLDER"
-
-        return if (query?.isNotBlank() == true) {
-            smartUrlFilter(query, true, searchUrl)
-        } else {
-            null
+    fun extractUrlFromIntent(intent: Intent?): String? =
+        IncomingIntents.extractUrl(
+            intent,
+            "${searchEngineProvider.provideSearchEngine().queryUrl}$QUERY_PLACE_HOLDER"
+        ) {
+            logger.log(TAG, "Rejected intent URL with disallowed scheme: $it")
         }
-    }
 
     /**
      * Returns an observable that emits the [TabInitializer] for each previously opened tab as
