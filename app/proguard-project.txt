@@ -101,4 +101,8 @@
 -dontwarn androidx.window.sidecar.SidecarInterface
 -dontwarn androidx.window.sidecar.SidecarProvider
 -dontwarn androidx.window.sidecar.SidecarWindowLayoutInfo
+# SEC10 — rear-display/window-area APIs are optional vendor extensions
+# referenced by androidx.window via appcompat; absent on most devices.
+-dontwarn androidx.window.extensions.area.ExtensionWindowAreaPresentation
+-dontwarn androidx.window.extensions.core.util.function.**
 -dontwarn org.slf4j.impl.StaticLoggerBinder
