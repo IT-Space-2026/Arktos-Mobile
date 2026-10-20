@@ -50,10 +50,7 @@ dom_smoothie = "=0.18.2"
 miniz_oxide = "=0.8.9"
 # PORT02 — app-lock / parental-control password hashing (argon2id +
 # versioned stored format replacing the plaintext SharedPreferences).
-argon2 = "=0.5.3"
-# PORT02 — OsRng for the argon2 salt; password-hash's re-export keeps
-# rand_core's `getrandom` feature off, so we pin it directly.
-rand_core = { version = "=0.6.4", features = ["getrandom"] }
+argon2 = "=0.6.0"
 # SEC12 — UTS-46 IDNA processing for the URL-bar punycode display
 # (idn.rs): `domain_to_ascii` maps a Unicode host to its A-label form.
 idna = "=1.1.0"

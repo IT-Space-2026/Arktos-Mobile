@@ -7,9 +7,8 @@
 //! legacy plaintext value and hands back a replacement hash so the
 //! caller upgrades the stored row on the next successful check.
 
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use rand_core::OsRng;
+use argon2::password_hash::phc::PasswordHash;
+use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 
 /// Stored-value marker: `arktos:v1:` + PHC-format argon2id string.
 /// Anything without the prefix is a pre-PORT02 legacy plaintext
@@ -31,9 +30,8 @@ pub struct PasswordCheck {
 /// (default m=19456, t=2, p=1 parameters, fresh random salt).
 #[uniffi::export]
 pub fn hash_password(password: String) -> String {
-    let salt = SaltString::generate(&mut OsRng);
     let hash = Argon2::default()
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map(|h| h.to_string())
         .unwrap_or_default();
     format!("{STORED_PREFIX}{hash}")
