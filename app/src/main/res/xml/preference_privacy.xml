@@ -111,6 +111,12 @@
             android:key="block_mixed_content"
             android:summary="@string/block_mixed_content_summary"
             android:title="@string/block_mixed_content"/>
+        <SwitchPreference
+            android:defaultValue="false"
+            android:singleLineTitle="false"
+            android:key="secure_windows"
+            android:summary="@string/secure_windows_summary"
+            android:title="@string/secure_windows"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/privacy_data_category">
         <SwitchPreference

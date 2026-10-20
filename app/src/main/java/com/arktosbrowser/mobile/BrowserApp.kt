@@ -4,9 +4,12 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
+import android.view.WindowManager
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatDelegate
 import com.arktosbrowser.mobile.browser.AppLockState
+import com.arktosbrowser.mobile.browser.SecureWindowPolicy
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
 import com.arktosbrowser.mobile.device.BuildInfo
@@ -17,6 +20,7 @@ import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.DeveloperPreferences
+import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.FileUtils
 import com.arktosbrowser.mobile.utils.MemoryLeakUtils
 import com.arktosbrowser.mobile.utils.installMultiDex
@@ -32,6 +36,7 @@ import kotlin.system.exitProcess
 class BrowserApp : Application() {
 
     @Inject internal lateinit var developerPreferences: DeveloperPreferences
+    @Inject internal lateinit var userPreferences: UserPreferences
     @Inject internal lateinit var bookmarkModel: BookmarkRepository
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
     @Inject internal lateinit var logger: Logger
@@ -106,6 +111,24 @@ class BrowserApp : Application() {
         }
 
         registerActivityLifecycleCallbacks(object : MemoryLeakUtils.LifecycleAdapter() {
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                // SEC07 — extends the FLAG_SECURE decision to windows
+                // outside BrowserActivity (settings, reading mode, …)
+                // so the whole-app toggle really covers every window.
+                // Dispatched inside performCreate, before the window
+                // is first drawn.
+                if (SecureWindowPolicy.shouldSecure(
+                        activity is IncognitoActivity,
+                        userPreferences.secureWindowsEnabled
+                    )
+                ) {
+                    activity.window.setFlags(
+                        WindowManager.LayoutParams.FLAG_SECURE,
+                        WindowManager.LayoutParams.FLAG_SECURE
+                    )
+                }
+            }
+
             override fun onActivityStarted(activity: Activity) {
                 startedActivityCount++
             }

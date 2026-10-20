@@ -299,6 +299,16 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         super.onCreate(savedInstanceState)
         injector.inject(this)
 
+        // SEC07 — FLAG_SECURE must be set before the content view goes
+        // in: incognito windows are always protected, regular ones only
+        // when the whole-app toggle is on.
+        if (SecureWindowPolicy.shouldSecure(isIncognito(), userPreferences.secureWindowsEnabled)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
+
         // TODO: add back bottom bar support
         /*if (userPreferences.bottomBar) {
             setContentView(R.layout.activity_main_btm)
