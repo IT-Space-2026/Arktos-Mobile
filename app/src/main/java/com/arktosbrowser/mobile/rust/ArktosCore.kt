@@ -16,6 +16,7 @@ import com.arktosbrowser.mobile.uniffi.BlocklistConfig
 import com.arktosbrowser.mobile.uniffi.BlocklistEngine
 import com.arktosbrowser.mobile.uniffi.RankListSource
 import com.arktosbrowser.mobile.uniffi.RankListSourceKind
+import com.arktosbrowser.mobile.uniffi.SiteRankDetail
 import com.arktosbrowser.mobile.uniffi.ReadableArticle
 import com.arktosbrowser.mobile.uniffi.RequestVerdict
 import com.arktosbrowser.mobile.uniffi.SiteBlockMode
@@ -64,6 +65,7 @@ import com.arktosbrowser.mobile.uniffi.translateRequestBody as uniffiTranslateRe
 import com.arktosbrowser.mobile.uniffi.translateParseRequest as uniffiTranslateParseRequest
 import com.arktosbrowser.mobile.uniffi.parseTranslateResponse as uniffiParseTranslateResponse
 import com.arktosbrowser.mobile.uniffi.siteRank as uniffiSiteRank
+import com.arktosbrowser.mobile.uniffi.siteRankDetail as uniffiSiteRankDetail
 import com.arktosbrowser.mobile.uniffi.siteRankEntryCount as uniffiSiteRankEntryCount
 import com.arktosbrowser.mobile.uniffi.siteRankFileEntries as uniffiSiteRankFileEntries
 import com.arktosbrowser.mobile.uniffi.siteRankLastUpdate as uniffiSiteRankLastUpdate
@@ -234,6 +236,10 @@ object ArktosCore {
      * this stays off the per-request hot path.
      */
     fun siteRank(host: String): Long = uniffiSiteRank(host).toLong()
+
+    /** Per-source ranks for [host] — a 0 slot means that list doesn't
+     *  rank it. Powers the padlock dialog's Tranco/Majestic rows. */
+    fun siteRankDetail(host: String): SiteRankDetail = uniffiSiteRankDetail(host)
 
     /** The two rank-list sources with last-update stamps (RANK01). */
     fun rankListSources(): List<RankListSource> = uniffiSiteRankSources()

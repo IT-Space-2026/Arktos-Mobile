@@ -529,11 +529,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 // the same site the desktop panel scopes its cookie row to.
                 val cookieCount = CookieManager.getInstance().getCookie(url)
                     ?.split(';')?.count { it.contains('=') } ?: 0
+                val detail = Uri.parse(url).host
+                    ?.let { ArktosCore.siteRankDetail(it) }
                 showSslDialog(
                     tab?.sslCertificate,
                     tab?.currentSslState() ?: SslState.None,
                     Uri.parse(url).host.orEmpty(),
-                    siteRank(url),
+                    detail?.tranco?.toLong() ?: 0,
+                    detail?.majestic?.toLong() ?: 0,
                     isDarkTheme,
                     cookieCount,
                     userPreferences.adBlockEnabled && !allowListModel.isUrlAllowedAds(url),
