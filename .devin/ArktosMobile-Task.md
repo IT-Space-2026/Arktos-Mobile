@@ -890,7 +890,7 @@ DONE (2026-10-20). What landed:
   all PASS; `./.devin/check-engine-audit.sh` PASS.
   Runtime smoke (real extension install, I2P tunnel hand-off) not
   exercised — no emulator in this env.
-| INCOG01 | Wipe incognito partition on session end/fresh start — details below | pending | 0 | — |
+| INCOG01 | Wipe incognito partition on session end/fresh start — details below | done | 0 | IncognitoPartition wipe on session end (performExitCleanUp+onDestroy) + fresh start (engine initialize); real dir is app_webview_incognito; gecko OTR = private mode + clearData; 5 tests + assemble both flavors + engine-audit PASS |
 | INCOG02 | Include incognito profile in panicClean — details below | pending | 0 | — |
 | INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | pending | 0 | — |
 | INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | pending | 0 | — |
@@ -908,6 +908,43 @@ carry state forward. GeckoEngine: its OTR profile must get the same
 guarantee. Verify: log in on a site in incognito, fully close
 incognito (swipe away), reopen incognito, confirm logged out.
 needs:tool:java
+
+Done 2026-10-20:
+
+- Spec got the path wrong: the suffixed partition is
+  `dataDir/app_webview_incognito` (sibling, underscore-joined — per
+  the androidx `setDataDirectorySuffix` test in AOSP), not
+  `app_webview/incognito`. Worse, `WebViewProfile.clear`'s
+  AppPrivateData branch deleted `dataDir/app_webview` — inside the
+  :incognito process that is the MAIN profile's partition (dataDir is
+  app-wide), so a naive `clear(All)` there would have wiped normal
+  cookies/logins. `WebViewProfile` now takes the process's own
+  `dataDirName` (WebViewEngine passes `app_webview_incognito` only in
+  the incognito process).
+- New `browser/IncognitoPartition.kt` (engine-neutral): process-name
+  check, partition-dir candidates (`app_webview_incognito`,
+  OEM-forced `app_webview_<pkg>:incognito`, nested
+  `app_webview/incognito` — `app_webview` itself never deleted),
+  `wipeDirectories` + `wipeSession`.
+- Session end: `performExitCleanUp` incognito branch now calls
+  `wipeSession` (was: only `clearWebStorage` — cookies/auth/cache
+  survived); `BrowserActivity.onDestroy` re-runs it for session ends
+  that skip closeBrowser (task removed with live process, restart()).
+  Below `FULL_INCOGNITO` (<28, shared partition) the scope stays the
+  old storage-API-only clear so normal browsing data isn't hit.
+- Fresh start: `WebViewEngine.initialize` wipes the partition dirs in
+  the :incognito process before the first page exists — covers
+  swipe-away process death (no onDestroy). `GeckoEngine.initialize`
+  does `storageController.clearData(ALL)` in the :incognito process;
+  gecko private-mode sessions keep nothing on disk regardless, so the
+  OTR guarantee holds by construction + runtime leftovers cleared.
+- Tests: `IncognitoPartitionTest` (5) — process-name match, dir
+  naming, `app_webview` spared, idempotent wipe, legacy-branch
+  profile clear. `testScMainWebviewDebugUnitTest` +
+  `testScMainGeckoDebugUnitTest` green (0 failures),
+  `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
+  engine-audit PASS. The login/logged-out runtime check needs an
+  emulator/device — not run in this env.
 
 ### INCOG02
 `panicClean()` wipes the main process's saved state/history but the

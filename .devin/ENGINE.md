@@ -36,12 +36,16 @@ the WebView adapter — the only subtree allowed to import
 
 - `view/WebViewEngine.kt` — `Backend`: process-wide setup
   (`setDataDirectorySuffix` for the `:incognito` process,
-  `setWebContentsDebuggingEnabled` in debug), `systemUserAgent`,
+  `setWebContentsDebuggingEnabled` in debug, INCOG01 fresh-start
+  partition wipe via `browser/IncognitoPartition`),
+  `systemUserAgent`,
   `defaultProfile`/`createProfile`, `createPage`, `createView`,
   `engineNote` (installed WebView package version).
 - `view/WebViewProfile.kt` — `Profile`: cookie/storage partition over
   `CookieManager`, `WebStorage`, `WebViewDatabase` + throwaway WebViews
-  for cache/form/SSL clearing.
+  for cache/form/SSL clearing; AppPrivateData targets the process's
+  own dir (`app_webview_incognito` in `:incognito`, `app_webview`
+  elsewhere).
 - `view/ArktosCookieView.kt` — `Page`: the tab object; owns the real
   `WebView`, lifecycle, settings apply, and emits the neutral `Page`
   signals. `asWebView()` is the adapter-local escape hatch for

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.os.Build
 import android.view.View
+import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.database.javascript.JavaScriptRepository
 import com.arktosbrowser.mobile.device.BuildInfo
 import com.arktosbrowser.mobile.device.BuildType
@@ -34,6 +35,7 @@ import org.mozilla.geckoview.GeckoPreferenceController
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
+import org.mozilla.geckoview.StorageController
 
 /**
  * The GeckoView [Backend] — ENG03 skeleton, ENG05 parity pass B.
@@ -130,13 +132,23 @@ class GeckoEngine(
 
     override fun initialize(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= 28) {
-            incognitoProcess =
-                Application.getProcessName() == "${context.packageName}:incognito"
+            incognitoProcess = IncognitoPartition.isIncognitoProcess(
+                context.packageName, Application.getProcessName()
+            )
         }
         val settings = GeckoRuntimeSettings.Builder()
             .remoteDebuggingEnabled(buildInfo.buildType == BuildType.DEBUG)
             .build()
         runtime = GeckoRuntime.create(context, settings)
+        if (incognitoProcess) {
+            // INCOG01 — private-mode sessions never persist page data,
+            // so the WebView-style partition wipe has no equivalent
+            // here; this clears whatever else the runtime itself
+            // stored (caches, leftovers from a session whose process
+            // died without a clean shutdown) so a swipe-away cannot
+            // carry state into the next incognito session either.
+            runtime.storageController.clearData(StorageController.ClearFlags.ALL)
+        }
         userScriptHost = GeckoUserScriptHost(
             this, javascriptRepository, userScriptBootstrap, arktosStore,
             userPreferences, logger, application, networkScheduler, mainScheduler

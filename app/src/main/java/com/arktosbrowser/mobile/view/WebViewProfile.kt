@@ -8,6 +8,7 @@ import android.webkit.CookieSyncManager
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewDatabase
+import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.engine.Profile
 import com.arktosbrowser.mobile.engine.RequestPolicy
 import com.arktosbrowser.mobile.engine.StorageArea
@@ -32,7 +33,8 @@ import java.io.File
 class WebViewProfile(
     private val context: Context,
     override val isOffTheRecord: Boolean,
-    override val storageName: String
+    override val storageName: String,
+    private val dataDirName: String = IncognitoPartition.WEB_VIEW_DEFAULT_DATA_DIR
 ) : Profile {
 
     override var userAgent: String = ""
@@ -93,11 +95,14 @@ class WebViewProfile(
         }
 
         // The sledgehammer the old eraseWebStorage path used for
-        // incognito hardening: delete the whole app_webview data dir.
+        // incognito hardening: delete the partition's data dir.
+        // [dataDirName] is this process's own partition — inside the
+        // :incognito process it is app_webview_incognito, NOT the main
+        // profile's app_webview (INCOG01).
         if (StorageArea.AppPrivateData in expanded
             && Build.VERSION.SDK_INT > Build.VERSION_CODES.N
         ) {
-            WebUtils.deleteDir(File(context.dataDir, "app_webview"))
+            WebUtils.deleteDir(File(context.dataDir, dataDirName))
         }
     }
 

@@ -264,4 +264,5 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - 'Show punycode domains' option (on by default; shows xn-- form for internationalized domains to expose lookalike phishing domains)
 - 'Referrer policy' option (default / same-origin only / never send on page navigations)
 - 'Always incognito' option
+- Incognito sessions run in a separate process with their own storage partition that is wiped when the session ends (and again on the next incognito start, so swipe-away can't carry cookies or logins forward)
 - Cookie dialog blocker

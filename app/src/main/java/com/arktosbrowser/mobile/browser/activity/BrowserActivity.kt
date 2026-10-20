@@ -1707,7 +1707,13 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             WebUtils.eraseWebStorage(applicationContext)
             logger.log(TAG, "WebStorage Cleared")
         } else if (isIncognito()) {
-            WebUtils.clearWebStorage()     // We want to make sure incognito mode is secure
+            // INCOG01 — end of the incognito session: wipe the whole OTR
+            // partition (cookies, DOM storage, form data, HTTP auth, SSL
+            // decisions, cache) and its on-disk WebView dirs. The
+            // swipe-away path — process death with no onDestroy — is
+            // covered by the fresh-start wipe in the engine's
+            // initialize().
+            IncognitoPartition.wipeSession(applicationContext)
         }
     }
 
@@ -1857,6 +1863,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         logger.log(TAG, "onDestroy")
 
         incognitoNotification?.hide()
+
+        // INCOG01 — session ends that skipped closeBrowser(): the task
+        // was removed while this process stayed alive, or a restart()
+        // finished the activity. The wipe is idempotent, so running it
+        // again after performExitCleanUp costs nothing.
+        if (isIncognito()) {
+            IncognitoPartition.wipeSession(applicationContext)
+        }
 
         mainHandler.removeCallbacksAndMessages(null)
 

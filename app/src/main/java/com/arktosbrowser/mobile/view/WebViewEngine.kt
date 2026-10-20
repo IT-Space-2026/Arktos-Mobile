@@ -12,6 +12,7 @@ import androidx.webkit.ProxyConfig
 import androidx.webkit.ProxyController
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.device.BuildInfo
 import com.arktosbrowser.mobile.device.BuildType
 import com.arktosbrowser.mobile.engine.Backend
@@ -78,10 +79,20 @@ class WebViewEngine @Inject constructor(
 
     override fun initialize(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= 28) {
-            incognitoProcess =
-                Application.getProcessName() == "${context.packageName}:incognito"
+            incognitoProcess = IncognitoPartition.isIncognitoProcess(
+                context.packageName, Application.getProcessName()
+            )
             if (incognitoProcess) {
-                WebView.setDataDirectorySuffix("incognito")
+                WebView.setDataDirectorySuffix(
+                    IncognitoPartition.WEB_VIEW_DATA_DIR_SUFFIX
+                )
+                // INCOG01 — wipe whatever a previous incognito session
+                // left on disk before the first page exists: a
+                // swipe-away kills this process without onDestroy, so
+                // the session-end wipe never ran.
+                IncognitoPartition.wipeDirectories(
+                    context.dataDir, context.packageName
+                )
             }
         }
         if (buildInfo.buildType == BuildType.DEBUG) {
@@ -94,11 +105,25 @@ class WebViewEngine @Inject constructor(
         WebSettings.getDefaultUserAgent(context)
 
     override val defaultProfile: Profile by lazy {
-        WebViewProfile(application, incognitoProcess, "default")
+        WebViewProfile(application, incognitoProcess, "default", dataDirName())
     }
 
     override fun createProfile(options: ProfileOptions): Profile =
-        WebViewProfile(application, options.offTheRecord, options.storageName ?: "default")
+        WebViewProfile(application, options.offTheRecord, options.storageName ?: "default", dataDirName())
+
+    /**
+     * The on-disk directory this process's WebView partition lives in —
+     * `app_webview_incognito` in the `:incognito` process (the suffix
+     * layout WebView builds from [IncognitoPartition.WEB_VIEW_DATA_DIR_SUFFIX]),
+     * `app_webview` everywhere else. [WebViewProfile]'s AppPrivateData
+     * clear targets it, so wiping incognito can never delete the main
+     * profile's partition.
+     */
+    private fun dataDirName(): String = if (incognitoProcess) {
+        IncognitoPartition.webViewDataDirName()
+    } else {
+        IncognitoPartition.WEB_VIEW_DEFAULT_DATA_DIR
+    }
 
     /**
      * ENG05 — the proxy override used to live in `view/ProxyUtils`; it
