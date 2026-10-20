@@ -1,11 +1,17 @@
 package com.arktosbrowser.mobile.translate
 
-import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.webkit.JavaScriptReplyProxy
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import com.arktosbrowser.mobile.di.MainScheduler
+import com.arktosbrowser.mobile.di.NetworkScheduler
 import com.arktosbrowser.mobile.js.TranslatePage
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
+import com.arktosbrowser.mobile.uniffi.TranslateRequest
+import io.reactivex.rxjava3.core.Scheduler
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
@@ -17,22 +23,27 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In-page translation. [translatePage] exposes this object to the page
- * as `window.ArktosTranslate` — deliberately only when the user asks
- * for a translation, so pages never see the interface otherwise — then
- * injects TranslatePage.js, which batches text nodes back through
- * [translate].
+ * In-page translation. [register] installs a `WebMessageListener`
+ * exposed to pages as `window.ArktosTranslate` — a postMessage-only
+ * object (same pattern as the userscript `arktosGM` bridge), so no
+ * host interface is reachable from page JavaScript. [translatePage]
+ * injects TranslatePage.js, which batches text nodes through the
+ * listener as `{"id":…,"texts":[…],"target":"…"}` messages and applies
+ * the `{"id":…,"translated":[…]}` replies in order.
  *
  * The wire format (LibreTranslate `{"q":…,"translatedText":…}`) is
  * built and parsed in Rust via [ArktosCore]; this class only owns the
- * HTTP call. `@JavascriptInterface` methods run on a private WebView
- * thread, so the blocking request does not touch the main thread.
+ * HTTP call. Message callbacks arrive on the UI thread, so the
+ * blocking request runs on [networkScheduler] and the reply is posted
+ * back on [mainScheduler].
  */
 @Singleton
 class TranslateBridge @Inject constructor(
     private val userPreferences: UserPreferences,
     private val translatePageJs: TranslatePage,
-    private val logger: Logger
+    private val logger: Logger,
+    @NetworkScheduler private val networkScheduler: Scheduler,
+    @MainScheduler private val mainScheduler: Scheduler
 ) {
 
     private val client = OkHttpClient.Builder()
@@ -40,11 +51,24 @@ class TranslateBridge @Inject constructor(
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    /** Attaches the bridge and runs the translation walker on [webView]. */
+    /**
+     * Installs the `ArktosTranslate` postMessage object on [webView].
+     * Must run before the first navigation: the object is injected
+     * into matching frames when a page loads, so registering after a
+     * page is already loaded would only take effect on the next load.
+     */
+    fun register(webView: WebView) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            WebViewCompat.addWebMessageListener(webView, JS_OBJECT_NAME, setOf("*"), listener)
+        } else {
+            logger.log(TAG, "WEB_MESSAGE_LISTENER unsupported — in-page translation disabled")
+        }
+    }
+
+    /** Runs the translation walker on [webView]. */
     fun translatePage(webView: WebView, targetLanguage: String) {
         val target = targetLanguage.takeIf { it.matches(Companion.LANG_TAG) }
             ?: FALLBACK_LANGUAGE
-        webView.addJavascriptInterface(this, JS_INTERFACE_NAME)
         webView.evaluateJavascript(
             translatePageJs.provideJs(webView.context)
                 .replace(TARGET_TOKEN, JSONObject.quote(target)),
@@ -52,42 +76,69 @@ class TranslateBridge @Inject constructor(
         )
     }
 
-    /**
-     * Called from TranslatePage.js with `{"texts":[…],"target":"xx"}`.
-     * Returns a JSON array of translated strings in the same order, or
-     * `[]` on any failure (the page keeps its original text).
-     */
-    @JavascriptInterface
-    fun translate(requestJson: String): String {
-        return try {
-            val request = ArktosCore.translateParseRequest(requestJson) ?: return "[]"
-
-            val endpoint = userPreferences.translationEndpoint
-            if (endpoint.isBlank()) return "[]"
-
-            val body = ArktosCore.translateRequestBody(request.texts, SOURCE_AUTO, request.target)
-                .toRequestBody(JSON_MEDIA_TYPE)
-            val httpRequest = Request.Builder()
-                .url(ArktosCore.translateUrl(endpoint))
-                .post(body)
-                .build()
-
-            client.newCall(httpRequest).execute().use { response ->
-                if (!response.isSuccessful) return "[]"
-                val parsed = ArktosCore.parseTranslateResponse(
-                    response.body.string().orEmpty()
-                )
-                JSONArray(parsed).toString()
+    private val listener = WebViewCompat.WebMessageListener { _, message, _, _, replyProxy ->
+        val data = message.data ?: return@WebMessageListener
+        networkScheduler.scheduleDirect {
+            val payload = handleMessage(data)
+            mainScheduler.scheduleDirect {
+                runCatching { replyProxy.postMessage(payload) }
             }
-        } catch (e: Exception) {
-            logger.log(TAG, "translate request failed: ${e.message}")
-            "[]"
         }
     }
 
+    /**
+     * Handles one `{"id":…,"texts":[…],"target":"…"}` walker message
+     * and returns the `{"id":…,"translated":[…]}` reply. Always
+     * produces a reply — even for unparseable batches — so the walker
+     * never stalls waiting on a response. Runs off the UI thread.
+     */
+    internal fun handleMessage(data: String): String {
+        val id = parseId(data)
+        val translated = try {
+            val request = ArktosCore.translateParseRequest(data)
+            val endpoint = userPreferences.translationEndpoint
+            if (request == null || endpoint.isBlank()) {
+                emptyList()
+            } else {
+                performTranslation(endpoint, request)
+            }
+        } catch (e: Exception) {
+            logger.log(TAG, "translate request failed: ${e.message}")
+            emptyList()
+        }
+        return buildReply(id, translated)
+    }
+
+    /** Correlation id — lenient so a bad payload still gets an answer. */
+    internal fun parseId(data: String): Long =
+        runCatching { JSONObject(data).optLong("id", -1L) }.getOrDefault(-1L)
+
+    /** Blocking LibreTranslate batch request. */
+    internal fun performTranslation(endpoint: String, request: TranslateRequest): List<String> {
+        val body = ArktosCore.translateRequestBody(request.texts, SOURCE_AUTO, request.target)
+            .toRequestBody(JSON_MEDIA_TYPE)
+        val httpRequest = Request.Builder()
+            .url(ArktosCore.translateUrl(endpoint))
+            .post(body)
+            .build()
+
+        client.newCall(httpRequest).execute().use { response ->
+            if (!response.isSuccessful) return emptyList()
+            return ArktosCore.parseTranslateResponse(
+                response.body.string().orEmpty()
+            )
+        }
+    }
+
+    internal fun buildReply(id: Long, translated: List<String>): String =
+        JSONObject()
+            .put("id", id)
+            .put("translated", JSONArray(translated))
+            .toString()
+
     companion object {
         private const val TAG = "TranslateBridge"
-        private const val JS_INTERFACE_NAME = "ArktosTranslate"
+        private const val JS_OBJECT_NAME = "ArktosTranslate"
         private const val TARGET_TOKEN = "%%TARGET_JSON%%"
         private const val SOURCE_AUTO = "auto"
         private const val FALLBACK_LANGUAGE = "en"

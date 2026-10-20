@@ -1,8 +1,8 @@
 /* Arktos Mobile in-page translation.
  *
  * Walks visible text nodes and sends them in batches to the
- * ArktosTranslate JavascriptInterface, which performs the network
- * call in Kotlin and returns translated strings in the same order.
+ * ArktosTranslate web-message listener, which performs the network
+ * call in Kotlin and posts back translated strings in the same order.
  * %%TARGET_JSON%% is replaced with a JSON-quoted BCP-47 language tag
  * before injection (see translate/TranslateBridge.kt).
  */
@@ -40,28 +40,52 @@
         }
     }
 
-    for (var i = 0; i < nodes.length; i += BATCH_SIZE) {
-        var slice = nodes.slice(i, i + BATCH_SIZE);
+    var seq = 0;
+    var offset = 0;
+    var pending = {};
+
+    function finish() {
+        window.ArktosTranslate.onmessage = null;
+        document.documentElement.setAttribute('data-arktos-translated', TARGET);
+    }
+
+    function sendNext() {
+        if (offset >= nodes.length) {
+            finish();
+            return;
+        }
+        var slice = nodes.slice(offset, offset + BATCH_SIZE);
+        offset += BATCH_SIZE;
         var texts = [];
         for (var j = 0; j < slice.length; j++) {
             texts.push(slice[j].nodeValue);
         }
+        var id = ++seq;
+        pending[id] = slice;
         try {
-            var reply = window.ArktosTranslate.translate(
-                JSON.stringify({ texts: texts, target: TARGET })
+            window.ArktosTranslate.postMessage(
+                JSON.stringify({ id: id, texts: texts, target: TARGET })
             );
-            var translated = JSON.parse(reply);
-            if (translated && translated.length === slice.length) {
-                for (var k = 0; k < slice.length; k++) {
-                    slice[k].nodeValue = translated[k];
-                }
-            }
         } catch (e) {
-            // Endpoint down, bridge detached, or a non-JSON reply —
-            // keep whatever was already translated and stop.
-            break;
+            // Bridge detached mid-walk — keep whatever was translated.
+            finish();
         }
     }
 
-    document.documentElement.setAttribute('data-arktos-translated', TARGET);
+    window.ArktosTranslate.onmessage = function (ev) {
+        var m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        var slice = pending[m.id];
+        if (!slice) return;
+        delete pending[m.id];
+        var translated = m.translated;
+        if (translated && translated.length === slice.length) {
+            for (var k = 0; k < slice.length; k++) {
+                slice[k].nodeValue = translated[k];
+            }
+        }
+        sendNext();
+    };
+
+    sendNext();
 }());
