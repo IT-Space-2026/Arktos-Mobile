@@ -16,7 +16,7 @@ val Context.injector: AppComponent
  * The [AppComponent] attached to the context, note that the fragment must be attached.
  */
 val Fragment.injector: AppComponent
-    get() = (context!!.applicationContext as BrowserApp).applicationComponent
+    get() = (requireContext().applicationContext as BrowserApp).applicationComponent
 
 /**
  * The [AppComponent] attached to the context, note that the fragment must be attached.
@@ -24,4 +24,5 @@ val Fragment.injector: AppComponent
 @Suppress("DeprecatedCallableAddReplaceWith")
 @Deprecated("Consumers should switch to support.v4.app.Fragment")
 val android.app.Fragment.injector: AppComponent
-    get() = (activity!!.applicationContext as BrowserApp).applicationComponent
+    get() = (checkNotNull(activity) { "Fragment not attached" }.applicationContext as BrowserApp)
+        .applicationComponent

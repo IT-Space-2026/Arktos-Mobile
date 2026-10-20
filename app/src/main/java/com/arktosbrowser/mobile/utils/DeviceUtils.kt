@@ -17,10 +17,8 @@ object DeviceUtils {
      */
     @JvmStatic
     fun getScreenWidth(context: Context): Int {
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
         return Point().apply {
-            windowManager.defaultDisplay.getSize(this)
+            windowManager(context).defaultDisplay.getSize(this)
         }.x
     }
 
@@ -31,11 +29,14 @@ object DeviceUtils {
      */
     @JvmStatic
     fun getAvailableScreenWidth(context: Context): Int {
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
         return DisplayMetrics().apply {
-            windowManager.defaultDisplay.getRealMetrics(this)
+            windowManager(context).defaultDisplay.getRealMetrics(this)
         }.widthPixels
     }
+
+    private fun windowManager(context: Context): WindowManager =
+        checkNotNull(context.getSystemService(WindowManager::class.java)) {
+            "WindowManager service unavailable"
+        }
 
 }

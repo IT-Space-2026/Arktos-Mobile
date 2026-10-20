@@ -1077,7 +1077,7 @@ Outcome:
   `assembleScMainWebviewDebug` + `assembleScMainGeckoDebug` PASS,
   both `testScMain*DebugUnitTest` green, engine-audit PASS.
 | MOD09 | AnimatedProgressBar — 302-line custom animator, verify or slim — details below | done | 0 | kept custom view (thin accent line + CSS-ease bezier + fade-at-100 IS the design; ProgressBar needs same custom drawable+alpha plumbing); 302→167 lines: ValueAnimator retarget replaces legacy Animation+queue (fixes progress lagging real load); dead setters/strokeWidth/instance-state/onFinishInflate dropped; new pure-JVM ProgressBarPolicy seam — ProgressBarPolicyTest 9/9, both flavors build+unit suites green, engine-audit PASS |
-| MOD10 | micro-cleanup of !!-flagged untouched helpers — details below | pending | 0 | — |
+| MOD10 | micro-cleanup of !!-flagged untouched helpers — details below | done | 1 | DiExtensions: context!!→requireContext(), activity!!→checkNotNull; StringPreference: getString()!!→?:defaultValue (corrupt-pref NPE→default); DeviceUtils: as-cast→getSystemService(Class)+shared windowManager() helper; no API/behavior change — both flavors build+test green, engine-audit PASS |
 
 ### MOD09
 `browser/progress/AnimatedProgressBar.kt` (302 lines) is the last
@@ -1129,3 +1129,28 @@ The only untouched files with stale patterns: `di/DiExtensions.kt`,
 contain `!!` and J2K-era null handling (<40 lines each). Tidy them —
 no behavior change, no test churn needed beyond the suite staying
 green. needs:tool:java
+
+Done 2026-10-20:
+
+- `di/DiExtensions.kt` — androidx `Fragment.injector`: `context!!` →
+  `requireContext()` (idiomatic, still throws on detached fragment).
+  Deprecated `android.app.Fragment.injector`: `activity!!` →
+  `checkNotNull(activity) { "Fragment not attached" }` (no
+  requireActivity() exists on the framework class).
+- `StringPreference.kt` — `getString(name, default)!!` →
+  `?: defaultValue`. Contract (non-null String) unchanged; the only
+  delta is a stored-null/corrupt pref now yields the default instead
+  of an NPE — strictly a graceful fallback, not a reachable-state
+  change.
+- `DeviceUtils.kt` — duplicated
+  `getSystemService(Context.WINDOW_SERVICE) as WindowManager` in both
+  methods → shared private `windowManager()` helper using
+  `getSystemService(WindowManager::class.java)` (API 23+, minSdk 26)
+  + `checkNotNull` — same crash-if-missing semantics, matches the
+  `DownloadCompleteReceiver` convention. `defaultDisplay` kept
+  (deprecated but switching to `currentWindowMetrics` would alter
+  multi-window behavior — out of scope).
+- Verification: `assembleScMainWebviewDebug` +
+  `assembleScMainGeckoDebug` PASS; `testScMainWebviewDebugUnitTest`
+  425 tests 0 failures + `testScMainGeckoDebugUnitTest` green;
+  engine-audit PASS (no android.webkit touched).
