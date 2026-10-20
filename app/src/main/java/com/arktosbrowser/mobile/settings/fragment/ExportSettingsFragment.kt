@@ -3,7 +3,6 @@
  */
 package com.arktosbrowser.mobile.settings.fragment
 
-import android.Manifest
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
@@ -14,15 +13,13 @@ import android.os.Handler
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
-import com.arktosbrowser.mobile.permissions.PermissionsManager
-import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.permissions.PermissionsResultAction
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.bookmark.LegacyBookmarkImporter
 import com.arktosbrowser.mobile.bookmark.NetscapeBookmarkFormatImporter
-import com.arktosbrowser.mobile.browser.TabsManager
+import com.arktosbrowser.mobile.browser.activity.BrowserActivity
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
 import com.arktosbrowser.mobile.di.DatabaseScheduler
@@ -33,7 +30,7 @@ import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.extensions.snackbar
 import com.arktosbrowser.mobile.extensions.toast
 import com.arktosbrowser.mobile.log.Logger
-import com.arktosbrowser.mobile.utils.Preconditions.checkNonNull
+import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.Utils.close
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -57,9 +54,6 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
     @Inject
     internal lateinit var userPreferences: UserPreferences
-
-    @Inject
-    internal lateinit var tabModel: TabsManager
 
     @Inject
     internal lateinit var netscapeBookmarkFormatImporter: NetscapeBookmarkFormatImporter
@@ -86,9 +80,11 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         super.onCreate(savedInstanceState)
         injector.inject(this)
 
-        PermissionsManager
-            .instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS, null)
+        // All file access goes through the Storage Access Framework
+        // (ACTION_CREATE/OPEN_DOCUMENT), which needs no runtime
+        // permissions — the old READ/WRITE_EXTERNAL_STORAGE request is
+        // always denied at targetSdk 30+ and broke every entry in this
+        // screen.
 
         switchPreference(
             preference = SETTINGS_BOOKMARK_SORT_DATE,
@@ -96,18 +92,18 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
             onCheckChange = { userPreferences.bookmarkSortByDate = it }
         )
 
-        clickablePreference(preference = SETTINGS_EXPORT, onClick = this::exportBookmarks)
-        clickablePreference(preference = SETTINGS_IMPORT, onClick = this::importBookmarks)
+        clickablePreference(preference = SETTINGS_EXPORT) { showExportBookmarksDialog() }
+        clickablePreference(preference = SETTINGS_IMPORT) { showImportBookmarksDialog() }
         clickablePreference(
             preference = SETTINGS_DELETE_BOOKMARKS,
             onClick = this::deleteAllBookmarks
         )
 
-        clickablePreference(preference = SETTINGS_TAB_EXPORT, onClick = this::exportTabs)
-        clickablePreference(preference = SETTINGS_TAB_IMPORT, onClick = this::importTabs)
+        clickablePreference(preference = SETTINGS_TAB_EXPORT) { showExportTabsDialog() }
+        clickablePreference(preference = SETTINGS_TAB_IMPORT) { showImportTabsDialog() }
 
-        clickablePreference(preference = SETTINGS_SETTINGS_EXPORT, onClick = this::exportSettings)
-        clickablePreference(preference = SETTINGS_SETTINGS_IMPORT, onClick = this::importSettings)
+        clickablePreference(preference = SETTINGS_SETTINGS_EXPORT) { showExportSettingsDialog() }
+        clickablePreference(preference = SETTINGS_SETTINGS_IMPORT) { showImportSettingsDialog() }
 
         clickablePreference(preference = SETTINGS_DELETE_SETTINGS, onClick = this::clearSettings)
     }
@@ -132,36 +128,110 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         bookmarksSortSubscription?.dispose()
     }
 
-    private fun importTabs() {
-
+    private fun showError(@StringRes message: Int) {
+        val activity = activity
+        if (activity != null && !activity.isFinishing && isAdded) {
+            Utils.createInformativeDialog(activity, R.string.title_error, message)
+        } else {
+            application.toast(message)
+        }
     }
 
-    private fun exportTabs() {
-        PermissionsManager.instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS,
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        val intent = Intent(context, MainActivity::class.java)
-                        intent.putExtra("EXPORT_TABS", true)
-                        startActivity(intent)
-                        // TODO: Toast
-                    }
+    private fun showImportTabsDialog() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain"))
+        }
+        tabsImportFilePicker.launch(intent)
+    }
 
-                    override fun onDenied(permission: String) {
-                        val activity = activity
-                        if (activity != null && !activity.isFinishing && isAdded) {
-                            Utils.createInformativeDialog(
-                                activity,
-                                R.string.title_error,
-                                R.string.import_bookmark_error
-                            )
-                        } else {
-                            application.toast(R.string.bookmark_export_failure)
+    private val tabsImportFilePicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val inputStream = result.data?.data
+                ?.let { context?.contentResolver?.openInputStream(it) }
+            if (inputStream == null) {
+                showError(R.string.import_tabs_error)
+                return@registerForActivityResult
+            }
+
+            importSubscription?.dispose()
+            importSubscription = Single.fromCallable {
+                inputStream.bufferedReader().useLines { lines ->
+                    lines.map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .mapNotNull { extractTabUrl(it) }
+                        .toList()
+                }
+            }
+                .subscribeOn(databaseScheduler)
+                .observeOn(mainScheduler)
+                .subscribeBy(
+                    onSuccess = { urls ->
+                        if (urls.isEmpty()) {
+                            showError(R.string.import_tabs_error)
+                            return@subscribeBy
                         }
+                        // Tabs must be created inside the browser activity —
+                        // hand the URL list over and let it doAfterInitialization.
+                        startActivity(
+                            Intent(context, MainActivity::class.java).apply {
+                                putStringArrayListExtra(
+                                    BrowserActivity.EXTRA_IMPORT_TABS,
+                                    ArrayList(urls)
+                                )
+                            }
+                        )
+                    },
+                    onError = {
+                        logger.log(TAG, "onError: importing tabs", it)
+                        showError(R.string.import_tabs_error)
                     }
-                })
+                )
+        }
 
+    /**
+     * Accepts the exported `{"url": ..., "title": ...}` lines and, for
+     * hand-edited files, bare URLs. Only http(s) links are imported.
+     */
+    private fun extractTabUrl(line: String): String? {
+        val url = runCatching { JSONObject(line).optString("url") }
+            .getOrDefault("")
+            .ifBlank { line }
+        return url.takeIf { it.startsWith("http://") || it.startsWith("https://") }
     }
+
+    private fun showExportTabsDialog() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, "TabsExport.txt")
+        }
+        tabsExportFilePicker.launch(intent)
+    }
+
+    private val tabsExportFilePicker =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val uri = result.data?.data
+            if (uri == null) {
+                showError(R.string.bookmark_export_failure)
+                return@registerForActivityResult
+            }
+            // The TabsManager injected here is a fresh instance — only
+            // the browser activity holds the live tab list, so hand it
+            // the destination URI and let it serialize.
+            startActivity(
+                Intent(context, MainActivity::class.java).apply {
+                    putExtra(BrowserActivity.EXTRA_EXPORT_TABS_URI, uri)
+                }
+            )
+        }
 
     private fun clearSettings() {
         val builder = MaterialAlertDialogBuilder(activity as Activity)
@@ -188,35 +258,10 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         alertDialog.show()
     }
 
-    private fun exportSettings() {
-        PermissionsManager.instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS,
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        showExportSettingsDialog()
-                    }
-
-                    override fun onDenied(permission: String) {
-                        val activity = activity
-                        if (activity != null && !activity.isFinishing && isAdded) {
-                            Utils.createInformativeDialog(
-                                activity,
-                                R.string.title_error,
-                                R.string.action_ok
-                            )
-                        } else {
-                            application.toast(R.string.error)
-                        }
-                    }
-                })
-    }
-
     private fun showExportSettingsDialog() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "text/plain"
-
-
             putExtra(Intent.EXTRA_TITLE, "SettingsExport.txt")
         }
         settingsExportFilePicker.launch(intent)
@@ -224,87 +269,62 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
     private val settingsExportFilePicker =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val outputStream = result.data?.data
+                ?.let { context?.contentResolver?.openOutputStream(it) }
+            if (outputStream == null) {
+                showError(R.string.error)
+                return@registerForActivityResult
+            }
+            val userPref = application.getSharedPreferences("settings", 0)
+            val allEntries: Map<String, *> = userPref.all
 
-                result.data?.data?.let { uri ->
-                    context?.contentResolver?.openOutputStream(uri)?.let { outputStream ->
-                        val userPref = application.getSharedPreferences("settings", 0)
-                        val allEntries: Map<String, *> = userPref!!.all
-
-                        val exportSettingsToFile = Completable.fromAction {
-                            checkNonNull(allEntries)
-                            var settingsWriter: BufferedWriter? = null
-                            try {
-                                settingsWriter =
-                                    BufferedWriter(OutputStreamWriter(outputStream))
-                                val `object` = JSONObject()
-                                for (entry in allEntries) {
-                                    `object`.put("key", entry.key)
-                                    `object`.put("value", entry.value)
-                                    settingsWriter.write(`object`.toString())
-                                    settingsWriter.newLine()
-                                }
-                            } finally {
-                                close(settingsWriter)
-                            }
+            exportSubscription?.dispose()
+            exportSubscription = Completable.fromAction {
+                var settingsWriter: BufferedWriter? = null
+                try {
+                    settingsWriter = BufferedWriter(OutputStreamWriter(outputStream))
+                    for (entry in allEntries) {
+                        // Type tag keeps int/long/float distinct on import
+                        // — untyped (legacy) files can only guess by regex
+                        // and truncated e.g. timestamps to Int.
+                        val (type, value) = when (val v = entry.value) {
+                            is Int -> "int" to v
+                            is Long -> "long" to v
+                            is Float -> "float" to v.toDouble()
+                            is Boolean -> "bool" to v
+                            else -> "string" to v.toString()
                         }
-
-                        exportSubscription?.dispose()
-                        exportSubscription = exportSettingsToFile
-                            .subscribeBy(
-                                onComplete = {
-                                    activity?.apply {
-                                        snackbar(getString(R.string.action_ok))
-                                    }
-                                },
-                                onError = { throwable ->
-                                    logger.log(TAG, "onError: exporting settings", throwable)
-                                    val activity = activity
-                                    if (activity != null && !activity.isFinishing && isAdded) {
-                                        Utils.createInformativeDialog(
-                                            activity,
-                                            R.string.title_error,
-                                            R.string.error
-                                        )
-                                    } else {
-                                        application.toast(R.string.error)
-                                    }
-                                }
-                            )
+                        settingsWriter.write(
+                            JSONObject()
+                                .put("key", entry.key)
+                                .put("type", type)
+                                .put("value", value)
+                                .toString()
+                        )
+                        settingsWriter.newLine()
                     }
+                } finally {
+                    close(settingsWriter)
                 }
             }
+                .subscribeOn(databaseScheduler)
+                .observeOn(mainScheduler)
+                .subscribeBy(
+                    onComplete = { activity?.snackbar(getString(R.string.action_ok)) },
+                    onError = {
+                        logger.log(TAG, "onError: exporting settings", it)
+                        showError(R.string.error)
+                    }
+                )
         }
-
-    private fun exportBookmarks() {
-        PermissionsManager.instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS,
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        showExportBookmarksDialog()
-                    }
-
-                    override fun onDenied(permission: String) {
-                        val activity = activity
-                        if (activity != null && !activity.isFinishing && isAdded) {
-                            Utils.createInformativeDialog(
-                                activity,
-                                R.string.title_error,
-                                R.string.bookmark_export_failure
-                            )
-                        } else {
-                            application.toast(R.string.bookmark_export_failure)
-                        }
-                    }
-                })
-    }
 
     private fun showExportBookmarksDialog() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "text/plain"
-
-
             putExtra(Intent.EXTRA_TITLE, "BookmarksExport.txt")
         }
         bookmarkExportFilePicker.launch(intent)
@@ -312,79 +332,45 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
     private val bookmarkExportFilePicker =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.data?.let { uri ->
-                    context?.contentResolver?.openOutputStream(uri)?.let { outputStream ->
-
-                        bookmarksSortSubscription = bookmarkRepository.getAllBookmarksSorted()
-                            .subscribeOn(databaseScheduler)
-                            .subscribe { list ->
-                                if (!isAdded) {
-                                    return@subscribe
-                                }
-
-                                exportSubscription?.dispose()
-                                exportSubscription =
-                                    BookmarkExporter.exportBookmarksToFile(list, outputStream)
-                                        .subscribeOn(databaseScheduler)
-                                        .observeOn(mainScheduler)
-                                        .subscribeBy(
-                                            onComplete = {
-                                                activity?.apply {
-                                                    snackbar("${getString(R.string.action_ok)}")
-                                                }
-                                            },
-                                            onError = { throwable ->
-                                                logger.log(
-                                                    TAG,
-                                                    "onError: exporting bookmarks",
-                                                    throwable
-                                                )
-                                                val activity = activity
-                                                if (activity != null && !activity.isFinishing && isAdded) {
-                                                    Utils.createInformativeDialog(
-                                                        activity,
-                                                        R.string.title_error,
-                                                        R.string.bookmark_export_failure
-                                                    )
-                                                } else {
-                                                    application.toast(R.string.bookmark_export_failure)
-                                                }
-                                            }
-                                        )
-                            }
-                    }
-                }
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
             }
+            val outputStream = result.data?.data
+                ?.let { context?.contentResolver?.openOutputStream(it) }
+            if (outputStream == null) {
+                showError(R.string.bookmark_export_failure)
+                return@registerForActivityResult
+            }
+
+            bookmarksSortSubscription = bookmarkRepository.getAllBookmarksSorted()
+                .subscribeOn(databaseScheduler)
+                .subscribeBy(
+                    onSuccess = { list ->
+                        if (!isAdded) {
+                            return@subscribeBy
+                        }
+
+                        exportSubscription?.dispose()
+                        exportSubscription =
+                            BookmarkExporter.exportBookmarksToFile(list, outputStream)
+                                .subscribeOn(databaseScheduler)
+                                .observeOn(mainScheduler)
+                                .subscribeBy(
+                                    onComplete = {
+                                        activity?.snackbar(getString(R.string.action_ok))
+                                    },
+                                    onError = {
+                                        logger.log(TAG, "onError: exporting bookmarks", it)
+                                        showError(R.string.bookmark_export_failure)
+                                    }
+                                )
+                    },
+                    onError = {
+                        logger.log(TAG, "onError: reading bookmarks for export", it)
+                        showError(R.string.bookmark_export_failure)
+                    }
+                )
         }
-
-    private fun importBookmarks() {
-        PermissionsManager.instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS,
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        showImportBookmarksDialog()
-                    }
-
-                    override fun onDenied(permission: String) {
-                        //TODO Show message
-                    }
-                })
-    }
-
-    private fun importSettings() {
-        PermissionsManager.instance
-            .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS,
-                object : PermissionsResultAction() {
-                    override fun onGranted() {
-                        showImportSettingsDialog()
-                    }
-
-                    override fun onDenied(permission: String) {
-                        //TODO Show message
-                    }
-                })
-    }
 
     private fun deleteAllBookmarks() {
         showDeleteBookmarksDialog()
@@ -399,28 +385,16 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                 bookmarkRepository
                     .deleteAllBookmarks()
                     .subscribeOn(databaseScheduler)
-                    .subscribe()
+                    .subscribeBy(
+                        onComplete = {},
+                        onError = {
+                            logger.log(TAG, "onError: deleting bookmarks", it)
+                        }
+                    )
             },
             negativeButton = DialogItem(title = R.string.no) {},
             onCancel = {}
         )
-    }
-
-    private class SortName : Comparator<File> {
-
-        override fun compare(a: File, b: File): Int {
-            return if (a.isDirectory && b.isDirectory) {
-                a.name.compareTo(b.name)
-            } else if (a.isDirectory) {
-                -1
-            } else if (b.isDirectory) {
-                1
-            } else if (a.isFile && b.isFile) {
-                a.name.compareTo(b.name)
-            } else {
-                1
-            }
-        }
     }
 
     private fun showImportSettingsDialog() {
@@ -438,66 +412,94 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
     private val settingsImportFilePicker =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.data?.let { uri ->
-                    context?.contentResolver?.openInputStream(uri).let { inputStream ->
-                        val mimeType = context?.contentResolver?.getType(uri)
-                        importSubscription?.dispose()
-                        importSubscription = Single.just(requireNotNull(inputStream))
-                            .map {
-                                var settingsReader: BufferedReader? = null
-                                try {
-                                    settingsReader = BufferedReader(InputStreamReader(it))
-                                    var line = settingsReader.readLine()
-                                    val userPref = application.getSharedPreferences("settings", 0)
-                                    userPref.edit().clear().commit()
-                                    while (line != null) {
-                                        val `object` = JSONObject(line)
-                                        val key = `object`.getString("key")
-                                        val value = `object`.getString("value")
-
-                                        with (userPref.edit()) {
-                                            if (value.matches("-?\\d+".toRegex())) {
-                                                putInt(key, value.toInt())
-                                            } else if (value.equals("true") || value.equals("false")) {
-                                                putBoolean(key, value.toBoolean())
-                                            } else {
-                                                putString(key, value)
-                                            }
-                                            apply()
-                                        }
-                                        line = settingsReader.readLine()
-                                    }
-                                } finally {
-                                    close(settingsReader)
-                                }
-                            }
-                            .subscribeOn(databaseScheduler)
-                            .observeOn(mainScheduler)
-                            .subscribeBy(
-                                onSuccess = { count ->
-                                    activity?.apply {
-                                        snackbar(getString(R.string.action_ok))
-                                    }
-                                },
-                                onError = {
-                                    logger.log(TAG, "onError: importing settings", it)
-                                    val activity = activity
-                                    if (activity != null && !activity.isFinishing && isAdded) {
-                                        Utils.createInformativeDialog(
-                                            activity,
-                                            R.string.title_error,
-                                            R.string.error
-                                        )
-                                    } else {
-                                        application.toast(R.string.error)
-                                    }
-                                }
-                            )
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
+            }
+            val inputStream = result.data?.data
+                ?.let { context?.contentResolver?.openInputStream(it) }
+            if (inputStream == null) {
+                showError(R.string.error)
+                return@registerForActivityResult
+            }
+            importSubscription?.dispose()
+            importSubscription = Single.fromCallable {
+                var settingsReader: BufferedReader? = null
+                try {
+                    settingsReader = BufferedReader(InputStreamReader(inputStream))
+                    // Parse the whole file BEFORE touching prefs — the old
+                    // code cleared settings first, so a corrupt file left
+                    // the app fully reset.
+                    settingsReader.lineSequence()
+                        .filter { it.isNotBlank() }
+                        .map { parseSettingsEntry(JSONObject(it)) }
+                        .toList()
+                } finally {
+                    close(settingsReader)
+                }
+            }
+                .subscribeOn(databaseScheduler)
+                .observeOn(mainScheduler)
+                .subscribeBy(
+                    onSuccess = { entries ->
+                        val userPref = application.getSharedPreferences("settings", 0)
+                        val editor = userPref.edit()
+                        editor.clear()
+                        entries.forEach { applyEntry(editor, it) }
+                        editor.apply()
+                        activity?.snackbar(getString(R.string.action_ok))
+                    },
+                    onError = {
+                        logger.log(TAG, "onError: importing settings", it)
+                        showError(R.string.error)
                     }
+                )
+        }
+
+    /** Typed (new) or regex-guessed (legacy export) settings entry. */
+    private sealed class SettingEntry {
+        abstract val key: String
+
+        data class IntEntry(override val key: String, val value: Int) : SettingEntry()
+        data class LongEntry(override val key: String, val value: Long) : SettingEntry()
+        data class FloatEntry(override val key: String, val value: Float) : SettingEntry()
+        data class BoolEntry(override val key: String, val value: Boolean) : SettingEntry()
+        data class StringEntry(override val key: String, val value: String) : SettingEntry()
+    }
+
+    private fun parseSettingsEntry(json: JSONObject): SettingEntry {
+        val key = json.getString("key")
+        return when (json.optString("type")) {
+            "int" -> SettingEntry.IntEntry(key, json.getInt("value"))
+            "long" -> SettingEntry.LongEntry(key, json.getLong("value"))
+            "float" -> SettingEntry.FloatEntry(key, json.getDouble("value").toFloat())
+            "bool" -> SettingEntry.BoolEntry(key, json.getBoolean("value"))
+            "string" -> SettingEntry.StringEntry(key, json.getString("value"))
+            else -> {
+                // Legacy exports carried no type — fall back to the old
+                // shape heuristic. Long/float fidelity is lost for those
+                // files by design of the format.
+                val value = json.getString("value")
+                when {
+                    value.matches("-?\\d+".toRegex()) -> SettingEntry.IntEntry(key, value.toInt())
+                    value == "true" || value == "false" -> SettingEntry.BoolEntry(key, value.toBoolean())
+                    else -> SettingEntry.StringEntry(key, value)
                 }
             }
         }
+    }
+
+    private fun applyEntry(
+        editor: android.content.SharedPreferences.Editor,
+        entry: SettingEntry
+    ) {
+        when (entry) {
+            is SettingEntry.IntEntry -> editor.putInt(entry.key, entry.value)
+            is SettingEntry.LongEntry -> editor.putLong(entry.key, entry.value)
+            is SettingEntry.FloatEntry -> editor.putFloat(entry.key, entry.value)
+            is SettingEntry.BoolEntry -> editor.putBoolean(entry.key, entry.value)
+            is SettingEntry.StringEntry -> editor.putString(entry.key, entry.value)
+        }
+    }
 
     private fun showImportBookmarksDialog() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -515,47 +517,51 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
     private val bookmarkImportFilePicker =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.data?.let { uri ->
-                    context?.contentResolver?.openInputStream(uri).let { inputStream ->
-                        val mimeType = context?.contentResolver?.getType(uri)
-                        importSubscription?.dispose()
-                        importSubscription = Single.just(requireNotNull(inputStream))
-                            .map {
-                                if (mimeType == "text/html") {
-                                    netscapeBookmarkFormatImporter.importBookmarks(it)
-                                } else {
-                                    legacyBookmarkImporter.importBookmarks(it)
-                                }
-                            }
-                            .flatMap {
-                                bookmarkRepository.addBookmarkList(it).andThen(Single.just(it.size))
-                            }
-                            .subscribeOn(databaseScheduler)
-                            .observeOn(mainScheduler)
-                            .subscribeBy(
-                                onSuccess = { count ->
-                                    activity?.apply {
-                                        snackbar("$count ${getString(R.string.message_import)}")
-                                    }
-                                },
-                                onError = {
-                                    logger.log(TAG, "onError: importing bookmarks", it)
-                                    val activity = activity
-                                    if (activity != null && !activity.isFinishing && isAdded) {
-                                        Utils.createInformativeDialog(
-                                            activity,
-                                            R.string.title_error,
-                                            R.string.import_bookmark_error
-                                        )
-                                    } else {
-                                        application.toast(R.string.import_bookmark_error)
-                                    }
-                                }
-                            )
-                    }
-                }
+            if (result.resultCode != Activity.RESULT_OK) {
+                return@registerForActivityResult
             }
+            val uri = result.data?.data
+            val inputStream = uri?.let { context?.contentResolver?.openInputStream(it) }
+            if (inputStream == null) {
+                showError(R.string.import_bookmark_error)
+                return@registerForActivityResult
+            }
+            val mimeType = uri.let { context?.contentResolver?.getType(it) }
+            importSubscription?.dispose()
+            importSubscription = Single.fromCallable {
+                // Reported MIME types lie — browsers' Netscape exports
+                // routinely arrive as text/plain or octet-stream. Sniff
+                // the content instead and fall back to the mime hint.
+                val text = inputStream.bufferedReader().readText()
+                val bytes = text.toByteArray(Charsets.UTF_8)
+                val importer = when {
+                    text.contains("<DL", ignoreCase = true) ||
+                        text.contains("NETSCAPE-Bookmark", ignoreCase = true) ->
+                        netscapeBookmarkFormatImporter
+                    text.trimStart().startsWith("{") ||
+                        text.trimStart().startsWith("[") ->
+                        legacyBookmarkImporter
+                    mimeType == "text/html" -> netscapeBookmarkFormatImporter
+                    else -> legacyBookmarkImporter
+                }
+                importer.importBookmarks(ByteArrayInputStream(bytes))
+            }
+                .flatMap {
+                    bookmarkRepository.addBookmarkList(it).andThen(Single.just(it.size))
+                }
+                .subscribeOn(databaseScheduler)
+                .observeOn(mainScheduler)
+                .subscribeBy(
+                    onSuccess = { count ->
+                        activity?.apply {
+                            snackbar("$count ${getString(R.string.message_import)}")
+                        }
+                    },
+                    onError = {
+                        logger.log(TAG, "onError: importing bookmarks", it)
+                        showError(R.string.import_bookmark_error)
+                    }
+                )
         }
 
     companion object {
@@ -571,10 +577,5 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_SETTINGS_EXPORT = "export_settings"
         private const val SETTINGS_SETTINGS_IMPORT = "import_settings"
         private const val SETTINGS_DELETE_SETTINGS = "clear_settings"
-
-        private val REQUIRED_PERMISSIONS = arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
     }
 }
