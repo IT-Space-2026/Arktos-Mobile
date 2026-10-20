@@ -10,6 +10,7 @@ import com.arktosbrowser.mobile.extensions.isNightMode
 import com.arktosbrowser.mobile.isDarkWebAddonEnabled
 import com.arktosbrowser.mobile.resolve
 import com.arktosbrowser.mobile.preference.delegates.*
+import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.search.engine.GoogleSearch
 import com.arktosbrowser.mobile.utils.FileUtils
@@ -166,6 +167,14 @@ class UserPreferences @Inject constructor(
      * [com.arktosbrowser.mobile.rust.ArktosCore.idnDisplay].
      */
     var showPunycodeEnabled by preferences.booleanPreference(SHOW_PUNYCODE, true)
+
+    /**
+     * SEC13 — referrer policy for top-level page navigations:
+     * [ReferrerPolicy.Mode.SAME_ORIGIN] sends the Referer only when the
+     * navigation stays on the source page's origin, [ReferrerPolicy.Mode.STRIP]
+     * never sends it. See [com.arktosbrowser.mobile.network.ReferrerPolicy].
+     */
+    var referrerMode by preferences.enumPreference(REFERRER_MODE, ReferrerPolicy.Mode.DEFAULT)
 
     /**
      * True if the browser should block images from being loaded, false otherwise.
@@ -623,6 +632,7 @@ private const val BLOCK_LAN_REQUESTS = "blockLanRequests"
 private const val BLOCK_MIXED_CONTENT = "blockMixedContent"
 private const val SECURE_WINDOWS = "secureWindows"
 private const val SHOW_PUNYCODE = "showPunycode"
+private const val REFERRER_MODE = "referrerMode"
 private const val PANIC_TRIGGER = "panicTrigger"
 private const val COOKIE_BLOCK = "blockCookieDialogs"
 private const val REMOTE_LISTS_CONSENT = "remoteListsConsent"

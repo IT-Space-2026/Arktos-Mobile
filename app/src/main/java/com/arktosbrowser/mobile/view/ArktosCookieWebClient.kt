@@ -41,6 +41,7 @@ import com.arktosbrowser.mobile.js.*
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.ConnectivityGate
 import com.arktosbrowser.mobile.network.HttpsOnlyGate
+import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SafeSearch
@@ -944,13 +945,19 @@ class ArktosCookieWebClient(
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-        shouldOverrideLoading(view, request.url.toString()) || super.shouldOverrideUrlLoading(view, request)
+        shouldOverrideLoading(
+            view, request.url.toString(),
+            // SEC13 — referrer control takes over by re-issuing the load
+            // via loadUrl, which only works for top-level GETs: a POST
+            // re-issued that way would drop its body.
+            request.isForMainFrame && "GET".equals(request.method, ignoreCase = true)
+        ) || super.shouldOverrideUrlLoading(view, request)
 
     @Suppress("OverridingDeprecatedMember", "DEPRECATION")
     override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
-        shouldOverrideLoading(view, url) || super.shouldOverrideUrlLoading(view, url)
+        shouldOverrideLoading(view, url, false) || super.shouldOverrideUrlLoading(view, url)
 
-    private fun shouldOverrideLoading(view: WebView, url: String): Boolean {
+    private fun shouldOverrideLoading(view: WebView, url: String, referrerEligible: Boolean): Boolean {
         // SEC04 — "Proceed anyway" on the HTTPS-only interstitial rides
         // this marker so cleartext consent is explicit. Honoring it only
         // while its warning is displayed (httpsInterstitialUrl) keeps
@@ -997,11 +1004,11 @@ class ArktosCookieWebClient(
         if (arktosCookieView.isIncognito || userPreferences.blockIntent && !isMailOrIntent(url, view)) {
 
             // If we are in incognito, immediately load, we don't want the url to leave the app
-            return continueLoadingUrl(view, url, headers)
+            return continueLoadingUrl(view, url, headers, referrerEligible)
         }
         if (URLUtil.isAboutUrl(url)) {
             // If this is an about page, immediately load, we don't need to leave the app
-            return continueLoadingUrl(view, url, headers)
+            return continueLoadingUrl(view, url, headers, referrerEligible)
         }
 
         return if (isMailOrIntent(url, view) || intentUtils.startActivityForUrl(view, url)) {
@@ -1009,12 +1016,12 @@ class ArktosCookieWebClient(
             true
         } else {
             // If none of the special conditions was met, continue with loading the url
-            continueLoadingUrl(view, url, headers)
+            continueLoadingUrl(view, url, headers, referrerEligible)
         }
 
     }
 
-    private fun continueLoadingUrl(webView: WebView, url: String, headers: Map<String, String>): Boolean {
+    private fun continueLoadingUrl(webView: WebView, url: String, headers: Map<String, String>, referrerEligible: Boolean): Boolean {
         if (!URLUtil.isNetworkUrl(url)
                 && !URLUtil.isFileUrl(url)
                 && !URLUtil.isAboutUrl(url)
@@ -1023,7 +1030,22 @@ class ArktosCookieWebClient(
             webView.stopLoading()
             return true
         }
+        // SEC13 — referrer control: vetoing the navigation and
+        // re-issuing it via loadUrl drops the Referer the WebView would
+        // have attached to an in-page navigation; SAME_ORIGIN mode puts
+        // the source URL back through the header map. This runs only
+        // after external-app resolution so intent links still leave
+        // the browser.
+        val referrerHeaders = if (referrerEligible) {
+            ReferrerPolicy.headersFor(url, currentUrl, userPreferences.referrerMode, headers)
+        } else {
+            null
+        }
         return when {
+            referrerHeaders != null -> {
+                webView.loadUrl(url, referrerHeaders)
+                true
+            }
             headers.isEmpty() -> false
             else -> {
                 webView.loadUrl(url, headers)

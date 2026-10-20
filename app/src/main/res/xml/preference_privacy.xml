@@ -123,6 +123,10 @@
             android:key="show_punycode"
             android:summary="@string/show_punycode_summary"
             android:title="@string/show_punycode"/>
+        <Preference
+            android:key="referrer_policy"
+            android:singleLineTitle="false"
+            android:title="@string/referrer_policy"/>
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/privacy_data_category">
         <SwitchPreference
