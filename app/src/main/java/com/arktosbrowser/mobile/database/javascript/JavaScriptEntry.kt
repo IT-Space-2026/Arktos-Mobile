@@ -18,5 +18,6 @@ data class JavaScriptEntry(
     val code: String,
     val requirements: String?,
     val runAt: String? = null,
-    val noFrames: Boolean = false
+    val noFrames: Boolean = false,
+    val connects: String? = null
 )

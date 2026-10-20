@@ -45,6 +45,10 @@ pub struct UserScriptMeta {
     pub excludes: Vec<String>,
     /// `@require` URLs, in order.
     pub requires: Vec<String>,
+    /// `@connect` domains the script may reach via `GM_xmlhttpRequest`,
+    /// in order. Enforced by the Kotlin GM bridge (SEC06) — the parser
+    /// only captures them verbatim.
+    pub connects: Vec<String>,
     /// `@grant` directives (GM API names), in order.
     pub grants: Vec<String>,
     /// `@run-at` value verbatim (`document-start`/`document-end`/
@@ -76,6 +80,7 @@ pub fn parse_userscript(source: String) -> UserScriptMeta {
         includes: Vec::new(),
         excludes: Vec::new(),
         requires: Vec::new(),
+        connects: Vec::new(),
         grants: Vec::new(),
         run_at: None,
         no_frames: false,
@@ -176,6 +181,10 @@ fn apply_field(meta: &mut UserScriptMeta, field: &str, value: Option<&str>) {
     } else if field.eq_ignore_ascii_case("exclude") {
         if let Some(pattern) = url_to_pattern(value) {
             meta.excludes.push(pattern);
+        }
+    } else if field.eq_ignore_ascii_case("connect") {
+        if let Some(v) = value {
+            meta.connects.push(v.to_owned());
         }
     } else if field.eq_ignore_ascii_case("grant") {
         if let Some(v) = value {
@@ -295,6 +304,17 @@ console.log('hi');";
         // The `// ` prefix on the first line survives — the metadata
         // regex starts at `==UserScript==`, not at the line start.
         assert_eq!(meta.code, "// \nconsole.log('hi');");
+    }
+
+    #[test]
+    fn connect_domains_are_captured_in_order() {
+        let src = "// ==UserScript==\n// @name C\n// @connect api.example.com\n\
+                   // @CONNECT *\n// @connect self\n// ==/UserScript==\nx();";
+        let meta = parse_userscript(src.to_owned());
+        assert_eq!(
+            meta.connects,
+            vec!["api.example.com", "*", "self"]
+        );
     }
 
     #[test]

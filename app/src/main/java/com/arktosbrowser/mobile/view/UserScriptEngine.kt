@@ -80,6 +80,25 @@ class UserScriptEngine @Inject constructor(
     private var appliedVersion = -1L
     private val disposables = CompositeDisposable()
 
+    /**
+     * SEC06 — host-side copy of each installed script's declared
+     * `@connect` domains plus its include/exclude rules, rebuilt with
+     * the bootstrap. The GM bridge consults this before honoring any
+     * op: the script must be installed, its rules must match the
+     * posting page, and an `xhr` target must pass
+     * [GmConnectPolicy.hostAllowed]. Trusting the script name alone
+     * would let any page inherit an installed script's power — page
+     * JavaScript can reach `window.arktosGM` directly.
+     */
+    private class ScriptPolicy(
+        val connects: List<String>,
+        val includes: List<String>,
+        val excludes: List<String>
+    )
+
+    @Volatile
+    private var scriptPolicies: Map<String, ScriptPolicy> = emptyMap()
+
     // @require bodies cached per script — key on name, invalidated on
     // version change.
     private val requirementCache = ConcurrentHashMap<String, Pair<String?, String>>()
@@ -128,6 +147,9 @@ class UserScriptEngine @Inject constructor(
     }
 
     private fun buildBootstrap(entries: List<JavaScriptEntry>): String? {
+        scriptPolicies = entries.associate { e ->
+            e.name to ScriptPolicy(csv(e.connects), csv(e.include), csv(e.exclude))
+        }
         if (entries.isEmpty()) return null
         val sb = StringBuilder("(function(){\n'use strict';\n").append(RUNTIME)
         for (e in entries) {
@@ -205,48 +227,97 @@ class UserScriptEngine @Inject constructor(
         }
     }
 
-    private val bridge = WebViewCompat.WebMessageListener { view, message, _, _, replyProxy ->
+    /**
+     * SEC06 — true when [script] is installed and its include/exclude
+     * rules match the posting page. [pageUrl] is the committed
+     * top-frame URL for main-frame posts; [sourceOrigin] is the
+     * posting frame's origin (the `/`-suffixed variant catches
+     * host-only patterns like `^\w+://example.com/`).
+     */
+    private fun scriptPermitted(script: String, sourceOrigin: Uri?, pageUrl: String?): Boolean {
+        val policy = scriptPolicies[script] ?: return false
+        val origin = sourceOrigin?.toString().orEmpty()
+        val candidates = listOfNotNull(pageUrl, origin.takeIf { it.isNotEmpty() }, "$origin/")
+        return candidates.any {
+            GmConnectPolicy.runsOn(policy.includes, policy.excludes, it)
+        }
+    }
+
+    private val bridge = WebViewCompat.WebMessageListener { view, message, sourceOrigin, isMainFrame, replyProxy ->
         val json = runCatching { JSONObject(message.data ?: return@WebMessageListener) }
             .getOrNull() ?: return@WebMessageListener
+        val pageUrl = if (isMainFrame) view.url else null
         when (json.optString("op")) {
             "set" -> {
                 val script = json.optString("script")
                 val key = json.optString("key")
                 val value = json.optString("value")
-                networkScheduler.scheduleDirect {
-                    runCatching { store.gmSetValue(script, key, value) }
+                if (scriptPermitted(script, sourceOrigin, pageUrl)) {
+                    networkScheduler.scheduleDirect {
+                        runCatching { store.gmSetValue(script, key, value) }
+                    }
                 }
             }
             "del" -> {
                 val script = json.optString("script")
                 val key = json.optString("key")
-                networkScheduler.scheduleDirect {
-                    runCatching { store.gmDeleteValue(script, key) }
+                if (scriptPermitted(script, sourceOrigin, pageUrl)) {
+                    networkScheduler.scheduleDirect {
+                        runCatching { store.gmDeleteValue(script, key) }
+                    }
                 }
             }
             "xhr" -> {
                 val id = json.optLong("id", -1)
-                networkScheduler.scheduleDirect { performXhr(id, json, replyProxy) }
+                networkScheduler.scheduleDirect {
+                    performXhr(id, json, replyProxy, sourceOrigin, pageUrl)
+                }
             }
             "xhr-abort" -> inflight.remove(json.optLong("id", -1))?.cancel()
             "clipboard" -> {
                 val text = json.optString("text")
-                mainScheduler.scheduleDirect {
-                    context.getSystemService(ClipboardManager::class.java)
-                        ?.setPrimaryClip(ClipData.newPlainText("userscript", text))
+                if (scriptPermitted(json.optString("script"), sourceOrigin, pageUrl)) {
+                    mainScheduler.scheduleDirect {
+                        context.getSystemService(ClipboardManager::class.java)
+                            ?.setPrimaryClip(ClipData.newPlainText("userscript", text))
+                    }
                 }
             }
             "openTab" -> {
                 val url = json.optString("url")
-                if (url.startsWith("http://") || url.startsWith("https://")) {
+                if (scriptPermitted(json.optString("script"), sourceOrigin, pageUrl)
+                    && (url.startsWith("http://") || url.startsWith("https://"))) {
                     mainScheduler.scheduleDirect { openInTab.get().invoke(url) }
                 }
             }
         }
     }
 
-    private fun performXhr(id: Long, json: JSONObject, replyProxy: JavaScriptReplyProxy) {
+    private fun rejectXhr(replyProxy: JavaScriptReplyProxy, id: Long, reason: String) {
+        reply(replyProxy, JSONObject()
+            .put("id", id).put("final", true).put("error", true)
+            .put("status", 0).put("statusText", reason))
+    }
+
+    private fun performXhr(
+        id: Long,
+        json: JSONObject,
+        replyProxy: JavaScriptReplyProxy,
+        sourceOrigin: Uri?,
+        pageUrl: String?
+    ) {
+        val script = json.optString("script")
+        if (!scriptPermitted(script, sourceOrigin, pageUrl)) {
+            rejectXhr(replyProxy, id, "unknown userscript or origin")
+            return
+        }
         val url = json.optString("url")
+        val connects = scriptPolicies.getValue(script).connects
+        if (!GmConnectPolicy.hostAllowed(connects, sourceOrigin?.host, GmConnectPolicy.hostOf(url))) {
+            logger.log(TAG, "GM xhr blocked by @connect: $script -> $url")
+            rejectXhr(replyProxy, id, "blocked by @connect")
+            return
+        }
         val request = try {
             val builder = Request.Builder().url(url)
             val headers = json.optJSONObject("headers")
@@ -372,7 +443,7 @@ function __arktosApiArgs(meta) {
             if (m.error) { try { if (details.onerror) details.onerror(r); } catch (e) {} return; }
             if (m.final) { try { if (details.onload) details.onload(r); } catch (e) {} }
         };
-        __arktosSend({op:'xhr', id:id, method: details.method || 'GET', url: details.url,
+        __arktosSend({op:'xhr', id:id, script:script, method: details.method || 'GET', url: details.url,
                       headers: details.headers || {}, data: details.data || null});
         return {abort: function() {
             __arktosSend({op:'xhr-abort', id:id});
@@ -401,8 +472,8 @@ function __arktosApiArgs(meta) {
         (want('GM_getValue') || want('GM.getValue')) ? getV : undefined,
         (want('GM_deleteValue') || want('GM.deleteValue')) ? delV : undefined,
         (want('GM_listValues') || want('GM.listValues')) ? listV : undefined,
-        want('GM_setClipboard') ? function(t) { __arktosSend({op:'clipboard', text:String(t)}); } : undefined,
-        want('GM_openInTab') ? function(u) { __arktosSend({op:'openTab', url:String(u)}); } : undefined,
+        want('GM_setClipboard') ? function(t) { __arktosSend({op:'clipboard', script:script, text:String(t)}); } : undefined,
+        want('GM_openInTab') ? function(u) { __arktosSend({op:'openTab', script:script, url:String(u)}); } : undefined,
         want('GM_notification') ? function() {} : undefined
     ];
 }

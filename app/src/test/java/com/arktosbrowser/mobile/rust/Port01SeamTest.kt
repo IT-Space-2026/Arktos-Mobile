@@ -33,6 +33,19 @@ class Port01SeamTest {
     }
 
     @Test
+    fun `userscript connect domains are captured`() {
+        val meta = ArktosCore.parseUserScript(
+            "// ==UserScript==\n" +
+                "// @name Test\n" +
+                "// @connect api.example.com\n" +
+                "// @connect *\n" +
+                "// ==/UserScript==\n" +
+                "x();"
+        )
+        assertEquals(listOf("api.example.com", "*"), meta.connects)
+    }
+
+    @Test
     fun `userscript without name reports it`() {
         val meta = ArktosCore.parseUserScript("console.log('x');")
         assertNull(meta.name)
