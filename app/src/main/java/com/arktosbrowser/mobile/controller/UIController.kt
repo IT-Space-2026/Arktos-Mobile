@@ -73,13 +73,6 @@ interface UIController {
 
     /**
      * Notify the controller that it should open the file chooser with the provided callback.
-     * The callback receives the selected [Uri], or null when the chooser is cancelled —
-     * it must be invoked exactly once, as the engine-side callback contract requires.
-     */
-    fun openFileChooser(callback: (Uri?) -> Unit)
-
-    /**
-     * Notify the controller that it should open the file chooser with the provided callback.
      * The callback receives the selected [Uri] array, or null when the chooser is cancelled —
      * it must be invoked exactly once, as the engine-side callback contract requires.
      */

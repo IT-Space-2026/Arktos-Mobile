@@ -72,19 +72,25 @@ android {
     flavorDimensions "capabilities", "engine"
 
     productFlavors {
+        // Each dimension owns one manifest placeholder; the label is
+        // ${appNameBase}${appNameSuffix}, e.g. "Arktos Mobile Lite" or
+        // "Arktos Mobile beta".
         scMain {
             dimension "capabilities"
             applicationId "com.arktosbrowser.mobile"
+            manifestPlaceholders.appNameSuffix = ""
         }
         stable {
             dimension "capabilities"
             applicationId "com.arktosbrowser.mobile"
+            manifestPlaceholders.appNameSuffix = ""
         }
         beta {
             dimension 'capabilities'
             applicationId 'com.arktosbrowser.mobile.beta'
             versionCode 16
             versionName "1.0-beta1"
+            manifestPlaceholders.appNameSuffix = " beta"
         }
 
         // ENG03 — the 'engine' dimension picks the rendering backend:
@@ -93,10 +99,12 @@ android {
         // source sets live in app/src/webview and app/src/gecko.
         webview {
             dimension "engine"
+            manifestPlaceholders.appNameBase = "Arktos Mobile Lite"
         }
         gecko {
             dimension "engine"
             applicationIdSuffix ".full"
+            manifestPlaceholders.appNameBase = "Arktos Mobile"
             ndk {
                 // Release scope: the gecko flavor ships arm64-v8a only —
                 // GeckoView does not publish armeabi-v7a, and x86 is
@@ -104,19 +112,6 @@ android {
                 abiFilters "arm64-v8a"
             }
         }
-    }
-
-    // The label mixes channel + engine: "Arktos Mobile" (gecko),
-    // "Arktos Mobile Lite" (webview), plus a " beta" channel suffix.
-    // Computed per variant because the two dimensions can't both own
-    // a resValue for the same key.
-    applicationVariants.all { variant ->
-        def appName = variant.flavorName.contains('Webview') ?
-                'Arktos Mobile Lite' : 'Arktos Mobile'
-        if (variant.flavorName.startsWith('beta')) {
-            appName += ' beta'
-        }
-        variant.resValue 'string', 'app_name', appName
     }
 
     lintOptions {

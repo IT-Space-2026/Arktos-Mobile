@@ -11,7 +11,6 @@ import com.arktosbrowser.mobile.view.LightningDownloadListener
 import com.arktosbrowser.mobile.reading.activity.ReadingActivity
 import com.arktosbrowser.mobile.search.SuggestionsAdapter
 import com.arktosbrowser.mobile.settings.activity.SettingsActivity
-import com.arktosbrowser.mobile.settings.activity.ThemableSettingsActivity
 import com.arktosbrowser.mobile.settings.fragment.*
 import com.arktosbrowser.mobile.view.ArktosCookieChromeClient
 import com.arktosbrowser.mobile.view.ArktosCookieView
@@ -69,7 +68,6 @@ interface AppComponent {
 
     fun inject(activity: SettingsActivity)
 
-    fun inject(activity: ThemableSettingsActivity)
 
     fun inject(listener: LightningDownloadListener)
 
@@ -127,4 +125,6 @@ interface AppComponent {
     fun userPreferences(): UserPreferences
 
     fun logger(): Logger
+
+    fun buildInfo(): BuildInfo
 }

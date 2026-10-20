@@ -183,18 +183,6 @@ class ArktosCookieChromeClient(
 
     override fun onCloseWindow(window: WebView) = uiController.onCloseWindow(arktosCookieView)
 
-    @Suppress("unused", "UNUSED_PARAMETER")
-    fun openFileChooser(uploadMsg: ValueCallback<Uri>) =
-        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
-
-    @Suppress("unused", "UNUSED_PARAMETER")
-    fun openFileChooser(uploadMsg: ValueCallback<Uri>, acceptType: String) =
-        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
-
-    @Suppress("unused", "UNUSED_PARAMETER")
-    fun openFileChooser(uploadMsg: ValueCallback<Uri>, acceptType: String, capture: String) =
-        uiController.openFileChooser { uploadMsg.onReceiveValue(it) }
-
     override fun onShowFileChooser(webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
                                    fileChooserParams: FileChooserParams): Boolean {
         uiController.showFileChooser { filePathCallback.onReceiveValue(it) }

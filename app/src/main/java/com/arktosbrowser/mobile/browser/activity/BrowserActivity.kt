@@ -38,12 +38,14 @@ import com.arktosbrowser.mobile.engine.Engines
 import android.widget.*
 import android.widget.AdapterView.OnItemClickListener
 import android.widget.TextView.OnEditorActionListener
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.ColorInt
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.core.view.GravityCompat
@@ -54,6 +56,7 @@ import androidx.core.widget.doOnTextChanged
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
 import com.arktosbrowser.mobile.AppTheme
+import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.isDark
 import com.arktosbrowser.mobile.IncognitoActivity
 import com.arktosbrowser.mobile.R
@@ -144,7 +147,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     // Callback
     private var customViewCallback: (() -> Unit)? = null
-    private var uploadMessageCallback: ((Uri?) -> Unit)? = null
     private var filePathCallback: ((Array<Uri>?) -> Unit)? = null
 
     // Primitives
@@ -2190,50 +2192,21 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     /**
-     * opens a file chooser
-     * param ValueCallback is the message from the WebView indicating a file chooser
-     * should be opened
+     * Modern replacement for the old startActivityForResult file-chooser flow.
+     * The result arrives here instead of a request-code switch in onActivityResult.
      */
-    override fun openFileChooser(callback: (Uri?) -> Unit) {
-        uploadMessageCallback = callback
-        startActivityForResult(Intent.createChooser(Intent(Intent.ACTION_GET_CONTENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-        }, getString(R.string.title_file_chooser)), FILE_CHOOSER_REQUEST_CODE)
-    }
-
-    /**
-     * used to allow uploading into the browser
-     */
-    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
-        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                val result = if (intent == null || resultCode != Activity.RESULT_OK) {
-                    null
-                } else {
-                    intent.data
-                }
-
-                uploadMessageCallback?.invoke(result)
-                uploadMessageCallback = null
-            } else {
-                val results: Array<Uri>? = if (resultCode == Activity.RESULT_OK) {
-                    if (intent == null) {
-                        // If there is not data, then we may have taken a photo
-                        cameraPhotoPath?.let { arrayOf(it.toUri()) }
-                    } else {
-                        intent.dataString?.let { arrayOf(it.toUri()) }
-                    }
-                } else {
-                    null
-                }
-
-                filePathCallback?.invoke(results)
-                filePathCallback = null
-            }
+    private val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val results: Array<Uri>? = if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.dataString?.let { arrayOf(it.toUri()) }
+                // No data means we may have taken a photo
+                ?: cameraPhotoPath?.let { arrayOf(it.toUri()) }
         } else {
-            super.onActivityResult(requestCode, resultCode, intent)
+            null
         }
+        filePathCallback?.invoke(results)
+        filePathCallback = null
     }
 
     override fun showFileChooser(callback: (Array<Uri>?) -> Unit) {
@@ -2266,14 +2239,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             emptyArray()
         }
 
-        startActivityForResult(Intent(Intent.ACTION_CHOOSER).apply {
+        fileChooserLauncher.launch(Intent(Intent.ACTION_CHOOSER).apply {
             putExtra(Intent.EXTRA_INTENT, Intent(Intent.ACTION_GET_CONTENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             })
             putExtra(Intent.EXTRA_TITLE, "Image Chooser")
             putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray)
-        }, FILE_CHOOSER_REQUEST_CODE)
+        })
     }
 
     override fun onShowCustomView(view: View, callback: () -> Unit, requestedOrientation: Int) {
@@ -2707,7 +2680,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         const val INTENT_PANIC_TRIGGER = "info.guardianproject.panic.action.TRIGGER"
 
-        private const val FILE_CHOOSER_REQUEST_CODE = 1111
 
         // Constant
         private val MATCH_PARENT = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)

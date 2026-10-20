@@ -2,10 +2,10 @@ package com.arktosbrowser.mobile.settings.fragment
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreference
 import com.arktosbrowser.mobile.R
@@ -162,13 +162,29 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
         )
     }
 
-    private fun showFileChooser() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = TEXT_MIME_TYPE
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) {
+            activity?.toast(R.string.action_message_canceled)
+            return@registerForActivityResult
         }
+        compositeDisposable += copyToCustomListFile(uri)
+            .subscribeOn(diskScheduler)
+            .observeOn(mainScheduler)
+            .subscribeBy(
+                onComplete = { activity?.toast(R.string.action_message_canceled) },
+                onSuccess = { (file, displayName) ->
+                    blocklistLoader.addCustomSubscription(
+                        displayName,
+                        "file://${file.absolutePath}"
+                    )
+                }
+            )
+    }
 
-        startActivityForResult(intent, FILE_REQUEST_CODE)
+    private fun showFileChooser() {
+        filePickerLauncher.launch(arrayOf(TEXT_MIME_TYPE))
     }
 
     private fun showUrlChooser() {
@@ -185,30 +201,6 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
                 blocklistLoader.addCustomSubscription(url.host, url.toString())
             }
         )
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == FILE_REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK) {
-                data?.data?.also { uri ->
-                    compositeDisposable += copyToCustomListFile(uri)
-                        .subscribeOn(diskScheduler)
-                        .observeOn(mainScheduler)
-                        .subscribeBy(
-                            onComplete = { activity?.toast(R.string.action_message_canceled) },
-                            onSuccess = { (file, displayName) ->
-                                blocklistLoader.addCustomSubscription(
-                                    displayName,
-                                    "file://${file.absolutePath}"
-                                )
-                            }
-                        )
-                }
-            } else {
-                activity?.toast(R.string.action_message_canceled)
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data)
     }
 
     /**
@@ -239,7 +231,6 @@ class AdBlockSettingsFragment : AbstractSettingsFragment() {
     }
 
     companion object {
-        private const val FILE_REQUEST_CODE = 100
         private const val CUSTOM_HOSTS_FILE = "custom_hosts.txt"
         private const val TEXT_MIME_TYPE = "text/*"
     }

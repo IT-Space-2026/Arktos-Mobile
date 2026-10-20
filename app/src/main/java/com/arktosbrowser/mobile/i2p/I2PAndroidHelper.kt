@@ -180,7 +180,8 @@ class I2PAndroidHelper @JvmOverloads constructor(
             .setMessage(R.string.would_you_like_to_start_i2p_android)
             .setPositiveButton(R.string.yes) { _, _ ->
                 val i = Intent("net.i2p.android.router.START_I2P")
-                activity.startActivityForResult(i, REQUEST_START_I2P)
+                // Result was never consumed; this just kicks the router app.
+                activity.startActivity(i)
             }
             .setNegativeButton(R.string.no) { _, _ -> }
             .show()
@@ -209,8 +210,6 @@ class I2PAndroidHelper @JvmOverloads constructor(
         const val URI_I2P_ANDROID_DONATE = "net.i2p.android.donate"
         const val URI_I2P_ANDROID_LEGACY = "net.i2p.android.router"
         const val URI_I2P_ANDROID_DEBUG = "net.i2p.android.debug"
-
-        const val REQUEST_START_I2P = 9857
 
         private const val ROUTER_SERVICE_CLASS =
             "net.i2p.android.router.service.RouterService"
