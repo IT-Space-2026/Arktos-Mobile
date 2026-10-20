@@ -69,26 +69,54 @@ android {
         }
     }
 
-    flavorDimensions "capabilities"
+    flavorDimensions "capabilities", "engine"
 
     productFlavors {
         scMain {
             dimension "capabilities"
             applicationId "com.arktosbrowser.mobile"
-            resValue "string", "app_name", "Arktos Mobile"
         }
         stable {
             dimension "capabilities"
             applicationId "com.arktosbrowser.mobile"
-            resValue "string", "app_name", "Arktos Mobile"
         }
         beta {
             dimension 'capabilities'
             applicationId 'com.arktosbrowser.mobile.beta'
-            resValue "string", "app_name", "Arktos Mobile beta"
             versionCode 16
             versionName "1.0-beta1"
         }
+
+        // ENG03 — the 'engine' dimension picks the rendering backend:
+        // `webview` (Android WebView — "Arktos Mobile Lite") and
+        // `gecko` (GeckoView — the full "Arktos Mobile"). Variant
+        // source sets live in app/src/webview and app/src/gecko.
+        webview {
+            dimension "engine"
+        }
+        gecko {
+            dimension "engine"
+            applicationIdSuffix ".full"
+            ndk {
+                // Release scope: the gecko flavor ships arm64-v8a only —
+                // GeckoView does not publish armeabi-v7a, and x86 is
+                // emulator-only; v7a users take the Lite flavor.
+                abiFilters "arm64-v8a"
+            }
+        }
+    }
+
+    // The label mixes channel + engine: "Arktos Mobile" (gecko),
+    // "Arktos Mobile Lite" (webview), plus a " beta" channel suffix.
+    // Computed per variant because the two dimensions can't both own
+    // a resValue for the same key.
+    applicationVariants.all { variant ->
+        def appName = variant.flavorName.contains('Webview') ?
+                'Arktos Mobile Lite' : 'Arktos Mobile'
+        if (variant.flavorName.startsWith('beta')) {
+            appName += ' beta'
+        }
+        variant.resValue 'string', 'app_name', appName
     }
 
     lintOptions {
@@ -187,6 +215,11 @@ dependencies {
 
     // webview tools
     implementation 'androidx.webkit:webkit:1.17.1'
+
+    // ENG03 — GeckoView backend, gecko engine flavor only
+    // (maven.mozilla.org is already a project repository; version kept
+    // in step with the other mozilla.components deps above).
+    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261019185856'
 
     // lifecycleScope for coroutine-backed background work (MOD02)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'

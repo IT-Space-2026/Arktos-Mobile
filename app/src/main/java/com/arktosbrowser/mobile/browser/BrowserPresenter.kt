@@ -7,6 +7,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.constant.*
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.engine.Engines
+import com.arktosbrowser.mobile.engine.Page
 import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.html.bookmark.BookmarkPageFactory
 import com.arktosbrowser.mobile.html.homepage.HomePageFactory
@@ -17,10 +18,9 @@ import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.isFileUrl
 import com.arktosbrowser.mobile.view.BundleInitializer
-import com.arktosbrowser.mobile.view.ArktosCookieView
 import com.arktosbrowser.mobile.view.TabInitializer
 import com.arktosbrowser.mobile.view.UrlInitializer
-import com.arktosbrowser.mobile.view.find.FindResults
+import com.arktosbrowser.mobile.engine.FindResults
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.kotlin.subscribeBy
@@ -42,9 +42,9 @@ class BrowserPresenter(
         private val logger: Logger
 ) {
 
-    private var currentTab: ArktosCookieView? = null
+    private var currentTab: Page? = null
     private var shouldClose: Boolean = false
-    private var intented: ArktosCookieView? = null
+    private var intented: Page? = null
     private var sslStateSubscription: Disposable? = null
 
     init {
@@ -117,11 +117,11 @@ class BrowserPresenter(
      *
      * @param tab the tab that changed, may be null.
      */
-    fun tabChangeOccurred(tab: ArktosCookieView?) = tab?.let {
+    fun tabChangeOccurred(tab: Page?) = tab?.let {
         view.notifyTabViewChanged(tabsModel.indexOfTab(it))
     }
 
-    private fun onTabChanged(newTab: ArktosCookieView?) {
+    private fun onTabChanged(newTab: Page?) {
         logger.log(TAG, "On tab changed")
         view.updateSslState(newTab?.currentSslState() ?: SslState.None)
 

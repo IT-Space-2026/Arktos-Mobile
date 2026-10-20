@@ -22,8 +22,12 @@ package com.arktosbrowser.mobile.engine
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.Bitmap
+import android.net.http.SslCertificate
 import android.os.Bundle
 import android.view.View
+import com.arktosbrowser.mobile.ssl.SslState
+import io.reactivex.rxjava3.core.Observable
 
 // ---- load / navigation -------------------------------------------------
 
@@ -301,6 +305,77 @@ interface Page {
     var onPermissionRequest: ((String) -> Boolean)?
     var onContextMenu: ((ContextMenuInfo) -> Unit)?
     var onCrashed: (() -> Unit)?
+
+    // ---- shell-facing tab surface -------------------------------------
+    // The Kotlin tab shell (TabsManager, BrowserPresenter,
+    // BrowserActivity, the tab lists) drives these members on whatever
+    // Page the backend produced, so they are part of the contract — a
+    // backend without an equivalent stubs them (GeckoView has no
+    // favicon delegate → null; no WebView-style cert object → null).
+
+    /** Stable id used by the tab-list adapters (View.generateViewId()). */
+    val id: Int
+
+    /** Whether this page is the currently displayed tab. */
+    var isForegroundTab: Boolean
+
+    /** Marks tabs opened from an external intent (close-on-back UX). */
+    var isNewTab: Boolean
+
+    val title: String
+    val favicon: Bitmap?
+    val sslCertificate: SslCertificate?
+    val isShown: Boolean
+    val progress: Int
+
+    /** Security state of the current page; `SslState.None` where unsupported. */
+    fun currentSslState(): SslState
+
+    /** Emits subsequent security-state changes; `Observable.never()` where unsupported. */
+    fun sslStateObservable(): Observable<SslState>
+
+    /** Requests the blocker stopped on this page load — the shield badge count. */
+    fun blockedThisPage(): Int
+
+    // ---- lifecycle the shell drives -----------------------------------
+
+    /** Re-apply preference-dependent page settings (runs on resume). */
+    fun initializePreferences()
+
+    fun onPause()
+    fun onResume()
+    fun onDestroy()
+    fun pauseTimers()
+    fun resumeTimers()
+
+    // ---- focus / visibility --------------------------------------------
+
+    fun requestFocus()
+    fun setVisibility(visible: Int)
+
+    // ---- navigation conveniences ----------------------------------------
+
+    /**
+     * Load [url] through the page's own policy gate (proxy readiness,
+     * forced SafeSearch, base request headers) — the shell's normal
+     * navigate call; [load] stays the verbatim-headers variant used by
+     * initializers.
+     */
+    fun loadUrl(url: String)
+
+    fun goBack() = back()
+    fun goForward() = forward()
+
+    fun loadHomePage()
+    fun loadBookmarkPage()
+    fun loadDownloadsPage()
+    fun loadHistoryPage()
+
+    /** Start a find-in-page session; backends without it return a no-op result. */
+    fun find(text: String): FindResults
+
+    /** Print the page via the system print service; no-op where unsupported. */
+    fun createWebPagePrint()
 }
 
 // ---- profile -------------------------------------------------------------

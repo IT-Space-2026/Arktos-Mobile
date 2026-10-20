@@ -101,7 +101,8 @@ import com.arktosbrowser.mobile.ssl.sslVerdictColor
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.*
 import com.arktosbrowser.mobile.view.SearchView
-import com.arktosbrowser.mobile.view.find.FindResults
+import com.arktosbrowser.mobile.engine.FindResults
+import com.arktosbrowser.mobile.engine.Page
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -1476,7 +1477,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         return true
     }
 
-    override fun tabChanged(tab: ArktosCookieView) {
+    override fun tabChanged(tab: Page) {
         presenter?.tabChangeOccurred(tab)
         updateSiteShield()
     }
@@ -2241,14 +2242,23 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         // Create the File where the photo should go
         val intentArray: Array<Intent> = try {
+            val photoFile = Utils.createImageFile()
+            cameraPhotoPath = "file:${photoFile.absolutePath}"
             arrayOf(Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra("PhotoPath", cameraPhotoPath)
+                // MOD03 — file:// URIs throw FileUriExposedException to
+                // modern camera apps; the file is served through the
+                // app's FileProvider with a write grant instead.
                 putExtra(
                         MediaStore.EXTRA_OUTPUT,
-                        Uri.fromFile(Utils.createImageFile().also { file ->
-                            cameraPhotoPath = "file:${file.absolutePath}"
-                        })
+                        FileProvider.getUriForFile(
+                            this@BrowserActivity,
+                            BuildConfig.APPLICATION_ID + ".fileprovider",
+                            photoFile
+                        )
                 )
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             })
         } catch (ex: IOException) {
             // Error occurred while creating the File
@@ -2452,14 +2462,14 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         presenter?.newTab(ResultMessageInitializer(resultMsg), true) == true
 
     /**
-     * Closes the specified [ArktosCookieView]. This implements
+     * Closes the specified [Page]. This implements
      * the JavaScript callback that asks the tab to close itself and
      * is especially helpful when a page creates a redirect and does
      * not need the tab to stay open any longer.
      *
      * @param tab the LightningView to close, delete it.
      */
-    override fun onCloseWindow(tab: ArktosCookieView) {
+    override fun onCloseWindow(tab: Page) {
         presenter?.deleteTab(tabsManager.positionOf(tab))
     }
 

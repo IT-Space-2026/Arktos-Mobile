@@ -17,6 +17,7 @@ import com.arktosbrowser.mobile.di.AppComponent
 import com.arktosbrowser.mobile.di.DaggerAppComponent
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.engine.EngineSelector
 import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.DeveloperPreferences
@@ -94,12 +95,13 @@ class BrowserApp : Application() {
                 .build()
         injector.inject(this)
 
-        // ENG02 — the WebView backend registers itself through the
-        // engine registry; initialize() carries the process-wide
-        // WebView setup (incognito data-directory suffix, dev-tools
-        // flag) and still runs before the first page is created.
-        Engines.install(webViewEngine)
-        webViewEngine.initialize(this)
+        // ENG02/ENG03 — the flavor's engine backend registers itself
+        // through the engine registry (webview flavor → WebViewEngine,
+        // gecko flavor → GeckoEngine); initialize() carries the
+        // process-wide setup and still runs before the first page is
+        // created.
+        Engines.install(EngineSelector.createBackend(this))
+        Engines.backend.initialize(this)
 
         Single.fromCallable(bookmarkModel::count)
                 .filter { it == 0L }

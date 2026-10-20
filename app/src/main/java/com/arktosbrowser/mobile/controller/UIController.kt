@@ -3,9 +3,9 @@
 package com.arktosbrowser.mobile.controller
 
 import com.arktosbrowser.mobile.browser.TabsManager
+import com.arktosbrowser.mobile.engine.Page
 import com.arktosbrowser.mobile.database.Bookmark
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
-import com.arktosbrowser.mobile.view.ArktosCookieView
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -115,7 +115,7 @@ interface UIController {
      * Notify the browser that the website currently being displayed by the [tab] wants to be
      * closed.
      */
-    fun onCloseWindow(tab: ArktosCookieView)
+    fun onCloseWindow(tab: Page)
 
     /**
      * Hide the search bar from view via animation.
@@ -191,7 +191,7 @@ interface UIController {
     /**
      * Notify the UI that the [tab] should be displayed.
      */
-    fun tabChanged(tab: ArktosCookieView)
+    fun tabChanged(tab: Page)
 
     /**
      * Notify the browser that the user pressed the back button.

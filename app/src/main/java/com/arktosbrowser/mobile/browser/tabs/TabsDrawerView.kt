@@ -14,7 +14,7 @@ import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.extensions.inflater
 import com.arktosbrowser.mobile.list.VerticalItemAnimator
 import com.arktosbrowser.mobile.preference.UserPreferences
-import com.arktosbrowser.mobile.view.ArktosCookieView
+import com.arktosbrowser.mobile.engine.Page
 
 
 /**
@@ -145,7 +145,7 @@ class TabsDrawerView @JvmOverloads constructor(
     }
 
     private fun displayTabs() {
-        tabsAdapter.showTabs(uiController.getTabModel().allTabs.map(ArktosCookieView::asTabViewState))
+        tabsAdapter.showTabs(uiController.getTabModel().allTabs.map(Page::asTabViewState))
     }
 
     override fun tabsInitialized() {

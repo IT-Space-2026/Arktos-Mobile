@@ -55,7 +55,7 @@ import com.arktosbrowser.mobile.preference.userAgent
 import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.*
-import com.arktosbrowser.mobile.view.find.FindResults
+import com.arktosbrowser.mobile.engine.FindResults
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.core.Single
@@ -84,7 +84,7 @@ class ArktosCookieView(
     /**
      * The unique ID of the view.
      */
-    val id = View.generateViewId()
+    override val id = View.generateViewId()
 
     /**
      * Getter for the [ArktosCookieViewTitle] of the current LightningView instance.
@@ -108,12 +108,12 @@ class ArktosCookieView(
     /**
      * Sets whether this tab was the result of a new intent sent to the browser.
      */
-    var isNewTab: Boolean = false
+    override var isNewTab: Boolean = false
 
     /**
      * This method sets the tab as the foreground tab or the background tab.
      */
-    var isForegroundTab: Boolean = false
+    override var isForegroundTab: Boolean = false
         set(isForeground) {
             field = isForeground
             uiController.tabChanged(this)
@@ -156,7 +156,7 @@ class ArktosCookieView(
      *
      * @return true if the WebView is non-null and visible, false otherwise.
      */
-    val isShown: Boolean
+    override val isShown: Boolean
         get() = webView?.isShown == true
 
     /**
@@ -165,7 +165,7 @@ class ArktosCookieView(
      * @return returns a number between 0 and 100 with the current progress of the WebView. If the
      * WebView is null, then the progress returned will be 100.
      */
-    val progress: Int
+    override val progress: Int
         get() = webView?.progress ?: 100
 
     /**
@@ -183,7 +183,7 @@ class ArktosCookieView(
      *
      * @return a non-null Bitmap with the current favicon.
      */
-    val favicon: Bitmap?
+    override val favicon: Bitmap?
         get() = titleInfo.getFavicon()
 
     /**
@@ -191,13 +191,13 @@ class ArktosCookieView(
      *
      * @return the title of the page, or an empty string if there is no title.
      */
-    val title: String
+    override val title: String
         get() = titleInfo.getTitle() ?: ""
 
     /**
      * Get the current [SslCertificate] if there is any associated with the current page.
      */
-    val sslCertificate: SslCertificate?
+    override val sslCertificate: SslCertificate?
         get() = webView?.certificate
 
     /**
@@ -270,19 +270,19 @@ class ArktosCookieView(
         arktosCookieWebClient.setWhitelist(a)
     }
 
-    fun currentSslState(): SslState = arktosCookieWebClient.sslState
+    override fun currentSslState(): SslState = arktosCookieWebClient.sslState
 
     /** Subresource requests the blocker stopped on this page load —
      *  the shield panel's badge count. */
-    fun blockedThisPage(): Int = arktosCookieWebClient.blockedCountThisPage
+    override fun blockedThisPage(): Int = arktosCookieWebClient.blockedCountThisPage
 
-    fun sslStateObservable(): Observable<SslState> = arktosCookieWebClient.sslStateObservable()
+    override fun sslStateObservable(): Observable<SslState> = arktosCookieWebClient.sslStateObservable()
 
     /**
      * This method loads the homepage for the browser. Either it loads the URL stored as the
      * homepage, or loads the startpage or bookmark page if either of those are set as the homepage.
      */
-    fun loadHomePage() {
+    override fun loadHomePage() {
         if(isIncognito){
             reinitialize(incognitoPageInitializer)
         }
@@ -298,21 +298,21 @@ class ArktosCookieView(
     /**
      * This function loads the bookmark page via the [BookmarkPageInitializer].
      */
-    fun loadBookmarkPage() {
+    override fun loadBookmarkPage() {
         reinitialize(bookmarkPageInitializer)
     }
 
     /**
      * This function loads the download page via the [DownloadPageInitializer].
      */
-    fun loadDownloadsPage() {
+    override fun loadDownloadsPage() {
         reinitialize(downloadPageInitializer)
     }
 
     /**
      * This function loads the history page via the [HistoryPageInitializer].
      */
-    fun loadHistoryPage() {
+    override fun loadHistoryPage() {
         reinitialize(historyPageInitializer)
     }
 
@@ -321,7 +321,7 @@ class ArktosCookieView(
      * the preferences are changed within SharedPreferences.
      */
     @SuppressLint("NewApi", "SetJavaScriptEnabled")
-    fun initializePreferences() {
+    override fun initializePreferences() {
         val settings = webView?.settings ?: return
 
         arktosCookieWebClient.updatePreferences()
@@ -491,7 +491,7 @@ class ArktosCookieView(
     /**
      * Pause the current WebView instance.
      */
-    fun onPause() {
+    override fun onPause() {
         webView?.onPause()
         logger.log(TAG, "WebView onPause: " + webView?.id)
     }
@@ -499,7 +499,7 @@ class ArktosCookieView(
     /**
      * Resume the current WebView instance.
      */
-    fun onResume() {
+    override fun onResume() {
         webView?.onResume()
         logger.log(TAG, "WebView onResume: " + webView?.id)
     }
@@ -603,7 +603,7 @@ class ArktosCookieView(
      * WebView instance, which will trigger a
      * pause for all WebViews in the app.
      */
-    fun pauseTimers() {
+    override fun pauseTimers() {
         webView?.pauseTimers()
         logger.log(TAG, "Pausing JS timers")
     }
@@ -613,7 +613,7 @@ class ArktosCookieView(
      * WebView instance, which will trigger a
      * resume for all WebViews in the app.
      */
-    fun resumeTimers() {
+    override fun resumeTimers() {
         webView?.resumeTimers()
         logger.log(TAG, "Resuming JS timers")
     }
@@ -622,7 +622,7 @@ class ArktosCookieView(
      * Requests focus down on the WebView instance
      * if the view does not already have focus.
      */
-    fun requestFocus() {
+    override fun requestFocus() {
         if (webView?.hasFocus() == false) {
             webView?.requestFocus()
         }
@@ -635,7 +635,7 @@ class ArktosCookieView(
      *
      * @param visible the visibility to set on the WebView.
      */
-    fun setVisibility(visible: Int) {
+    override fun setVisibility(visible: Int) {
         webView?.visibility = visible
     }
 
@@ -663,7 +663,7 @@ class ArktosCookieView(
      * @param text the text to search for.
      */
     @SuppressLint("NewApi")
-    fun find(text: String): FindResults {
+    override fun find(text: String): FindResults {
         webView?.findAllAsync(text)
 
         return object : FindResults {
@@ -828,7 +828,7 @@ class ArktosCookieView(
     // TODO fix bug where WebView.destroy is being called before the tab
     // is removed and would cause a memory leak if the parent check
     // was not in place.
-    fun onDestroy() {
+    override fun onDestroy() {
         networkDisposable.dispose()
         webView?.let { tab ->
             // Check to make sure the WebView has been removed
@@ -854,7 +854,7 @@ class ArktosCookieView(
      * Tell the WebView to navigate backwards
      * in its history to the previous page.
      */
-    fun goBack() {
+    override fun goBack() {
         if(url.contains("about:blank")){
             webView?.goBack()
             webView?.goBack()
@@ -868,7 +868,7 @@ class ArktosCookieView(
      * Tell the WebView to navigate forwards
      * in its history to the next page.
      */
-    fun goForward() {
+    override fun goForward() {
         webView?.goForward()
     }
 
@@ -879,7 +879,7 @@ class ArktosCookieView(
         webView?.setNetworkAvailable(isAvailable)
     }
 
-    fun createWebPagePrint() {
+    override fun createWebPagePrint() {
         /*if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT)
             return;*/
         val webView = webView ?: return
@@ -977,7 +977,7 @@ class ArktosCookieView(
      * @param url the non-null URL to attempt to load in
      * the WebView.
      */
-    fun loadUrl(url: String) {
+    override fun loadUrl(url: String) {
         // Check if configured proxy is available
         if (!proxyUtils.isProxyReady(activity)) {
             return

@@ -16,7 +16,7 @@ import com.arktosbrowser.mobile.list.HorizontalItemAnimator
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.utils.ThemeUtils
 import com.arktosbrowser.mobile.rust.ArktosCore
-import com.arktosbrowser.mobile.view.ArktosCookieView
+import com.arktosbrowser.mobile.engine.Page
 
 
 /**
@@ -85,7 +85,7 @@ class TabsDesktopView @JvmOverloads constructor(
     }
 
     private fun displayTabs() {
-        tabsAdapter.showTabs(uiController.getTabModel().allTabs.map(ArktosCookieView::asTabViewState))
+        tabsAdapter.showTabs(uiController.getTabModel().allTabs.map(Page::asTabViewState))
     }
 
     override fun tabsInitialized() {

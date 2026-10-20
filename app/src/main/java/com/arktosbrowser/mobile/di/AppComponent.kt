@@ -20,6 +20,13 @@ import android.app.Application
 import com.arktosbrowser.mobile.download.DownloadCompleteReceiver
 import com.arktosbrowser.mobile.history.HistoryActivity
 import com.arktosbrowser.mobile.popup.PopUpClass
+import com.arktosbrowser.mobile.log.Logger
+import com.arktosbrowser.mobile.preference.UserPreferences
+import com.arktosbrowser.mobile.view.BookmarkPageInitializer
+import com.arktosbrowser.mobile.view.DownloadPageInitializer
+import com.arktosbrowser.mobile.view.HistoryPageInitializer
+import com.arktosbrowser.mobile.view.HomePageInitializer
+import com.arktosbrowser.mobile.view.IncognitoPageInitializer
 import dagger.BindsInstance
 import dagger.Component
 import javax.inject.Singleton
@@ -101,4 +108,23 @@ interface AppComponent {
     fun inject(bookmarksView: BookmarksDrawerView)
 
     fun inject(popUpClass: PopUpClass)
+
+    // ---- engine-backend provisions (ENG03) -----------------------------
+    // Non-Dagger-constructed backends (the gecko flavor's GeckoEngine)
+    // pull the same pieces the WebViewEngine gets injected — reachable
+    // from the flavor's EngineSelector through BrowserApp.applicationComponent.
+
+    fun homePageInitializer(): HomePageInitializer
+
+    fun incognitoPageInitializer(): IncognitoPageInitializer
+
+    fun bookmarkPageInitializer(): BookmarkPageInitializer
+
+    fun downloadPageInitializer(): DownloadPageInitializer
+
+    fun historyPageInitializer(): HistoryPageInitializer
+
+    fun userPreferences(): UserPreferences
+
+    fun logger(): Logger
 }

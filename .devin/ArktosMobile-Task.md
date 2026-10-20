@@ -86,7 +86,7 @@ NO SUDO — everything user-local.
 | SEC15 | Encrypted store at rest (SQLCipher / keystore-wrapped key) — details below | done | 0 | rusqlite→bundled-sqlcipher-vendored-openssl; ArktosStore.open(path,key) + sqlcipher_export plaintext migration; DatabaseKeyProvider (Keystore AES/GCM-wrapped random 32B — argon2id-of-credential infeasible: credential is hash-only, store opens pre-unlock); unreadable DB quarantined; database domain re-included in backup rules — cargo 146/146, 350 unit tests 0 fail (EncryptedStoreTest 5/5, DatabaseKeyProviderTest 6/6), assembleScMainDebug + engine-audit PASS |
 | SEC16 | Reproducible/verified build investigation — details below | done | 0 | wrapper sha256 + rust-toolchain.toml (1.99.0) + ndkVersion/buildToolsVersion pins + gradle verification-metadata.xml + cargo --locked + RUSTFLAGS remap-path-prefix (142 dep paths normalized in release .so); REPRODUCIBLE.md recipe + residual-gap doc — ReproducibleBuildTest 7/7, 357 unit tests 0 fail, assembleScMainDebug/Release + engine-audit PASS |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | done | 0 | Backend/Profile/Page live; engine-audit PASS, assembleScMainDebug + unit suite green |
-| ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | pending | 0 | — |
+| ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | in_progress | 0 | — |
 | ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | pending | 0 | — |
 | ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
 
