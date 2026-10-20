@@ -87,7 +87,7 @@ NO SUDO — everything user-local.
 | SEC16 | Reproducible/verified build investigation — details below | done | 0 | wrapper sha256 + rust-toolchain.toml (1.99.0) + ndkVersion/buildToolsVersion pins + gradle verification-metadata.xml + cargo --locked + RUSTFLAGS remap-path-prefix (142 dep paths normalized in release .so); REPRODUCIBLE.md recipe + residual-gap doc — ReproducibleBuildTest 7/7, 357 unit tests 0 fail, assembleScMainDebug/Release + engine-audit PASS |
 | ENG02 | Consume the BrowserEngine interface: WebView backend behind the seam — details below | done | 0 | Backend/Profile/Page live; engine-audit PASS, assembleScMainDebug + unit suite green |
 | ENG03 | 'engine' flavor dimension + GeckoEngine skeleton (load/navigate/tabs) — details below | done | 0 | engine dim (webview=Lite / gecko=Full .full, arm64-only release); GeckoEngine/Profile/Page skeleton in src/gecko behind Page seam (tab shell retyped off ArktosCookieView); assembleScMainWebviewDebug + assembleScMainGeckoDebug + both unit suites (366) + engine-audit PASS |
-| ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | pending | 0 | — |
+| ENG04 | Gecko parity A: request policy, SSL errors, save/restore, prompts, downloads — details below | in_progress | 0 | — |
 | ENG05 | Gecko parity B: storage/cookies, proxy/I2P, scripts, capability-gated settings + packaging — details below | pending | 0 | — |
 
 ## Task details
@@ -850,3 +850,16 @@ The URL/search bar in the incognito window lacks
 the keyboard's learned dictionary. Set the flag on the search field
 when isIncognito() is true (web-page fields are engine-controlled,
 out of scope). needs:tool:java
+| SEC17 | Sec-GPC header alongside DNT + coverage docs — details below | pending | 0 | — |
+
+### SEC17
+DNT review found: the header only rides main-frame GETs (loadUrl
+extra-headers) — subresources, XHR/fetch and POSTs can't carry custom
+headers in WebView, and DNT itself is a deprecated signal. Add
+`Sec-GPC: 1` (Global Privacy Control — the modern, legally-backed
+successor) alongside `DNT: 1` in ArktosCookieView.initializePreferences
+when doNotTrackEnabled; extend the privacy setting's summary to note
+the subresource limitation; ENG05 follow-up: GeckoEngine should inject
+DNT/Sec-GPC on *all* requests via a WebExtension
+webRequest.onBeforeSendHeaders — WebView can't reach full coverage.
+needs:tool:java

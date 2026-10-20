@@ -1052,7 +1052,11 @@ class ArktosCookieWebClient(
                 webView.loadUrl(url, referrerHeaders)
                 true
             }
-            headers.isEmpty() -> false
+            // loadUrl can only re-issue GETs: letting a POST or
+            // sub-frame navigation take this path would drop its body.
+            // Those go through the engine's own load — custom headers
+            // (DNT/Save-Data) simply don't ride along there.
+            headers.isEmpty() || !referrerEligible -> false
             else -> {
                 webView.loadUrl(url, headers)
                 true
