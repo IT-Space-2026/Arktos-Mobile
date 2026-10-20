@@ -43,6 +43,19 @@
     native <methods>;
 }
 
+# SEC10 — Rust core bridge (libarktos.so via UniFFI + JNA).
+# JNA resolves FFI symbols, Structure field layout, and Callback entry
+# points by reflection at runtime: names must survive R8 and nothing in
+# the generated bindings may be shrunk away.
+-keep class com.sun.jna.** { *; }
+-keepclassmembers class * extends com.sun.jna.** {
+    public *;
+}
+-keep class com.arktosbrowser.mobile.uniffi.** { *; }
+# JNA's desktop-only AWT helpers (Native$AWT) are kept by the rule above
+# but can never run on Android — java.awt is absent from the runtime.
+-dontwarn java.awt.**
+
 -keepclasseswithmembers class * {
     public <init>(android.content.Context, android.util.AttributeSet);
 }
