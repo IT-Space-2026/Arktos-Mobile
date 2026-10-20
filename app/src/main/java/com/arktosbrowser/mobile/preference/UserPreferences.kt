@@ -71,6 +71,18 @@ class UserPreferences @Inject constructor(
     var stackFromBottom by preferences.booleanPreference(STACK_FROM_BOTTOM, false)
 
     /**
+     * True if the bookmark drawer lists entries newest-first (upstream
+     * #156); false keeps the position/alphabetical order.
+     */
+    var bookmarkSortByDate by preferences.booleanPreference(BOOKMARK_SORT_DATE, false)
+
+    /**
+     * Last folder shown in the bookmark drawer — the #308 prefill
+     * for "save new bookmark into the folder I'm in".
+     */
+    var lastBookmarkFolder by preferences.stringPreference(LAST_BOOKMARK_FOLDER, "")
+
+    /**
      * True if the browser should block ads, false otherwise.
      */
     var adBlockEnabled by preferences.booleanPreference(BLOCK_ADS, true)
@@ -583,4 +595,6 @@ private const val SHOW_DOWNLOAD_CONFIRMATION = "showDownloadConfirmation"
 private const val TRANSLATION_ENDPOINT = "translationEndpoint"
 private const val HOMEPAGE_TYPE = "homepageType"
 private const val STACK_FROM_BOTTOM = "stackFromBottom"
+private const val BOOKMARK_SORT_DATE = "bookmarkSortByDate"
+private const val LAST_BOOKMARK_FOLDER = "lastBookmarkFolder"
 private const val DRAWER_OFFSET = "drawerOffset"

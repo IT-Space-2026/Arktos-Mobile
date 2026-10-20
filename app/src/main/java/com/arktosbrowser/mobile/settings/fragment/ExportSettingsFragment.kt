@@ -16,6 +16,7 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import com.arktosbrowser.mobile.permissions.PermissionsManager
+import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.permissions.PermissionsResultAction
 import com.arktosbrowser.mobile.MainActivity
 import com.arktosbrowser.mobile.R
@@ -55,6 +56,9 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
     internal lateinit var application: Application
 
     @Inject
+    internal lateinit var userPreferences: UserPreferences
+
+    @Inject
     internal lateinit var tabModel: TabsManager
 
     @Inject
@@ -85,6 +89,12 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
         PermissionsManager
             .instance
             .requestPermissionsIfNecessaryForResult(activity, REQUIRED_PERMISSIONS, null)
+
+        switchPreference(
+            preference = SETTINGS_BOOKMARK_SORT_DATE,
+            isChecked = userPreferences.bookmarkSortByDate,
+            onCheckChange = { userPreferences.bookmarkSortByDate = it }
+        )
 
         clickablePreference(preference = SETTINGS_EXPORT, onClick = this::exportBookmarks)
         clickablePreference(preference = SETTINGS_IMPORT, onClick = this::importBookmarks)
@@ -552,6 +562,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
 
         private const val TAG = "BookmarkSettingsFrag"
 
+        private const val SETTINGS_BOOKMARK_SORT_DATE = "bookmark_sort_date"
         private const val SETTINGS_EXPORT = "export_bookmark"
         private const val SETTINGS_IMPORT = "import_bookmark"
         private const val SETTINGS_TAB_EXPORT = "export_tab"

@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <PreferenceCategory android:title="@string/settings_display">
+        <SwitchPreference
+            android:key="bookmark_sort_date"
+            android:singleLineTitle="false"
+            android:title="@string/bookmark_sort_date" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/backup_bookmarks">
         <Preference
             android:key="export_bookmark"

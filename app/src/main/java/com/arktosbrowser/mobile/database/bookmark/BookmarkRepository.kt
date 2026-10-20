@@ -107,6 +107,12 @@ interface BookmarkRepository {
     fun getBookmarksFromFolderSorted(folder: String?): Single<List<Bookmark>>
 
     /**
+     * Same as [getBookmarksFromFolderSorted] but newest-first — the
+     * upstream #156 "sort by date added" order.
+     */
+    fun getBookmarksFromFolderByDate(folder: String?): Single<List<Bookmark>>
+
+    /**
      * Returns all folders as [Bookmark.Folder]. The root folder is omitted.
      *
      * @return an observable that emits a list of folders.
