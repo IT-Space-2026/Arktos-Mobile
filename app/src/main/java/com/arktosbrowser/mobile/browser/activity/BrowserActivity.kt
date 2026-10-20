@@ -89,9 +89,12 @@ import com.arktosbrowser.mobile.popup.PopUpClass
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.search.SuggestionsAdapter
+import com.arktosbrowser.mobile.ssl.SitePanelDialog
+import com.arktosbrowser.mobile.ssl.SitePanelDialog.showSitePanel
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.ssl.createSslDrawableForState
 import com.arktosbrowser.mobile.ssl.showSslDialog
+import com.arktosbrowser.mobile.ssl.sslConnectionLabel
 import com.arktosbrowser.mobile.ssl.sslVerdictColor
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.*
@@ -1222,16 +1225,77 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     private fun onSiteShieldClicked() {
-        val url = tabsManager.currentTab?.url ?: return
-        if (allowListModel.isUrlAllowedAds(url)) {
-            allowListModel.removeUrlFromAllowList(url)
-            snackbar(R.string.dialog_adblock_enable_for_site)
-        } else {
-            allowListModel.addUrlToAllowList(url)
-            snackbar(R.string.dialog_adblock_disable_for_site)
+        val tab = tabsManager.currentTab ?: return
+        val url = tab.url
+        val host = Uri.parse(url).host.orEmpty()
+
+        // Every write lands immediately and reloads the page behind
+        // the open panel — the desktop SitePanel's "persist on write"
+        // behavior.
+        fun mutateAndReload(block: () -> Unit) {
+            block()
+            tabsManager.currentTab?.reload()
+            updateSiteShield()
         }
-        tabsManager.currentTab?.reload()
-        updateSiteShield()
+
+        val callbacks = SitePanelDialog.Callbacks(
+            poll = {
+                val detail = ArktosCore.siteRankDetail(host)
+                SitePanelDialog.State(
+                    host = host,
+                    connection = sslConnectionLabel(tab.currentSslState()),
+                    verdictRank = siteRank(url),
+                    trancoRank = detail.tranco.toLong(),
+                    majesticRank = detail.majestic.toLong(),
+                    blockedThisPage = tab.blockedThisPage(),
+                    siteBlocking = !allowListModel.isUrlAllowedAds(url),
+                    globalBlocking = userPreferences.adBlockEnabled,
+                    javaScript = siteSettings.javaScriptEnabled(url),
+                    cookies = siteSettings.cookiesEnabled(url),
+                    cookieCount = CookieManager.getInstance().getCookie(url)
+                        ?.split(';')?.count { it.contains('=') } ?: 0,
+                    sslState = tab.currentSslState()
+                )
+            },
+            toggleSiteBlocking = {
+                mutateAndReload {
+                    if (allowListModel.isUrlAllowedAds(url)) {
+                        allowListModel.removeUrlFromAllowList(url)
+                    } else {
+                        allowListModel.addUrlToAllowList(url)
+                    }
+                }
+            },
+            toggleGlobalBlocking = {
+                mutateAndReload { userPreferences.adBlockEnabled = !userPreferences.adBlockEnabled }
+            },
+            toggleJavaScript = {
+                mutateAndReload { siteSettings.toggleJavaScript(url) }
+            },
+            toggleCookies = {
+                mutateAndReload { siteSettings.toggleCookies(url) }
+            },
+            clearSiteData = {
+                WebUtils.clearSiteData(url)
+                snackbar(R.string.shield_data_cleared)
+            },
+            sslCertificateDialog = {
+                val detail = ArktosCore.siteRankDetail(host)
+                showSslDialog(
+                    tab.sslCertificate,
+                    tab.currentSslState(),
+                    host,
+                    detail.tranco.toLong(),
+                    detail.majestic.toLong(),
+                    isDarkTheme,
+                    CookieManager.getInstance().getCookie(url)
+                        ?.split(';')?.count { it.contains('=') } ?: 0,
+                    userPreferences.adBlockEnabled && !allowListModel.isUrlAllowedAds(url),
+                    siteSettings.javaScriptEnabled(url)
+                )
+            }
+        )
+        showSitePanel(isDarkTheme, callbacks)
     }
 
     override fun tabChanged(tab: ArktosCookieView) {

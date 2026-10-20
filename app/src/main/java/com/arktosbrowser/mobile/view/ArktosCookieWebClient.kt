@@ -79,6 +79,15 @@ class ArktosCookieWebClient(
     private val emptyResponseByteArray: ByteArray = byteArrayOf()
     private var lastBlockedDomain = ""
 
+    /**
+     * Subresource requests the ad blocker suppressed on the current
+     * page load — the shield panel's "N blocked" line. Reset in
+     * [onPageStarted]; main-frame site blocks render an interstitial
+     * instead and aren't tallied here.
+     */
+    var blockedCountThisPage = 0
+        private set
+
     private var knownUndetectedVideoUrls: Array<String> = arrayOf("xvideos.com")
 
     private var badsslList: MutableList<String> = ArrayList()
@@ -237,6 +246,7 @@ class ArktosCookieWebClient(
             return null
         }
 
+        blockedCountThisPage++
         return emptyResponse()
     }
 
@@ -539,6 +549,7 @@ class ArktosCookieWebClient(
 
         zoomed = false
         first = true
+        blockedCountThisPage = 0
         if (!url.isGeneratedPageUrl()) {
             currentUrl = url
         }
