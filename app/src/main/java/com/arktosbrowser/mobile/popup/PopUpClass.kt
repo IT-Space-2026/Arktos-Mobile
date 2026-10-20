@@ -200,7 +200,8 @@ class PopUpClass {
                 MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
                 MenuItemClass("page_tools", R.string.dialog_tools_title, R.drawable.ic_page_tools, currentView != null),
                 MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, currentView != null && currentView.url.isNotBlank() && !currentView.url.isSpecialUrl()),
-                MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true)
+                MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true),
+                MenuItemClass("close_app", R.string.close_app, R.drawable.ic_action_delete, true)
         )
 
         val incognitoMenu = mutableListOf(
@@ -218,6 +219,7 @@ class PopUpClass {
                 MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
                 MenuDividerClass(),
                 MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true),
+                MenuItemClass("close_app", R.string.close_app, R.drawable.ic_action_delete, true),
                 MenuItemClass("exit_private", R.string.quit_private, R.drawable.incognito_mode, true)
         )
 
@@ -409,6 +411,7 @@ class PopUpClass {
                     val settings = Intent(view.context, SettingsActivity::class.java) // 11 - Settings
                     view.context.startActivity(settings)
                 }
+                "close_app" -> activity.closeApp()
                 "exit_private" -> {
                     view.context.startActivity(Intent(view.context, BrowserActivity::class.java))
                     activity.finish()
