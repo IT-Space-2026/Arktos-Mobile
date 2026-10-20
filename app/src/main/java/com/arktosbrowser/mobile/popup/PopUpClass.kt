@@ -40,7 +40,6 @@ import com.arktosbrowser.mobile.database.HistoryEntry
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
-import com.arktosbrowser.mobile.download.DownloadActivity
 import com.arktosbrowser.mobile.extensions.color
 import com.arktosbrowser.mobile.extensions.copyToClipboard
 import com.arktosbrowser.mobile.rust.ArktosCore
@@ -132,14 +131,15 @@ class PopUpClass {
             }
         }
 
-        val uri = Uri.parse(currentUrl)
-        val intent = Intent(Intent.ACTION_VIEW, uri)
+        val intent = currentUrl?.let { Intent(Intent.ACTION_VIEW, Uri.parse(it)) }
         val packageManager: PackageManager = activity.packageManager
-        if (intent.resolveActivity(packageManager) == null || intent.resolveActivity(packageManager).packageName == activity.applicationContext.packageName || currentUrl.isSpecialUrl()) {
+        val resolved = intent?.resolveActivity(packageManager)
+        if (resolved == null || resolved.packageName == activity.applicationContext.packageName || currentUrl.isSpecialUrl()) {
             popupView.findViewById<ImageButton>(R.id.open_in_app).visibility = View.GONE
         }
 
         popupView.findViewById<ImageButton>(R.id.open_in_app).setOnClickListener {
+            intent ?: return@setOnClickListener
             val components = arrayOf(ComponentName(activity, BrowserActivity::class.java))
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
                 activity.startActivity(Intent.createChooser(intent, null).putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,components))
@@ -148,8 +148,11 @@ class PopUpClass {
         }
 
         popupView.findViewById<ImageButton>(R.id.bookmark_option).setOnClickListener {
-            val bookmark = Bookmark.Entry(currentUrl!!, currentView!!.title, 0, Bookmark.Folder.Root)
-            activity.bookmarksDialogBuilder.showAddBookmarkDialog(activity, uiController!!, bookmark)
+            if (currentUrl != null && currentView != null) {
+                val bookmark = Bookmark.Entry(currentUrl, currentView.title, 0, Bookmark.Folder.Root)
+                activity.bookmarksDialogBuilder.showAddBookmarkDialog(activity, uiController!!, bookmark)
+            }
+            popupWindow.dismiss()
         }
 
         val container =  popupView.findViewById<ConstraintLayout>(R.id.transparent_container)
@@ -180,36 +183,36 @@ class PopUpClass {
                 MenuItemClass("new_tab", R.string.action_new_tab, R.drawable.ic_round_add, true),
                 MenuItemClass("new_private_tab", R.string.action_incognito, R.drawable.incognito_mode, true),
                 MenuDividerClass(),
-                MenuItemClass("share", R.string.action_share, R.drawable.ic_share_black, true),
-                MenuItemClass("open_in_app", R.string.open_in_app, R.drawable.ic_round_open_in_new, userPreferences.navbar && !activity.isIncognito() && intent.resolveActivity(packageManager) != null && intent.resolveActivity(packageManager).packageName != activity.applicationContext.packageName && !currentUrl.isSpecialUrl()),
+                MenuItemClass("share", R.string.action_share, R.drawable.ic_share_black, currentUrl != null && !currentUrl.isSpecialUrl()),
+                MenuItemClass("open_in_app", R.string.open_in_app, R.drawable.ic_round_open_in_new, userPreferences.navbar && !activity.isIncognito() && resolved != null && resolved.packageName != activity.applicationContext.packageName && !currentUrl.isSpecialUrl()),
                 MenuItemClass("translate", R.string.translator, R.drawable.translate, userPreferences.translateExtension),
-                MenuItemClass("print", R.string.action_print, R.drawable.ic_round_print, true),
+                MenuItemClass("print", R.string.action_print, R.drawable.ic_round_print, currentView != null),
                 MenuDividerClass(),
                 MenuItemClass("history", R.string.action_history, R.drawable.ic_history, true),
                 MenuItemClass("bookmarks", R.string.action_bookmarks, R.drawable.ic_action_star, true),
                 MenuItemClass("downloads", R.string.action_downloads, R.drawable.ic_file_download_black, true),
                 MenuDividerClass(),
-                MenuItemClass("find_in_page", R.string.action_find, R.drawable.ic_search, true),
-                MenuItemClass("copy_link", R.string.dialog_copy_link, R.drawable.ic_content_copy_black, true),
-                MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, true),
+                MenuItemClass("find_in_page", R.string.action_find, R.drawable.ic_search, currentView != null),
+                MenuItemClass("copy_link", R.string.dialog_copy_link, R.drawable.ic_content_copy_black, currentUrl != null && !currentUrl.isSpecialUrl()),
+                MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, currentUrl != null && !currentUrl.isSpecialUrl()),
                 MenuDividerClass(),
                 MenuItemClass("toggle_javascript", jsToggleTitle, R.drawable.ic_baseline_code, hasSiteHost),
                 MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
-                MenuItemClass("page_tools", R.string.dialog_tools_title, R.drawable.ic_page_tools, true),
-                MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, true),
+                MenuItemClass("page_tools", R.string.dialog_tools_title, R.drawable.ic_page_tools, currentView != null),
+                MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, currentView != null && currentView.url.isNotBlank() && !currentView.url.isSpecialUrl()),
                 MenuItemClass("settings", R.string.settings, R.drawable.ic_round_settings, true)
         )
 
         val incognitoMenu = mutableListOf(
                 MenuItemClass("new_tab", R.string.action_new_tab, R.drawable.ic_round_add, true),
                 MenuDividerClass(),
-                MenuItemClass("print", R.string.action_print, R.drawable.ic_round_print, true),
-                MenuItemClass("find_in_page", R.string.action_find, R.drawable.ic_search, true),
-                MenuItemClass("copy_link", R.string.dialog_copy_link, R.drawable.ic_content_copy_black, true),
-                MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, true),
+                MenuItemClass("print", R.string.action_print, R.drawable.ic_round_print, currentView != null),
+                MenuItemClass("find_in_page", R.string.action_find, R.drawable.ic_search, currentView != null),
+                MenuItemClass("copy_link", R.string.dialog_copy_link, R.drawable.ic_content_copy_black, currentUrl != null && !currentUrl.isSpecialUrl()),
+                MenuItemClass("add_to_homepage", R.string.action_add_to_homescreen, R.drawable.ic_round_smartphone, currentView != null && currentView.url.isNotBlank() && !currentView.url.isSpecialUrl()),
                 MenuDividerClass(),
                 MenuItemClass("bookmarks", R.string.action_bookmarks, R.drawable.ic_action_star, true),
-                MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, true),
+                MenuItemClass("reading_mode", R.string.reading_mode, R.drawable.ic_action_reading, currentUrl != null && !currentUrl.isSpecialUrl()),
                 MenuDividerClass(),
                 MenuItemClass("toggle_javascript", jsToggleTitle, R.drawable.ic_baseline_code, hasSiteHost),
                 MenuItemClass("toggle_cookies", cookieToggleTitle, R.drawable.ic_round_storage, hasSiteHost),
@@ -232,8 +235,6 @@ class PopUpClass {
             popupWindow.showAtLocation(view, Gravity.TOP or Gravity.END, 0, 0)
         }
 
-        popupWindow.setBackgroundDrawable(ColorDrawable(Color.WHITE))
-
         val adapter = MenuItemAdapter(view.context, finalMenu)
         list = popupView.findViewById(R.id.menuList)
         list?.adapter = adapter
@@ -246,7 +247,7 @@ class PopUpClass {
                 "new_tab" -> uiController!!.newTabButtonClicked() // 0 - New tab
                 "new_private_tab" -> view.context.startActivity(Intent(view.context, IncognitoActivity::class.java)) // 1 - New incognito tab
                 "share" -> IntentUtils(activity).shareUrl(currentUrl, currentView?.title) // 2 - Share
-                "print" -> currentView!!.webView?.let { currentView.createWebPagePrint(it) } // 3 - Print
+                "print" -> currentView?.webView?.let { currentView.createWebPagePrint(it) } // 3 - Print
                 "history" -> view.context.startActivity(Intent(view.context, HistoryActivity::class.java)) // 4 - History
                 "downloads" -> currentView?.loadDownloadsPage() // 5 - Download
                 "find_in_page" -> activity.findInPage() // 6 - Find in Page
@@ -418,10 +419,12 @@ class PopUpClass {
                     currentView?.webView?.let { translateBridge.translatePage(it, target) }
                 }
                 "open_in_app" -> {
-                    val components = arrayOf(ComponentName(activity, BrowserActivity::class.java))
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
-                        activity.startActivity(Intent.createChooser(intent, null).putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,components))
-                    else activity.startActivity(intent)
+                    intent?.let {
+                        val components = arrayOf(ComponentName(activity, BrowserActivity::class.java))
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                            activity.startActivity(Intent.createChooser(it, null).putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS,components))
+                        else activity.startActivity(it)
+                    }
                     popupWindow.dismiss() // 13 - Open in App
                 }
             }
