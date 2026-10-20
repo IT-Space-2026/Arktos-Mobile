@@ -225,5 +225,6 @@ Upstream feature highlights inherited from SmartCookieWeb:
 - Tapjacking protection on sensitive dialogs (locks, credentials, proxy, download confirm)
 - Download risk warnings (executable/scriptable files, name-vs-MIME disguises)
 - 'Show punycode domains' option (on by default; shows xn-- form for internationalized domains to expose lookalike phishing domains)
+- 'Referrer policy' option (default / same-origin only / never send on page navigations)
 - 'Always incognito' option
 - Cookie dialog blocker

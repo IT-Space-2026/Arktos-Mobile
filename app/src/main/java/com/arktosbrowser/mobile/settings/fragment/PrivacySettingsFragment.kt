@@ -28,6 +28,7 @@ import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.dialog.TapjackingGuard
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
 import com.arktosbrowser.mobile.isSupported
+import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.utils.ProxyUtils
@@ -249,6 +250,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                 onCheckChange = { userPreferences.showPunycodeEnabled = it }
         )
 
+        clickableDynamicPreference(
+                preference = SETTINGS_REFERRER_POLICY,
+                summary = referrerModeSummary(userPreferences.referrerMode),
+                onClick = ::showReferrerPolicyPicker
+        )
+
         switchPreference(
             preference = SETTINGS_IDENTIFYINGHEADERS,
             isChecked = userPreferences.removeIdentifyingHeadersEnabled,
@@ -370,6 +377,26 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
                     appLockMethodSummary(userPreferences.appLockMethod)
                 )
             }
+        }
+    }
+
+    private fun referrerModeSummary(mode: ReferrerPolicy.Mode): String = when (mode) {
+        ReferrerPolicy.Mode.DEFAULT -> resources.getString(R.string.referrer_policy_default)
+        ReferrerPolicy.Mode.SAME_ORIGIN -> resources.getString(R.string.referrer_policy_same_origin)
+        ReferrerPolicy.Mode.STRIP -> resources.getString(R.string.referrer_policy_strip)
+    }
+
+    private fun showReferrerPolicyPicker(summaryUpdater: SummaryUpdater) {
+        BrowserDialog.showCustomDialog(activity) {
+            setTitle(R.string.referrer_policy)
+            val values = ReferrerPolicy.Mode.values().map {
+                Pair(it, referrerModeSummary(it))
+            }
+            withSingleChoiceItems(values, userPreferences.referrerMode) {
+                userPreferences.referrerMode = it
+                summaryUpdater.updateSummary(referrerModeSummary(it))
+            }
+            setPositiveButton(R.string.action_ok, null)
         }
     }
 
@@ -765,6 +792,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         private const val SETTINGS_BLOCK_MIXED_CONTENT = "block_mixed_content"
         private const val SETTINGS_SECURE_WINDOWS = "secure_windows"
         private const val SETTINGS_SHOW_PUNYCODE = "show_punycode"
+        private const val SETTINGS_REFERRER_POLICY = "referrer_policy"
         private const val SETTINGS_INCOGNITO = "start_incognito"
         private const val SETTINGS_ONLY_CLOSE = "only_clear"
         private const val SETTINGS_APP_LOCK = "app_lock"

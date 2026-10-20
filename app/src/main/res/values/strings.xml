@@ -461,6 +461,10 @@
     <string name="secure_windows_summary">Block screenshots and recents thumbnails in every window (always on in incognito)</string>
     <string name="show_punycode">Show punycode domains</string>
     <string name="show_punycode_summary">Display internationalized domains in the URL bar in their xn-- (punycode) form to expose lookalike phishing domains</string>
+    <string name="referrer_policy">Referrer policy</string>
+    <string name="referrer_policy_default">Default</string>
+    <string name="referrer_policy_same_origin">Same origin only</string>
+    <string name="referrer_policy_strip">Never send</string>
     <string name="forcehttps">Block non-HTTPS sites</string>
     <string name="preferhttps">Prefer HTTPS site versions</string>
     <string name="forcehttpsdesc">Only load HTTPS sites</string>
