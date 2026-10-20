@@ -808,3 +808,45 @@ via Capabilities), app-lock + secure-windows integration, About
 "engine version" label. Packaging: per-ABI release APKs or AAB
 instructions in README; universal gecko APK explicitly not shipped.
 needs:tool:java
+| INCOG01 | Wipe incognito partition on session end/fresh start — details below | pending | 0 | — |
+| INCOG02 | Include incognito profile in panicClean — details below | pending | 0 | — |
+| INCOG03 | Hide incognito notification from lock screen (+settings toggle) — details below | pending | 0 | — |
+| INCOG04 | NO_PERSONALIZED_LEARNING on incognito search bar — details below | pending | 0 | — |
+
+### INCOG01
+`setDataDirectorySuffix("incognito")` (WebViewEngine.initialize)
+gives the :incognito process a real on-disk WebView partition, but
+`dataDir/app_webview/incognito/` is never wiped — cookies, logins and
+DOM storage survive closing incognito and leak into the next
+incognito session. Wipe on session end: hook the last-tab-close /
+IncognitoActivity finish path (Profile.clear(StorageArea.All) already
+covers the dir via AppPrivateData) AND wipe-or-skip on a fresh
+incognito start so swipe-away process death (no onDestroy) can't
+carry state forward. GeckoEngine: its OTR profile must get the same
+guarantee. Verify: log in on a site in incognito, fully close
+incognito (swipe away), reopen incognito, confirm logged out.
+needs:tool:java
+
+### INCOG02
+`panicClean()` wipes the main process's saved state/history but the
+:incognito process isn't signaled and its WebView partition survives.
+On panic: finish the incognito task too (killProcess of the sibling
+process or a broadcast the incognito activity handles to wipe + exit)
+and delete the incognito data dir. Verify: open incognito tab, send
+panic intent, confirm incognito window dies and partition is empty.
+needs:tool:java
+
+### INCOG03
+`IncognitoNotification` posts a persistent "N private tabs running"
+with no lock-screen visibility set — readable while the device is
+locked. Add `setVisibility(NotificationCompat.VISIBILITY_SECRET)` and
+a Privacy settings switch (e.g. `incognitoNotificationVisible`) so
+users who want the reminder can keep it; default = hidden from lock
+screen. needs:tool:java
+
+### INCOG04
+The URL/search bar in the incognito window lacks
+`EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING` — typed text can enter
+the keyboard's learned dictionary. Set the flag on the search field
+when isIncognito() is true (web-page fields are engine-controlled,
+out of scope). needs:tool:java
