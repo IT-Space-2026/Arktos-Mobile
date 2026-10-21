@@ -4,10 +4,13 @@ package com.arktosbrowser.mobile.ssl
 
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.dialog.BrowserDialog
+import com.arktosbrowser.mobile.extensions.dimen
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
@@ -93,11 +96,35 @@ object SitePanelDialog {
             callbacks.clearSiteData(); refresh()
         }
 
-        MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(callbacks.poll().host)
             .setView(contentView)
             .setNeutralButton(R.string.shield_view_certificate) { _, _ -> callbacks.sslCertificateDialog() }
             .setPositiveButton(R.string.action_ok, null)
-            .show()
+            .create()
+        dialog.show()
+        BrowserDialog.setDialogSize(this, dialog)
+
+        // Same overflow fix as the SSL dialog (upstream #277): the
+        // AlertDialog custom panel isn't scrollable, so a panel taller
+        // than the window is clipped with no way to scroll. Pin the
+        // ScrollView to the space left by the dialog chrome.
+        val window = dialog.window ?: return
+        val width = window.attributes.width
+        if (width <= 0) return
+        window.decorView.measure(
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val boundedHeight = boundedScrollHeight(
+            contentHeight = contentView.measuredHeight,
+            chromeHeight = window.decorView.measuredHeight - contentView.measuredHeight,
+            availableHeight = resources.displayMetrics.heightPixels - 2 * dimen(R.dimen.dialog_padding),
+            minHeight = dimen(R.dimen.ssl_dialog_min_content_height)
+        )
+        if (boundedHeight < contentView.measuredHeight) {
+            contentView.layoutParams.height = boundedHeight
+            contentView.requestLayout()
+        }
     }
 }
