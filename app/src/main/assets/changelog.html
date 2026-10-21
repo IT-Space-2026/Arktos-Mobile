@@ -273,6 +273,14 @@
             <li>Deprecated APIs swept out: file picking, permissions and activity results use modern contracts; camera uploads use safe FileProvider URIs.</li>
             <li>Dead code removed: old preference-activity wrappers, the reflection-based permissions framework, duplicate animators.</li>
         </ul>
+
+        <h3>Dependency updates (v1.0)</h3>
+        <ul>
+            <li>Kotlin 2.4.21, Compose compiler 2.4.21, KSP 2.3.12, Gradle wrapper 9.8.1.</li>
+            <li>jsoup 1.23.2 fixes the HTML-sanitizer CVEs flagged by the vulnerability scan; org.json bumped (tests only).</li>
+            <li>Rust core: argon2 0.6, rusqlite 0.40.2, aho-corasick 1.1.5, miniz_oxide 0.9.1.</li>
+            <li>CI hardened: pinned Rust toolchain, real vulnerability-scanner action, dependency verification regenerated.</li>
+        </ul>
     </div>
 
 </body>

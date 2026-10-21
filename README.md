@@ -22,7 +22,10 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
 
 ## Installation
 
-- To get started with this project, import it into Android Studio or build from the command line with Gradle:
+- Prebuilt APKs for both variants are attached to each release on the
+  [Releases](https://github.com/IT-Space-2026/Arktos-Mobile/releases)
+  page. To build from source, import the project into Android Studio or
+  build from the command line with Gradle:
 
  `./gradlew assembleScMainWebviewDebug` (Android WebView build) or
  `./gradlew assembleScMainGeckoDebug` (GeckoView build).
