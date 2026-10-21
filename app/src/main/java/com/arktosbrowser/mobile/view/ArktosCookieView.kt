@@ -48,6 +48,7 @@ import com.arktosbrowser.mobile.engine.PageAttributes
 import com.arktosbrowser.mobile.engine.PageInitializer
 import com.arktosbrowser.mobile.engine.UserScript
 import com.arktosbrowser.mobile.isSupported
+import com.arktosbrowser.mobile.js.TextReflow
 import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.network.DoNotTrackPolicy
 import com.arktosbrowser.mobile.network.NetworkConnectivityModel
@@ -147,6 +148,7 @@ class ArktosCookieView(
     @Inject @field:DatabaseScheduler internal lateinit var databaseScheduler: Scheduler
     @Inject @field:MainScheduler internal lateinit var mainScheduler: Scheduler
     @Inject lateinit var networkConnectivityModel: NetworkConnectivityModel
+    @Inject internal lateinit var textReflowJs: TextReflow
 
     private val arktosCookieWebClient: ArktosCookieWebClient
 
@@ -377,8 +379,23 @@ class ArktosCookieView(
                 // of KitKat devices that crash trying to set this
                 logger.log(TAG, "Problem setting LayoutAlgorithm to TEXT_AUTOSIZING")
             }
+            // initializePreferences runs when the page is already
+            // loaded (toggled in settings → back) — onPageFinished
+            // won't re-fire, so inject directly. The unlock runs
+            // first so pinch zoom can engage on user-scalable=no
+            // pages, then the reflow script installs its apply hook.
+            webView?.evaluateJavascript(
+                "(function() { var m = document.querySelector('meta[name=\"viewport\"]'); if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.appendChild(m); } var c = m.getAttribute('content') || ''; c = c.replace(/user-scalable\\s*=\\s*(no|0)/i, 'user-scalable=yes').replace(/maximum-scale\\s*=\\s*[^,;]+/i, ''); if (!/user-scalable/i.test(c)) c += (c ? ',' : '') + 'user-scalable=yes'; m.setAttribute('content', c); })();",
+                null
+            )
+            webView?.evaluateJavascript(textReflowJs.provideJs(activity), null)
         } else {
             settings.layoutAlgorithm = LayoutAlgorithm.NORMAL
+            // Toggled off on a loaded page — strip any applied reflow.
+            webView?.evaluateJavascript(
+                "(function() { var s = document.getElementById('arktos-reflow'); if (s) s.remove(); window.__arktosReflowApply = null; if (document.body) document.body.style.width = ''; })();",
+                null
+            )
         }
 
         settings.blockNetworkImage = userPreferences.blockImagesEnabled

@@ -4,45 +4,42 @@
 
 /* Text reflow: while the page is pinch-zoomed, constrain the document
  * to the visible viewport width so text re-wraps instead of needing
- * horizontal scrolling. Driven by the Visual Viewport API — WebView
- * pinch zoom reports through visualViewport even when
- * WebViewClient.onScaleChanged is never delivered. A <style> element
- * carries the rules so site CSS can't easily override them, and the
- * constraints are removed once the zoom returns to ~1x. Injected once
- * per page load by ArktosCookieWebClient. */
+ * horizontal scrolling. Injected once per page load by
+ * ArktosCookieWebClient.onPageFinished; exposes
+ * window.__arktosReflowApply(scale) so both signals can drive it —
+ * WebViewClient.onScaleChanged (the reliable WebView pinch signal)
+ * and visualViewport.resize (where supported). The constraints are
+ * removed when the zoom returns to ~1x. */
 (function () {
     'use strict';
 
-    if (window.__arktosReflow) {
+    if (window.__arktosReflowApply) {
         return;
     }
-    window.__arktosReflow = true;
 
     var style = document.createElement('style');
     style.id = 'arktos-reflow';
     (document.head || document.documentElement).appendChild(style);
 
-    function reflow() {
-        var vp = window.visualViewport;
-        var scale = vp ? vp.scale : 1;
-        if (scale <= 1.05) {
-            style.textContent = '';
-            if (document.body) {
-                document.body.style.width = '';
-            }
+    window.__arktosReflowApply = function (scale) {
+        if (!document.body) {
             return;
         }
-        var width = Math.round(vp ? vp.width : window.innerWidth / scale);
-        if (document.body) {
-            document.body.style.width = width + 'px';
+        if (scale <= 1.05) {
+            style.textContent = '';
+            document.body.style.width = '';
+            return;
         }
+        var width = Math.round(window.innerWidth / scale);
+        document.body.style.width = width + 'px';
         style.textContent =
             'html,body{max-width:' + width + 'px !important;overflow-x:hidden !important;}' +
             'body *{max-width:100% !important;overflow-wrap:break-word !important;word-wrap:break-word !important;}';
-    }
+    };
 
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', reflow);
+        window.visualViewport.addEventListener('resize', function () {
+            window.__arktosReflowApply(window.visualViewport.scale);
+        });
     }
-    reflow();
 }());
