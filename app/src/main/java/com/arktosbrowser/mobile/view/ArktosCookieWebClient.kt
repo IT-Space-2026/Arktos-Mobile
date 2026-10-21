@@ -662,6 +662,7 @@ class ArktosCookieWebClient(
 
         blockedCountThisPage = 0
         initScale = 0f
+        arktosCookieView.resetReflowBaseline()
         if (!url.isGeneratedPageUrl()) {
             currentUrl = url
         }

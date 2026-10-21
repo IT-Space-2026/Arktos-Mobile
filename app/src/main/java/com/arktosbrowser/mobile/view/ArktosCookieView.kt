@@ -11,6 +11,7 @@ import android.net.http.SslCertificate
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.os.Message
 import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
@@ -389,8 +390,13 @@ class ArktosCookieView(
                 null
             )
             webView?.evaluateJavascript(textReflowJs.provideJs(activity), null)
+            startReflowPolling()
         } else {
             settings.layoutAlgorithm = LayoutAlgorithm.NORMAL
+            reflowHandler.removeCallbacks(reflowPoll)
+            reflowPolling = false
+            reflowBaseScale = 0f
+            reflowLastApplied = 0f
             // Toggled off on a loaded page — strip any applied reflow.
             webView?.evaluateJavascript(
                 "(function() { var s = document.getElementById('arktos-reflow'); if (s) s.remove(); window.__arktosReflowApply = null; if (document.body) document.body.style.width = ''; })();",
@@ -399,6 +405,15 @@ class ArktosCookieView(
         }
 
         settings.blockNetworkImage = userPreferences.blockImagesEnabled
+
+        /* Text reflow zoom tracking. No single page-side signal
+         * (onScaleChanged, visualViewport, clientWidth) reports WebView
+         * pinch zoom reliably across versions, but WebView.getScale()
+         * always reflects it — so a lightweight poll reads it directly
+         * and drives the JS apply hook with the zoom ratio. */
+        if (!reflowPolling && userPreferences.textReflowEnabled) {
+            startReflowPolling()
+        }
 
         // TODO: see if crashes still apply
         settings.setSupportMultipleWindows(userPreferences.popupsEnabled)
@@ -422,6 +437,51 @@ class ArktosCookieView(
         }
     }
     
+    @SuppressLint("NewApi")
+    private val reflowHandler = Handler(Looper.getMainLooper())
+    private var reflowBaseScale = 0f
+    private var reflowLastApplied = 0f
+    @Volatile private var reflowPolling = false
+
+    private val reflowPoll = object : Runnable {
+        override fun run() {
+            val wv = webView
+            if (wv == null || !userPreferences.textReflowEnabled) {
+                reflowPolling = false
+                return
+            }
+            @Suppress("DEPRECATION")
+            val scale = wv.scale
+            if (reflowBaseScale <= 0f) {
+                reflowBaseScale = scale
+            }
+            val ratio = scale / reflowBaseScale
+            if (kotlin.math.abs(ratio - reflowLastApplied) > 0.04f) {
+                reflowLastApplied = ratio
+                wv.evaluateJavascript(
+                    "window.__arktosReflowApply && window.__arktosReflowApply($ratio)",
+                    null
+                )
+            }
+            reflowHandler.postDelayed(this, 300)
+        }
+    }
+
+    private fun startReflowPolling() {
+        if (!reflowPolling) {
+            reflowPolling = true
+            reflowLastApplied = 0f
+            reflowHandler.postDelayed(reflowPoll, 300)
+        }
+    }
+
+    /** Resets the resting-scale baseline — call on each new page load
+     *  so the zoom ratio is measured against this page's natural scale. */
+    fun resetReflowBaseline() {
+        reflowBaseScale = 0f
+        reflowLastApplied = 0f
+    }
+
     @SuppressLint("NewApi")
     private fun WebView.initializeSettings() {
         settings.apply {
