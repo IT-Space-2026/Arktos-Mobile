@@ -8,7 +8,9 @@ import android.net.Uri
 import android.net.http.SslCertificate
 import android.net.http.SslError
 import android.os.Bundle
+import android.util.Base64
 import android.view.View
+import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.RankListLoader
@@ -18,6 +20,7 @@ import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder.NewTab
+import com.arktosbrowser.mobile.html.ChangelogPage
 import com.arktosbrowser.mobile.engine.CertificateErrorAction
 import com.arktosbrowser.mobile.engine.CertificateErrorInfo
 import com.arktosbrowser.mobile.engine.ContextMenuInfo
@@ -42,6 +45,7 @@ import com.arktosbrowser.mobile.network.NavigationPolicy
 import com.arktosbrowser.mobile.network.NavigationPolicyConfig
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.preference.userAgent
+import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.search.SafeSearch
 import com.arktosbrowser.mobile.ssl.SslState
 import com.arktosbrowser.mobile.utils.isGeneratedPageUrl
@@ -235,8 +239,28 @@ class GeckoPage(
         // resource resolution are a parity gap.
         val charset = runCatching { Charset.forName(encoding) }.getOrNull()
             ?: Charsets.UTF_8
-        session.load(GeckoSession.Loader().data(data.toByteArray(charset), mimeType))
+        session.load(
+            GeckoSession.Loader()
+                .data(inlineAssetUrls(data).toByteArray(charset), mimeType)
+        )
     }
+
+    /**
+     * A `data:` document has no base URL and gecko has no
+     * `shouldInterceptRequest`-style subresource surface — so bundled
+     * artwork referenced the WebView way (`file:///android_asset/<x>`)
+     * or as `arktos://<page>/<x>` chrome links is inlined here as a
+     * `data:` URI. The page renders identically on both engines.
+     */
+    private fun inlineAssetUrls(html: String): String =
+        ASSET_URL_PATTERN.replace(html) { match ->
+            val asset = match.groupValues[1]
+            runCatching {
+                val bytes = activity.assets.open(asset).use { it.readBytes() }
+                "data:${ChangelogPage.mimeForAsset(asset)};base64," +
+                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+            }.getOrNull() ?: match.value
+        }
 
     override fun stop() = session.stop()
 
@@ -403,17 +427,9 @@ class GeckoPage(
 
     // ---- shell-facing tab surface ----------------------------------------
 
-    // The app-pause tracker — the foreground session stays active only
-    // while the app is in the foreground too.
-    private var appResumed = true
-
     override var isForegroundTab: Boolean = false
         set(isForeground) {
             field = isForeground
-            // Only the foreground session is active — background
-            // sessions stay suspended (media, compositor, priority),
-            // the GeckoView-blessed model.
-            if (appResumed) session.setActive(isForeground)
             uiController.tabChanged(this)
         }
 
@@ -480,15 +496,9 @@ class GeckoPage(
         )
     }
 
-    override fun onPause() {
-        appResumed = false
-        session.setActive(false)
-    }
+    override fun onPause() = session.setActive(false)
 
-    override fun onResume() {
-        appResumed = true
-        if (isForegroundTab) session.setActive(true)
-    }
+    override fun onResume() = session.setActive(true)
 
     /**
      * A gecko session keeps its content in the tab process — the only
@@ -637,7 +647,7 @@ class GeckoPage(
         generatedPageOriginalUrl = originalUrl
         session.load(
             GeckoSession.Loader().data(
-                errorPages.interstitialHtml(page, originalUrl)
+                inlineAssetUrls(errorPages.interstitialHtml(page, originalUrl))
                     .toByteArray(Charsets.UTF_8), "text/html"
             )
         )
@@ -704,6 +714,31 @@ class GeckoPage(
             if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
                 return GeckoResult.fromValue(AllowOrDeny.DENY)
             }
+            // arktos:// chrome pages (the changelog). The WebView backend
+            // serves these via shouldInterceptRequest; gecko has no
+            // subresource interception surface, so the bundled HTML is
+            // injected as a data load with its artwork inlined — the
+            // navigation itself is denied either way.
+            if (request.uri.startsWith("arktos://")) {
+                if (ArktosCore.isChangelogUrl(request.uri)) {
+                    runCatching {
+                        activity.assets.open("changelog.html")
+                            .use { it.readBytes().toString(Charsets.UTF_8) }
+                    }.getOrNull()?.let { raw ->
+                        generatedPageOriginalUrl = ChangelogPage.URL
+                        val dark = userPreferences.useTheme != AppTheme.LIGHT &&
+                            userPreferences.useTheme != AppTheme.ARKTOS_LIGHT
+                        session.load(
+                            GeckoSession.Loader().data(
+                                inlineAssetUrls(ChangelogPage.applyDarkTheme(raw, dark))
+                                    .toByteArray(Charsets.UTF_8), "text/html"
+                            )
+                        )
+                    }
+                }
+                return GeckoResult.fromValue(AllowOrDeny.DENY)
+            }
+
             // Bundled app pages (the start/bookmark/history/incognito/
             // download pages) live under filesDir — GeckoView can't open
             // `file:///data/...` paths, so they're served as data loads
@@ -716,7 +751,7 @@ class GeckoPage(
                     generatedPageOriginalUrl = request.uri
                     session.load(
                         GeckoSession.Loader().data(
-                            html.toByteArray(Charsets.UTF_8), "text/html"
+                            inlineAssetUrls(html).toByteArray(Charsets.UTF_8), "text/html"
                         )
                     )
                 }
@@ -851,7 +886,7 @@ class GeckoPage(
                     )
                 )
             }
-            return GeckoResult.fromValue(GeckoErrorPages.dataUri(html))
+            return GeckoResult.fromValue(GeckoErrorPages.dataUri(inlineAssetUrls(html)))
         }
 
         private fun isCertificateError(error: WebRequestError): Boolean =
@@ -1101,6 +1136,11 @@ class GeckoPage(
     companion object {
         private const val TAG = "GeckoPage"
         private const val STATE_KEY = "GECKO_SESSION_STATE"
+
+        // Bundled-artwork references inside generated pages — see
+        // inlineAssetUrls.
+        private val ASSET_URL_PATTERN =
+            Regex("(?:file:///android_asset/|arktos://[^/\"'\\s]+/)([A-Za-z0-9._/-]+)")
 
         /** Mirrors `ArktosCookieView.HEADER_SAVEDATA`. */
         private const val HEADER_SAVEDATA = "Save-Data"

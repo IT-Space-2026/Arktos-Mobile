@@ -233,13 +233,33 @@ class GeckoEngine(
             }
             if (gv.session !== page.session) {
                 gv.releaseSession()
+                // Activate before the display binds — a session bound
+                // while inactive can leave the surface unpainted
+                // (black) until its next invalidation, the same reason
+                // mozilla-components runs markActive() ahead of
+                // render().
+                if (page.session.isOpen) page.session.setActive(true)
                 gv.setSession(page.session)
+                // Cover with the window background until the new
+                // session composites — a swapped session can otherwise
+                // show a stale or black surface indefinitely.
+                gv.coverUntilFirstPaint(backgroundColor(page.activity))
             }
             page.session.setFocused(true)
             boundPage = page
         }
         page.view = gv
         return gv
+    }
+
+    private fun backgroundColor(context: Context): Int {
+        val tv = android.util.TypedValue()
+        context.theme.resolveAttribute(android.R.attr.colorBackground, tv, true)
+        return if (tv.resourceId != 0) {
+            androidx.core.content.ContextCompat.getColor(context, tv.resourceId)
+        } else {
+            tv.data
+        }
     }
 
     override fun createView(page: Page): View? =
