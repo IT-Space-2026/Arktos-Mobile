@@ -145,9 +145,6 @@ class ArktosCookieWebClient(
     @Inject internal lateinit var siteSettings: SiteSettings
     @Inject internal lateinit var connectivityGate: ConnectivityGate
 
-    @Volatile private var isRunning = false
-    private var initScale = 0f
-
     private var currentUrl: String = ""
 
     /**
@@ -661,7 +658,6 @@ class ArktosCookieWebClient(
         }
 
         blockedCountThisPage = 0
-        initScale = 0f
         arktosCookieView.resetReflowBaseline()
         if (!url.isGeneratedPageUrl()) {
             currentUrl = url
@@ -841,23 +837,6 @@ class ArktosCookieWebClient(
     }
 
 
-
-    override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
-        if (initScale <= 0f) {
-            // First scale event after a page load — the resting scale
-            // this page renders at (wide-viewport pages often load
-            // zoomed-out). Normalizing against it means "no zoom" is
-            // always ratio 1 regardless of the page's natural scale.
-            initScale = oldScale
-        }
-        if (view.isShown && arktosCookieView.userPreferences.textReflowEnabled && !isRunning) {
-            isRunning = view.postDelayed({
-                view.evaluateJavascript(
-                    "window.__arktosReflowApply && window.__arktosReflowApply(${newScale / initScale})"
-                ) { isRunning = false }
-            }, 100)
-        }
-    }
 
     override fun onReceivedSslError(webView: WebView, handler: SslErrorHandler, error: SslError) {
 
