@@ -59,20 +59,24 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   release recipe for reproducible/F-Droid-style builds are documented
   in [REPRODUCIBLE.md](REPRODUCIBLE.md).
 
-### Gecko build size: AAB vs per-ABI APK
+### Gecko build size
 
-GeckoView's `libxul.so` is ~60MB+ per ABI — a universal gecko APK lands
-~230MB (measured: 231MB debug, arm64-only). The `gecko` release scope
-is therefore **arm64-v8a only** (`ndk.abiFilters` on the flavor);
-armeabi-v7a and x86 devices should install the Lite flavor, which stays
-WebView-sized (~13MB per-device download, ~24MB universal release).
-An **AAB** (`bundleScMainGeckoRelease`) is the preferred distribution —
-bundletool/Play splits serve each device only its matching ABI slice —
-while a **per-ABI APK** works for direct downloads but must be
-published per supported ABI. A universal gecko APK is intentionally not
-produced.
+GeckoView's `libxul.so` is ~150MB uncompressed for a single ABI — a
+universal gecko APK would exceed 500MB and is intentionally not
+produced. The `gecko` release scope is **arm64-v8a only**
+(`ndk.abiFilters` on the flavor); armeabi-v7a and x86 devices should
+install the Lite flavor instead. The flavor also enables
+`useLegacyPackaging`, which deflates ~178MB of stored native libs to
+~76MB inside the APK.
 
-Signed APKs are published on the [Releases
+Measured v1.0 unsigned release APKs: **Arktos ≈ 98MB** (arm64,
+`com.arktosbrowser.mobile.full`) and **Arktos Light ≈ 19MB**
+(universal, `com.arktosbrowser.mobile`). An **AAB**
+(`bundleScMainGeckoRelease`) remains an option for store
+distribution, but per-ABI APKs work fine for direct downloads at
+this size.
+
+APKs are published on the [Releases
 page](https://github.com/IT-Space-2026/Arktos-Mobile/releases). The
 repo carries fastlane store metadata
 (`fastlane/metadata/android/en-US/`), so the package already meets the
@@ -85,10 +89,9 @@ SmartCookieWeb#314).
 ## Features
 
 - Modern, clean UI
-- Light build is ~13MB per-device download (~24MB universal APK — the
-  bundled `libarktos.so` Rust core dominates; ABI splits keep
-  per-device installs small). The full build's size comes from
-  GeckoView — see the size section above
+- Light build is ~19MB universal APK (~12MB per-device with ABI
+  splits — the bundled `libarktos.so` Rust core dominates). The full
+  build's size comes from GeckoView — see the size section above
 - Tons of settings
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
