@@ -73,7 +73,7 @@ import java.util.*
 import java.util.regex.Pattern
 import javax.inject.Inject
 import javax.net.ssl.HttpsURLConnection
-import kotlin.math.abs
+
 
 class ArktosCookieWebClient(
         private val activity: Activity,
@@ -118,10 +118,6 @@ class ArktosCookieWebClient(
     private val reloadBlocked = activity.getString(R.string.error_reload)
     private val hintBlocked = activity.getString(R.string.page_blocked_hint)
 
-    private var zoomed = false
-    private var first = true
-    private var initScale = 0f
-
     // UI01 — non-empty marks a non-LIGHT theme: the Rust page builder
     // emits <html class="arktos-dark"> from that signal. The fragment
     // still appends verbatim; no !important so it can't clobber the
@@ -148,9 +144,6 @@ class ArktosCookieWebClient(
     @Inject internal lateinit var rankListLoader: RankListLoader
     @Inject internal lateinit var siteSettings: SiteSettings
     @Inject internal lateinit var connectivityGate: ConnectivityGate
-
-    @Volatile private var isRunning = false
-    private var zoomScale = 0.0f
 
     private var currentUrl: String = ""
 
@@ -467,14 +460,16 @@ class ArktosCookieWebClient(
         }
 
         if (userPreferences.textReflowEnabled) {
-            // Reflow is driven by pinch-zoom scale changes; pages that
-            // declare user-scalable=no / maximum-scale=1 suppress
-            // onScaleChanged entirely, leaving the feature dead. Rewrite
-            // the viewport to allow zooming so reflow can engage.
+            // Pages that declare user-scalable=no / maximum-scale=1
+            // suppress pinch zoom entirely, which would leave reflow
+            // dead — rewrite the viewport to permit scaling, then
+            // install the reflow script (it self-drives off the
+            // Visual Viewport API; onScaleChanged is unreliable).
             view.evaluateJavascript(
                 "(function() { var m = document.querySelector('meta[name=\"viewport\"]'); if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.appendChild(m); } var c = m.getAttribute('content') || ''; c = c.replace(/user-scalable\\s*=\\s*(no|0)/i, 'user-scalable=yes').replace(/maximum-scale\\s*=\\s*[^,;]+/i, ''); if (!/user-scalable/i.test(c)) c += (c ? ',' : '') + 'user-scalable=yes'; m.setAttribute('content', c); })();",
                 null
             )
+            view.evaluateJavascript(textReflowJs.provideJs(activity), null)
         }
 
 
@@ -662,8 +657,6 @@ class ArktosCookieWebClient(
             activity.findViewById<FrameLayout>(R.id.download_button).visibility = View.GONE
         }
 
-        zoomed = false
-        first = true
         blockedCountThisPage = 0
         if (!url.isGeneratedPageUrl()) {
             currentUrl = url
@@ -842,44 +835,7 @@ class ArktosCookieWebClient(
 
     }
 
-    override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) {
-        if (first) {
-            initScale = newScale
-            first=false
-            zoomed = false
-        }
-        else {
-            if (newScale>oldScale) {
-                zoomed = true
-            }
-            else {
-                if (newScale<initScale) {
-                    zoomed = false
-                }
-            }
-        }
 
-      if (view.isShown && arktosCookieView.userPreferences.textReflowEnabled) {
-            if (isRunning)
-                return
-            val changeInPercent = abs(100 - 100 / zoomScale * newScale)
-            if (changeInPercent > 2.5f && !isRunning) {
-                isRunning = view.postDelayed({
-                    zoomScale = newScale
-
-                    val textScale = (newScale / initScale)
-                    view.evaluateJavascript(
-                        textReflowJs.provideJs(activity).replace(REFLOW_RATIO_TOKEN, textScale.toString())
-                    ) { isRunning = false }
-                }, 100)
-            }
-            else{
-                view.evaluateJavascript(
-                    textReflowJs.provideJs(activity).replace(REFLOW_RATIO_TOKEN, "window.document.documentElement.clientWidth")
-                ) { isRunning = false }
-            }
-        }
-    }
 
     override fun onReceivedSslError(webView: WebView, handler: SslErrorHandler, error: SslError) {
 
@@ -1173,7 +1129,6 @@ class ArktosCookieWebClient(
     companion object {
 
         private const val TAG = "ArktosCookieWebClient"
-        private const val REFLOW_RATIO_TOKEN = "%%RATIO%%"
 
     }
 }
