@@ -203,7 +203,7 @@ class GeckoEngine(
      * so the view must stay attached and the session must swap inside
      * it.
      */
-    private var sharedView: GeckoView? = null
+    private var sharedView: ArktosGeckoView? = null
     private var boundPage: GeckoPage? = null
 
     /**
@@ -225,7 +225,7 @@ class GeckoEngine(
             }
         }
         val gv = sharedView
-            ?: GeckoView(page.activity).also { sharedView = it }
+            ?: ArktosGeckoView(page.activity).also { sharedView = it }
         if (boundPage !== page) {
             boundPage?.let {
                 it.view = null
@@ -233,18 +233,23 @@ class GeckoEngine(
             }
             if (gv.session !== page.session) {
                 gv.releaseSession()
+                // A session that died (crash/kill) must be re-opened
+                // before binding — setSession() on a closed session
+                // silently leaves the surface unbound.
+                if (!page.session.isOpen) page.session.open(runtime)
                 // Activate before the display binds — a session bound
                 // while inactive can leave the surface unpainted
                 // (black) until its next invalidation, the same reason
                 // mozilla-components runs markActive() ahead of
                 // render().
-                if (page.session.isOpen) page.session.setActive(true)
+                page.session.setActive(true)
                 gv.setSession(page.session)
                 // Cover with the window background until the new
                 // session composites — a swapped session can otherwise
                 // show a stale or black surface indefinitely.
                 gv.coverUntilFirstPaint(backgroundColor(page.activity))
             }
+            gv.pendingSession = page.session
             page.session.setFocused(true)
             boundPage = page
         }

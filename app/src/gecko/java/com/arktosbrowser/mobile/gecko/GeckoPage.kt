@@ -527,7 +527,12 @@ class GeckoPage(
     }
 
     override fun onDestroy() {
-        view?.releaseSession()
+        view?.let { v ->
+            v.releaseSession()
+            (v as? ArktosGeckoView)?.let {
+                if (it.pendingSession == session) it.pendingSession = null
+            }
+        }
         view = null
         if (session.isOpen) {
             session.close()
