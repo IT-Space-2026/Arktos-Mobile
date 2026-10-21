@@ -501,15 +501,27 @@ class GeckoPage(
     override fun onResume() = session.setActive(true)
 
     /**
-     * A gecko session keeps its content in the tab process — the only
-     * ways a background tab loses it are a content-process crash
-     * (`onCrash`) and the `finishInitialization` stop() that aborts a
-     * restored tab's first load. Neither is repairable short of a
-     * reload; a tab that painted once needs nothing.
+     * A gecko session keeps its content in the tab process — when that
+     * process is killed (`onKill`, e.g. under memory pressure) or crashes
+     * (`onCrash`), the session's compositor dies with it and a re-bound
+     * GeckoView only shows a dead surface. A killed session also closes,
+     * so recovery re-opens it and restores the last SessionState (keeps
+     * scroll + history) rather than plain reload. The
+     * `finishInitialization` stop() abort of a restored tab's first load
+     * takes the same path via the never-loaded branch.
      */
     override fun reloadIfStale() {
-        if (contentCrashed || (!loading && !loadCompleted)) {
-            contentCrashed = false
+        if (!contentCrashed && session.isOpen && (loading || loadCompleted)) {
+            return
+        }
+        contentCrashed = false
+        val state = latestSessionState
+        if (!session.isOpen) {
+            session.open(engine.runtime)
+            if (state != null) session.restoreState(state) else session.loadUri(currentUrl)
+        } else if (state != null) {
+            session.restoreState(state)
+        } else {
             reload()
         }
     }
@@ -1072,6 +1084,19 @@ class GeckoPage(
         override fun onCrash(session: GeckoSession) {
             contentCrashed = true
             onCrashed?.invoke()
+            if (isShown) reloadIfStale()
+        }
+
+        /**
+         * The tab's content process was killed (e.g. memory pressure) —
+         * distinct from onCrash: the compositor is dead but no crash is
+         * reported, and the session closes. `reloadIfStale` re-opens it
+         * when the tab is next selected; the foreground session is
+         * resurrected right away.
+         */
+        override fun onKill(session: GeckoSession) {
+            contentCrashed = true
+            if (isShown) reloadIfStale()
         }
 
         /** `window.close()` — the WebView's `onCloseWindow` parity. */
