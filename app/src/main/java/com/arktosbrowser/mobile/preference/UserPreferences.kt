@@ -15,7 +15,7 @@ import com.arktosbrowser.mobile.preference.delegates.*
 import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.search.Suggestions
-import com.arktosbrowser.mobile.search.engine.GoogleSearch
+import com.arktosbrowser.mobile.search.engine.DuckSearch
 import com.arktosbrowser.mobile.utils.FileUtils
 import com.arktosbrowser.mobile.view.RenderingMode
 import android.content.SharedPreferences
@@ -286,12 +286,12 @@ class UserPreferences @Inject constructor(
      *
      * @see SearchEngineProvider
      */
-    var searchChoice by preferences.intPreference(SEARCH, 1)
+    var searchChoice by preferences.intPreference(SEARCH, 7)
 
     /**
      * The custom URL which should be used for making searches.
      */
-    var searchUrl by preferences.stringPreference(SEARCH_URL, GoogleSearch().queryUrl)
+    var searchUrl by preferences.stringPreference(SEARCH_URL, DuckSearch().queryUrl)
 
     /**
      * True if the browser should attempt to reflow the text on a web page after zooming in or out

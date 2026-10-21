@@ -60,7 +60,7 @@ class  SearchEngineProvider @Inject constructor(
             12 -> EcosiaSearch()
             15 -> MojeekSearch()
             16 -> QwantSearch()
-            else -> GoogleSearch()
+            else -> DuckSearch()
         }
 
     /**
