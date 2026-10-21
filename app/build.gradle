@@ -169,7 +169,7 @@ dependencies {
     implementation "androidx.biometric:biometric:1.1.0"
 
     // html parsing for reading mode
-    implementation 'org.jsoup:jsoup:1.22.2'
+    implementation 'org.jsoup:jsoup:1.23.2'
 
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
