@@ -120,7 +120,6 @@ class ArktosCookieWebClient(
 
     private var zoomed = false
     private var first = true
-    private var errored = false
     private var initScale = 0f
 
     // UI01 — non-empty marks a non-LIGHT theme: the Rust page builder
@@ -467,6 +466,17 @@ class ArktosCookieWebClient(
             )
         }
 
+        if (userPreferences.textReflowEnabled) {
+            // Reflow is driven by pinch-zoom scale changes; pages that
+            // declare user-scalable=no / maximum-scale=1 suppress
+            // onScaleChanged entirely, leaving the feature dead. Rewrite
+            // the viewport to allow zooming so reflow can engage.
+            view.evaluateJavascript(
+                "(function() { var m = document.querySelector('meta[name=\"viewport\"]'); if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.appendChild(m); } var c = m.getAttribute('content') || ''; c = c.replace(/user-scalable\\s*=\\s*(no|0)/i, 'user-scalable=yes').replace(/maximum-scale\\s*=\\s*[^,;]+/i, ''); if (!/user-scalable/i.test(c)) c += (c ? ',' : '') + 'user-scalable=yes'; m.setAttribute('content', c); })();",
+                null
+            )
+        }
+
 
 
         if (view.title == null || view.title.isNullOrEmpty()) {
@@ -602,11 +612,17 @@ class ArktosCookieWebClient(
         }
     }
 
-    fun reloadIncludingErrorPage(view: WebView?){
-        if(errored){
-            view?.loadUrl(currentUrl)
-        }
-        else{
+    fun reloadIncludingErrorPage(view: WebView?) {
+        val original = errorPageOriginalUrl
+        if (original != null && view?.url.isGeneratedPageUrl()) {
+            // A generated error page is on screen — reload() would just
+            // re-render the error DOM; re-request the failing URL.
+            errorPageOriginalUrl = null
+            view?.loadUrl(original)
+        } else {
+            // reload() re-requests the committed history entry, tracking
+            // pushState navigations that onPageStarted never sees —
+            // loadUrl(currentUrl) would resurrect a stale URL.
             view?.reload()
         }
     }
@@ -639,7 +655,6 @@ class ArktosCookieWebClient(
             return
         }
 
-        errored = true
         if(isPackageInstalled(activity.resources.getString(R.string.ytdl_package_name), activity.packageManager) && stringContainsItemFromList(url, knownUndetectedVideoUrls)){
             activity.findViewById<FrameLayout>(R.id.download_button).visibility = View.VISIBLE
         }
@@ -800,7 +815,6 @@ class ArktosCookieWebClient(
 
     override fun onReceivedError(webview: WebView, errorCode: Int, error: String, failingUrl: String) {
         if(errorCode != -1) {
-            errored = true
             arktosCookieView.onLoadStatusChanged?.invoke(LoadStatus.Failed)
             Thread.sleep(500)
             webview.settings.javaScriptEnabled = true
