@@ -3,6 +3,7 @@
 package com.arktosbrowser.mobile
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.os.Build
@@ -10,6 +11,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatDelegate
 import com.arktosbrowser.mobile.browser.AppLockState
+import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.browser.SecureWindowPolicy
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
@@ -73,8 +75,17 @@ class BrowserApp : Application() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
 
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
-            if (BuildConfig.DEBUG) {
-                FileUtils.writeCrashToStorage(this, ex)
+            FileUtils.writeCrashToStorage(this, ex)
+            // Also drop a copy in the app-specific external dir so it
+            // can be retrieved without root (Files app / adb pull).
+            try {
+                val dir = java.io.File(getExternalFilesDir(null), "crash")
+                dir.mkdirs()
+                java.io.File(
+                    dir,
+                    ex.javaClass.simpleName + '_' + System.currentTimeMillis() + ".txt"
+                ).printWriter().use { w -> ex.printStackTrace(w) }
+            } catch (_: Throwable) {
             }
 
             if (defaultHandler != null) {
@@ -89,6 +100,16 @@ class BrowserApp : Application() {
                 FileUtils.writeCrashToStorage(this, throwable)
                 throw throwable
             }
+        }
+
+        // GeckoView spawns its own service processes (:crashhelper,
+        // :gpu, :tab, :media, ...) which all run this Application
+        // class — creating a second GeckoRuntime there races the
+        // main profile's creation ("Could not find profile folder")
+        // and brings the whole browser down. Only the browser
+        // processes — main and :incognito — get the full init.
+        if (!isBrowserProcess()) {
+            return
         }
 
         applicationComponent = DaggerAppComponent.builder()
@@ -155,6 +176,28 @@ class BrowserApp : Application() {
 
         DynamicColors.applyToActivitiesIfAvailable(this)
     }
+
+    /**
+     * Only the main and `:incognito` processes host the browser —
+     * GeckoView's service processes (`:crashhelper`, `:gpu`, `:tab`,
+     * …) share this [Application] class and must skip the Dagger +
+     * engine init or they race the real runtime's profile creation.
+     */
+    private fun isBrowserProcess(): Boolean {
+        val processName = currentProcessName() ?: return true
+        return processName == packageName ||
+                IncognitoPartition.isIncognitoProcess(packageName, processName)
+    }
+
+    private fun currentProcessName(): String? =
+        if (Build.VERSION.SDK_INT >= 28) {
+            Application.getProcessName()
+        } else {
+            (getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager)
+                ?.runningAppProcesses
+                ?.firstOrNull { it.pid == android.os.Process.myPid() }
+                ?.processName
+        }
 
     /**
      * Create the [BuildType] from the [BuildConfig].
