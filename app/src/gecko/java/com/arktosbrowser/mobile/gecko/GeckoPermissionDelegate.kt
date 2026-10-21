@@ -29,6 +29,22 @@ class GeckoPermissionDelegate(
     private val userPreferences: UserPreferences
 ) : GeckoSession.PermissionDelegate {
 
+    /**
+     * Per-origin decisions for this session's lifetime — Firefox's
+     * session-scoped permission model. Sites re-request on
+     * focus/visibilitychange, which fires on every session re-bind
+     * (tab switch), so without a remembered answer the prompt would
+     * come back on every switch.
+     */
+    private val decisions = mutableMapOf<String, Int>()
+    private val mediaGranted = mutableMapOf<String, Boolean>()
+
+    private fun originOf(uri: String): String =
+        try {
+            val u = java.net.URI(uri)
+            "${u.scheme ?: ""}://${u.host ?: uri}${if (u.port > 0) ":${u.port}" else ""}"
+        } catch (_: Exception) { uri }
+
     /** Runtime permissions Gecko asks Android for (camera, mic, …). */
     override fun onAndroidPermissionsRequest(
         session: GeckoSession,
@@ -49,6 +65,9 @@ class GeckoPermissionDelegate(
         session: GeckoSession,
         perm: GeckoSession.PermissionDelegate.ContentPermission
     ): GeckoResult<Int>? {
+        decisions["${originOf(perm.uri)}|${perm.permission}"]?.let {
+            return GeckoResult.fromValue(it)
+        }
         return when (perm.permission) {
             GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION ->
                 geolocation(perm)
@@ -71,13 +90,16 @@ class GeckoPermissionDelegate(
         perm: GeckoSession.PermissionDelegate.ContentPermission
     ): GeckoResult<Int> {
         val result = GeckoResult<Int>()
+        val key = "${originOf(perm.uri)}|${perm.permission}"
+        fun answer(value: Int) {
+            decisions[key] = value
+            result.complete(value)
+        }
         uiController.requestRuntimePermissions(
             setOf(Manifest.permission.ACCESS_FINE_LOCATION)
         ) { granted ->
             if (!granted) {
-                result.complete(
-                    GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                )
+                answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                 return@requestRuntimePermissions
             }
             activity.runOnUiThread {
@@ -87,19 +109,13 @@ class GeckoPermissionDelegate(
                     setMessage(org + activity.getString(R.string.message_location))
                     setCancelable(true)
                     setOnCancelListener {
-                        result.complete(
-                            GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                        )
+                        answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                     }
                     setPositiveButton(R.string.action_allow) { _, _ ->
-                        result.complete(
-                            GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
-                        )
+                        answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
                     }
                     setNegativeButton(R.string.action_dont_allow) { _, _ ->
-                        result.complete(
-                            GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                        )
+                        answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                     }
                 }.resizeAndShow()
             }
@@ -115,6 +131,11 @@ class GeckoPermissionDelegate(
         perm: GeckoSession.PermissionDelegate.ContentPermission
     ): GeckoResult<Int> {
         val result = GeckoResult<Int>()
+        val key = "${originOf(perm.uri)}|${perm.permission}"
+        fun answer(value: Int) {
+            decisions[key] = value
+            result.complete(value)
+        }
         activity.runOnUiThread {
             BrowserDialog.showPositiveNegativeDialog(
                 activity = activity,
@@ -136,19 +157,13 @@ class GeckoPermissionDelegate(
                     )
                 ),
                 positiveButton = DialogItem(title = R.string.action_allow) {
-                    result.complete(
-                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
-                    )
+                    answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
                 },
                 negativeButton = DialogItem(title = R.string.action_dont_allow) {
-                    result.complete(
-                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                    )
+                    answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                 },
                 onCancel = {
-                    result.complete(
-                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
-                    )
+                    answer(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                 }
             )
         }
@@ -171,6 +186,12 @@ class GeckoPermissionDelegate(
             callback.reject()
             return
         }
+        val origin = originOf(uri)
+        mediaGranted[origin]?.let { granted ->
+            if (granted) callback.grant(video?.firstOrNull(), audio?.firstOrNull())
+            else callback.reject()
+            return
+        }
         activity.runOnUiThread {
             val resources = buildList {
                 if (!video.isNullOrEmpty()) add("camera")
@@ -182,12 +203,17 @@ class GeckoPermissionDelegate(
                 message = R.string.message_permission_request,
                 messageArguments = arrayOf(uri, resources),
                 positiveButton = DialogItem(title = R.string.action_allow) {
+                    mediaGranted[origin] = true
                     callback.grant(video?.firstOrNull(), audio?.firstOrNull())
                 },
                 negativeButton = DialogItem(title = R.string.action_dont_allow) {
+                    mediaGranted[origin] = false
                     callback.reject()
                 },
-                onCancel = { callback.reject() }
+                onCancel = {
+                    mediaGranted[origin] = false
+                    callback.reject()
+                }
             )
         }
     }
