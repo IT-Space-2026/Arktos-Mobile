@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.ssl
 
 import android.net.http.SslError

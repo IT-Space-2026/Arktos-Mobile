@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! SEC12 — IDN / homograph display protection.
 //!
 //! An attacker can register a domain whose Unicode host *looks* like a

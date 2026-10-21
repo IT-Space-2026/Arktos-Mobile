@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Userscript metadata parsing + injection prep (PORT01).
 //!
 //! Port of `ArktosCookieWebClient.installExtension` / `parseLine` /

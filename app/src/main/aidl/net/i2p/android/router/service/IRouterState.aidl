@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package net.i2p.android.router.service;
 
 import net.i2p.android.router.service.State;

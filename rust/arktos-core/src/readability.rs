@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Readability port (PORT01) — replaces `readability4j` in
 //! `ReadingActivity` with `dom_smoothie`, the same readability.js
 //! port the desktop core uses.

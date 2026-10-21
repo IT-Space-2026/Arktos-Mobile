@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Page and selected-text translation — LibreTranslate-compatible wire
 //! format. Network I/O stays in Kotlin (`TranslateClient`, same split as
 //! `RankListLoader`); Rust owns the request body, endpoint normalization

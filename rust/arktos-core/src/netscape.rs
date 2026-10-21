@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Netscape Bookmark File Format importer (STORE01).
 //!
 //! Port of `NetscapeBookmarkFormatImporter` — same semantics as the

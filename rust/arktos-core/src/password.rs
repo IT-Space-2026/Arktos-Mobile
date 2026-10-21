@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! PORT02 — app-lock / parental-control password hashing.
 //!
 //! The Kotlin shell used to store both passwords (`passwordText`,

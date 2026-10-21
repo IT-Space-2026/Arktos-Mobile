@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! PORT02 — small pure-logic ports from `utils/Utils.kt`: the
 //! tab-strip color math. Bit-level parity with the Kotlin originals,
 //! signed-shifts and float-truncation included.

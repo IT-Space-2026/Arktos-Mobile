@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Arktos Mobile Rust core (`libarktos.so`).
 //!
 //! Foundation crate for the incremental Rust port — the blocklist

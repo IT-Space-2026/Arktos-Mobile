@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.rust
 
 // RCORE01 — seam between the Kotlin shell and the Rust core

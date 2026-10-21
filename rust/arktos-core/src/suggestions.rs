@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Search suggestion core (PORT01).
 //!
 //! Port of the upstream `*SuggestionsModel` classes: the Rust core owns

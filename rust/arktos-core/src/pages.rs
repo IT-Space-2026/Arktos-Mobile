@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! PORT02 — `Utils.buildErrorPage` / `Utils.buildBlockPage` ported
 //! as pure HTML string generation for the interstitial error and
 //! block pages. All localized strings and the theme override arrive

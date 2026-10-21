@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Download engine core (PORT01).
 //!
 //! One Rust home for the filename/MIME logic that used to be spread

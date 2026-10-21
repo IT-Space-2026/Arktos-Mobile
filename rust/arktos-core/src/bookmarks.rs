@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Legacy bookmark importer (PORT01).
 //!
 //! Port of `BookmarkExporter.importBookmarksFromFileStream` /

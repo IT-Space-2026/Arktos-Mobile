@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 @file:JvmName("FaviconUtils")
 
 package com.arktosbrowser.mobile.favicon

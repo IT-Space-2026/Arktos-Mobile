@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Rust storage core (STORE01).
 //!
 //! One `ArktosStore` object behind UniFFI, backed by a single bundled

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Site-rank (Tranco + Majestic) lists — RANK01.
 //!
 //! Port of the desktop rustcore `tranco.rs` + the `TrancoList`

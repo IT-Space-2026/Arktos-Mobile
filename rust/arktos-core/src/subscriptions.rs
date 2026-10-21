@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! AdBlock filter-list preset catalog (LIST01).
 //!
 //! Verbatim port of the desktop's `src/adblock/adblockpresets.cpp`

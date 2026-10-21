@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! PORT02 — port of `utils/UrlUtils.kt` plus the scheme logic shared
 //! by `utils/IntentUtils.java` and `BrowserPresenter.isIntentUrlAllowed`.
 //!

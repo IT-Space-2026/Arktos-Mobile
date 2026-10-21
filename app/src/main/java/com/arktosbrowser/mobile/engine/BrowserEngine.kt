@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.engine
 
 // ENG-M01/ENG-M02 — engine-neutral browser-engine interface, mirroring

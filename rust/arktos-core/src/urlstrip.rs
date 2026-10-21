@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! ClearURLs-style tracking-parameter stripping, ported from the
 //! desktop core (`rustcore/src/urlstrip.rs`).  The vendored ruleset
 //! drives a pure string-surgery strip: kept query segments pass

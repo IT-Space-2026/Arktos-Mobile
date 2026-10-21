@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Unified blocklist engine (BLOCK01).
 //!
 //! One engine behind UniFFI replacing the three parallel Kotlin

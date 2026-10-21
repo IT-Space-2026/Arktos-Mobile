@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.network
 
 import com.arktosbrowser.mobile.rust.ArktosCore

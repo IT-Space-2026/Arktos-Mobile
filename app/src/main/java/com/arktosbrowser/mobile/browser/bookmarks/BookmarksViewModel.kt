@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.browser.bookmarks
 
 import com.arktosbrowser.mobile.database.Bookmark

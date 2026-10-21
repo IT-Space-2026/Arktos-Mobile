@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 package com.arktosbrowser.mobile.userscript
 
 import com.arktosbrowser.mobile.database.javascript.JavaScriptEntry

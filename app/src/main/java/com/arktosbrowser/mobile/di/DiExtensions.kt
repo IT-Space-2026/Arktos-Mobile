@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 @file:JvmName("Injector")
 
 package com.arktosbrowser.mobile.di

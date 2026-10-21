@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Shared hostname helpers (RANK01) — a compact port of the desktop
 //! rustcore `util.rs` pieces the rank table needs: stack-buffered
 //! host normalization plus the conservative DNS-shape gate, so

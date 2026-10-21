@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 @file:Suppress("NOTHING_TO_INLINE")
 
 package com.arktosbrowser.mobile.html.jsoup

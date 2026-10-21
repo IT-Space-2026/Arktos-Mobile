@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright Arktos contributors
 //! Minimal zip central-directory walk (RANK01) — ported from the
 //! desktop rustcore `extverify.rs`, trimmed to the one consumer the
 //! mobile crate has: pulling the `*.csv` member out of the Tranco
