@@ -268,7 +268,13 @@ class GeckoEngine(
         runtime.settings.fontSizeFactor =
             com.arktosbrowser.mobile.browser.TextZoom
                 .zoomPercent(userPreferences.textSize) / 100f
-        runtime.settings.fontInflationEnabled = userPreferences.textReflowEnabled
+        // Text reflow is the WebExtension content script
+        // (text_reflow.js) driven by browser.storage through
+        // [GeckoUserScriptHost.syncReflowPref] — font inflation is
+        // Gecko's own rough equivalent and would double-apply on top
+        // of the element-tagging reflow.
+        runtime.settings.fontInflationEnabled = false
+        userScriptHostOrNull()?.syncReflowPref()
         runtime.settings.preferredColorScheme =
             if (userPreferences.darkWebAddonEnabled(application)) {
                 GeckoRuntimeSettings.COLOR_SCHEME_DARK

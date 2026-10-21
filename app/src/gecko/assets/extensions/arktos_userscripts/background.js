@@ -49,7 +49,14 @@ function register(bootstrap) {
 // no background relay so sender.url stays the page's.)
 const port = browser.runtime.connectNative(NATIVE_APP);
 port.onMessage.addListener((m) => {
-  if (m && m.type === 'sync') register(m.bootstrap || '');
+  if (!m) return;
+  if (m.type === 'sync') register(m.bootstrap || '');
+  // Reflow on/off — text_reflow.js is always registered (manifest
+  // content_scripts) and gates itself on this flag, so toggling
+  // reaches already-open pages without a reload.
+  if (m.type === 'reflow') {
+    browser.storage.local.set({ reflowEnabled: !!m.enabled });
+  }
 });
 port.onDisconnect.addListener(() => {
   // The app tears the port down on shutdown only; nothing to do — the

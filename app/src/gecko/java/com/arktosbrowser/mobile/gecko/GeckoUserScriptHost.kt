@@ -144,6 +144,23 @@ class GeckoUserScriptHost(
         }
     }
 
+    /**
+     * Push the text-reflow toggle to the extension. The reflow
+     * content script is always registered (manifest
+     * `content_scripts`) and gates itself on the
+     * `browser.storage.local.reflowEnabled` flag the background sets
+     * from this message — so a settings change releases already-open
+     * pages without a reload, unlike the script-set channel which
+     * only affects future loads.
+     */
+    fun syncReflowPref() {
+        port?.postMessage(
+            JSONObject()
+                .put("type", "reflow")
+                .put("enabled", userPreferences.textReflowEnabled)
+        )
+    }
+
     private fun syncScripts() {
         appliedVersion = UserScriptEngine.scriptSetVersion()
         disposables.add(
@@ -176,6 +193,7 @@ class GeckoUserScriptHost(
                 }
             })
             syncScripts()
+            syncReflowPref()
         }
     }
 
