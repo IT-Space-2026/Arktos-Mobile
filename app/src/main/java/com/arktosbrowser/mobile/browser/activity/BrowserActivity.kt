@@ -1515,6 +1515,12 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
     override fun setTabView(view: View) {
         if (currentTabView == view) {
+            // Same widget re-shown — the Gecko backend swaps the
+            // session inside its one shared GeckoView, so this path is
+            // its every-switch route: still focus the view and close
+            // the drawer like a real swap.
+            view.requestFocus()
+            mainHandler.postDelayed(binding.drawerLayout::closeDrawers, 200)
             return
         }
 
@@ -2371,6 +2377,15 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         customViewCallback = null
         requestedOrientation = originalOrientation
+
+        // An engine that lends its page widget as the fullscreen view
+        // (GeckoView) came out of the fullscreen container detached —
+        // put it back. The WebView's custom view is a separate
+        // surface, so a still-attached current view skips this.
+        currentTabView?.takeIf { it.parent == null }?.let {
+            binding.contentFrame.addView(it, 0, MATCH_PARENT)
+            it.requestFocus()
+        }
     }
 
     private inner class VideoCompletionListener : MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {

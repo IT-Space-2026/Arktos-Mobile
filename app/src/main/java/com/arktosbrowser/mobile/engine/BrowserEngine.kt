@@ -350,6 +350,16 @@ interface Page {
     fun pauseTimers()
     fun resumeTimers()
 
+    /**
+     * Reload the page if its content was lost while it sat in the
+     * background — the shell calls this when a tab gets re-selected.
+     * The WebView backend applies its favicon/certificate staleness
+     * heuristic (renderer process-death recovery); a GeckoView session
+     * keeps its content in the tab process, so only a crashed session
+     * has anything to reload.
+     */
+    fun reloadIfStale()
+
     // ---- focus / visibility --------------------------------------------
 
     fun requestFocus()

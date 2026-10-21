@@ -371,7 +371,9 @@ class TabsManager @Inject constructor(
      * storage and can be unparceled.
      */
     fun saveState() {
-        val outState = Bundle(ClassLoader.getSystemClassLoader())
+        // App loader so engine Parcelables (GeckoView SessionState)
+        // inside the per-tab bundles unparcel on restore.
+        val outState = Bundle(application.classLoader)
         logger.log(TAG, "Saving tab state")
         tabList
             .filter { it.url.isNotBlank() }
@@ -451,8 +453,8 @@ class TabsManager @Inject constructor(
         } else {
             tabList[position].also {
                 currentTab = it
-                if(it.favicon == null && it.sslCertificate == null && !it.url.contains(":///") && !userPreferences.allTabs){
-                    it.reload()
+                if(!it.url.contains(":///") && !userPreferences.allTabs){
+                    it.reloadIfStale()
                 }
             }
         }

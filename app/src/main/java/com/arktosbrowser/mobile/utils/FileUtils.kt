@@ -89,7 +89,10 @@ object FileUtils {
 
             parcel.unmarshall(data, 0, data.size)
             parcel.setDataPosition(0)
-            val out = parcel.readBundle(ClassLoader.getSystemClassLoader())
+            // The app's loader, not the system one: saved bundles can
+            // carry engine Parcelables (GeckoView SessionState) that
+            // the system loader cannot resolve.
+            val out = parcel.readBundle(app.classLoader)
             out?.putAll(out)
             parcel.recycle()
             return out

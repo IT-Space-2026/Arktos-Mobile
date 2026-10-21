@@ -96,7 +96,7 @@ import org.mozilla.geckoview.WebResponse
  * proceed past bad certs — the interstitial can only go back).
  */
 class GeckoPage(
-    private val activity: Activity,
+    internal val activity: Activity,
     private val engine: GeckoEngine,
     private val profile: GeckoProfile,
     private val initializer: PageInitializer,
@@ -119,10 +119,10 @@ class GeckoPage(
 
     internal val session: GeckoSession
 
-    // The display widget — created lazily by ensureView() so background
-    // tabs run headless; released on destroy.
+    // The display widget — the engine's shared GeckoView while this
+    // page is bound to it, null while another page holds the view.
+    // See GeckoEngine.acquireView.
     internal var view: GeckoView? = null
-        private set
 
     private val uiController: UIController = activity as UIController
     private val errorPages = GeckoErrorPages(activity, userPreferences)
@@ -151,6 +151,18 @@ class GeckoPage(
 
     /** Verdict-denied sub-frame loads this page — the shield count. */
     private var blockedCountThisPage = 0
+
+    /** The content process for this session died — reload on re-select. */
+    private var contentCrashed = false
+
+    /**
+     * A page load finished successfully at least once — the signal
+     * that this session holds real content. Tabs restored in the
+     * background get their load aborted by `TabsManager`'s
+     * `finishInitialization` stop() pass, so they must reload on
+     * re-select — this flag is how the page knows.
+     */
+    private var loadCompleted = false
 
     init {
         // Same warm-up as the WebView client — the Rust verdict engine
@@ -195,11 +207,7 @@ class GeckoPage(
     }
 
     /** The widget the shell adds to the layout for this page. */
-    internal fun ensureView(): GeckoView =
-        view ?: GeckoView(activity).also {
-            it.setSession(session)
-            view = it
-        }
+    internal fun ensureView(): GeckoView = engine.acquireView(this)
 
     // ---- load / navigation ---------------------------------------------
 
@@ -278,7 +286,15 @@ class GeckoPage(
             if (isShowingGeneratedPage) {
                 it.putString(TabsManager.URL_KEY, url)
             } else {
-                latestSessionState?.let { state -> it.putParcelable(STATE_KEY, state) }
+                val sessionState = latestSessionState
+                if (sessionState != null) {
+                    it.putParcelable(STATE_KEY, sessionState)
+                } else if (url.isNotBlank()) {
+                    // onSessionStateChange hasn't fired yet (fresh tab)
+                    // — persist the URL so the restore path still gets
+                    // the page back, just without scroll/form state.
+                    it.putString(TabsManager.URL_KEY, url)
+                }
             }
         }
 
@@ -387,9 +403,17 @@ class GeckoPage(
 
     // ---- shell-facing tab surface ----------------------------------------
 
+    // The app-pause tracker — the foreground session stays active only
+    // while the app is in the foreground too.
+    private var appResumed = true
+
     override var isForegroundTab: Boolean = false
         set(isForeground) {
             field = isForeground
+            // Only the foreground session is active — background
+            // sessions stay suspended (media, compositor, priority),
+            // the GeckoView-blessed model.
+            if (appResumed) session.setActive(isForeground)
             uiController.tabChanged(this)
         }
 
@@ -456,9 +480,29 @@ class GeckoPage(
         )
     }
 
-    override fun onPause() = session.setActive(false)
+    override fun onPause() {
+        appResumed = false
+        session.setActive(false)
+    }
 
-    override fun onResume() = session.setActive(true)
+    override fun onResume() {
+        appResumed = true
+        if (isForegroundTab) session.setActive(true)
+    }
+
+    /**
+     * A gecko session keeps its content in the tab process — the only
+     * ways a background tab loses it are a content-process crash
+     * (`onCrash`) and the `finishInitialization` stop() that aborts a
+     * restored tab's first load. Neither is repairable short of a
+     * reload; a tab that painted once needs nothing.
+     */
+    override fun reloadIfStale() {
+        if (contentCrashed || (!loading && !loadCompleted)) {
+            contentCrashed = false
+            reload()
+        }
+    }
 
     override fun onDestroy() {
         view?.releaseSession()
@@ -860,6 +904,7 @@ class GeckoPage(
         override fun onPageStop(session: GeckoSession, success: Boolean) {
             loading = false
             pageProgress = 100
+            if (success) loadCompleted = true
             onLoadStatusChanged?.invoke(
                 if (success) LoadStatus.Succeeded else LoadStatus.Failed
             )
@@ -892,6 +937,15 @@ class GeckoPage(
             state: GeckoSession.SessionState
         ) {
             latestSessionState = state
+            // This fires after the navigation that produced the state
+            // — saving here captures the CURRENT entry, whereas the
+            // updateUrl-triggered saves always run one navigation
+            // behind (upstream #281-class staleness). Only the shown
+            // page reports; background tabs' states ride the same
+            // saveState sweep whenever any updateUrl fires.
+            if (isShown) {
+                uiController.updateUrl(this@GeckoPage.url, loading)
+            }
         }
     }
 
@@ -981,7 +1035,13 @@ class GeckoPage(
         }
 
         override fun onCrash(session: GeckoSession) {
+            contentCrashed = true
             onCrashed?.invoke()
+        }
+
+        /** `window.close()` — the WebView's `onCloseWindow` parity. */
+        override fun onCloseRequest(session: GeckoSession) {
+            uiController.onCloseWindow(this@GeckoPage)
         }
 
         /**

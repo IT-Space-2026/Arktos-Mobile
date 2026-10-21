@@ -733,6 +733,17 @@ class ArktosCookieView(
     }
 
     /**
+     * The upstream staleness heuristic: a WebView whose renderer died
+     * while backgrounded loses its favicon and certificate, so a tab
+     * that still shows neither is reloaded when the user returns to it.
+     */
+    override fun reloadIfStale() {
+        if (favicon == null && sslCertificate == null) {
+            reload()
+        }
+    }
+
+    /**
      * Finds all the instances of the text passed to this
      * method and highlights the instances of that text
      * in the WebView.

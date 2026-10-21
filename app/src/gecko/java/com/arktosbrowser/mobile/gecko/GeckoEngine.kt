@@ -37,6 +37,7 @@ import org.mozilla.geckoview.GeckoPreferenceController
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
+import org.mozilla.geckoview.GeckoView
 import org.mozilla.geckoview.StorageController
 
 /**
@@ -194,7 +195,55 @@ class GeckoEngine(
         rankListLoader
     )
 
-    override fun createView(page: Page): View? = (page as? GeckoPage)?.ensureView()
+    /**
+     * The one display widget the engine owns — Gecko sessions bind to
+     * it and unbind from it as the shell swaps tabs. This is the
+     * mozilla-components `EngineView` model: per-tab GeckoViews lose
+     * their compositor surface on detach/reattach and come back black,
+     * so the view must stay attached and the session must swap inside
+     * it.
+     */
+    private var sharedView: GeckoView? = null
+    private var boundPage: GeckoPage? = null
+
+    /**
+     * Bind [page]'s session to the shared [GeckoView] and return it.
+     * The previously bound page loses its `view` reference — `isShown`
+     * must not report a view it no longer owns — and its session loses
+     * content focus.
+     */
+    internal fun acquireView(page: GeckoPage): GeckoView {
+        sharedView?.let { existing ->
+            if (existing.context !== page.activity) {
+                // The view was built on an Activity that has since
+                // been destroyed (rotation, restart) — holding it
+                // leaks that Activity and paints on a dead surface.
+                boundPage?.view = null
+                boundPage = null
+                existing.releaseSession()
+                sharedView = null
+            }
+        }
+        val gv = sharedView
+            ?: GeckoView(page.activity).also { sharedView = it }
+        if (boundPage !== page) {
+            boundPage?.let {
+                it.view = null
+                if (it.session.isOpen) it.session.setFocused(false)
+            }
+            if (gv.session !== page.session) {
+                gv.releaseSession()
+                gv.setSession(page.session)
+            }
+            page.session.setFocused(true)
+            boundPage = page
+        }
+        page.view = gv
+        return gv
+    }
+
+    override fun createView(page: Page): View? =
+        (page as? GeckoPage)?.let { acquireView(it) }
 
     // The installed GeckoView milestone for the About screen.
     override fun engineNote(): String =
