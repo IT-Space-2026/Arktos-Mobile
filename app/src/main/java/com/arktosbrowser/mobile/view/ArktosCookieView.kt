@@ -104,6 +104,38 @@ class ArktosCookieView(
     var webView: WebView? = null
         private set
 
+    /* Reflow zoom tracking — declared before init{} because
+     * initializePreferences() may call startReflowPolling() during
+     * construction, and properties initialize in declaration order. */
+    private val reflowHandler = Handler(Looper.getMainLooper())
+    private var reflowBaseScale = 0f
+    private var reflowLastApplied = 0f
+    @Volatile private var reflowPolling = false
+
+    private val reflowPoll = object : Runnable {
+        override fun run() {
+            val wv = webView
+            if (wv == null || !userPreferences.textReflowEnabled) {
+                reflowPolling = false
+                return
+            }
+            @Suppress("DEPRECATION")
+            val scale = wv.scale
+            if (reflowBaseScale <= 0f) {
+                reflowBaseScale = scale
+            }
+            val ratio = scale / reflowBaseScale
+            if (kotlin.math.abs(ratio - reflowLastApplied) > 0.04f) {
+                reflowLastApplied = ratio
+                wv.evaluateJavascript(
+                    "window.__arktosReflowApply && window.__arktosReflowApply($ratio)",
+                    null
+                )
+            }
+            reflowHandler.postDelayed(this, 300)
+        }
+    }
+
     private val uiController: UIController
     private val gestureDetector: GestureDetector
     private val paint = Paint()
@@ -438,35 +470,6 @@ class ArktosCookieView(
     }
     
     @SuppressLint("NewApi")
-    private val reflowHandler = Handler(Looper.getMainLooper())
-    private var reflowBaseScale = 0f
-    private var reflowLastApplied = 0f
-    @Volatile private var reflowPolling = false
-
-    private val reflowPoll = object : Runnable {
-        override fun run() {
-            val wv = webView
-            if (wv == null || !userPreferences.textReflowEnabled) {
-                reflowPolling = false
-                return
-            }
-            @Suppress("DEPRECATION")
-            val scale = wv.scale
-            if (reflowBaseScale <= 0f) {
-                reflowBaseScale = scale
-            }
-            val ratio = scale / reflowBaseScale
-            if (kotlin.math.abs(ratio - reflowLastApplied) > 0.04f) {
-                reflowLastApplied = ratio
-                wv.evaluateJavascript(
-                    "window.__arktosReflowApply && window.__arktosReflowApply($ratio)",
-                    null
-                )
-            }
-            reflowHandler.postDelayed(this, 300)
-        }
-    }
-
     private fun startReflowPolling() {
         if (!reflowPolling) {
             reflowPolling = true
