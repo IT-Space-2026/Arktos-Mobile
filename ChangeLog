@@ -11,8 +11,14 @@ When you add an entry here, mirror it in the HTML page.
 Engine:
 - GeckoView pinned to the stable release channel
   (org.mozilla.geckoview:geckoview — the unsuffixed artifact is the
-  stable line; -beta/-nightly are not used), bumped to
-  158.0.20261021001945 so engine security fixes ship promptly.
+  stable line; -beta/-nightly are not used). The 158.0.2 bump was
+  reverted to the verified 158.0.1 build after it regressed
+  background-tab restore; the pin moves forward once a newer
+  stable verifies clean.
+- Restore recovery no longer trusts engine flags alone: stop()
+  arms its own abort signal and a committed document clears it,
+  so a tab whose load was killed without a callback still
+  recovers on select.
 
 Privacy & permissions:
 - Site-permission grants are now covered by the engine StorageArea

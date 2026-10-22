@@ -178,7 +178,8 @@
 
         <h3>Engine</h3>
         <ul>
-            <li>GeckoView pinned to the stable release channel (the unsuffixed <code>geckoview</code> artifact) and bumped to 158.0.20261021001945 so engine security fixes ship promptly.</li>
+            <li>GeckoView pinned to the stable release channel (the unsuffixed <code>geckoview</code> artifact); the 158.0.2 bump was reverted to the verified 158.0.1 build after it regressed background-tab restore.</li>
+            <li>Restore recovery uses its own abort signal instead of trusting engine callbacks — a tab whose load was killed without an onPageStop still recovers on select.</li>
         </ul>
 
         <h3>Privacy &amp; permissions</h3>
