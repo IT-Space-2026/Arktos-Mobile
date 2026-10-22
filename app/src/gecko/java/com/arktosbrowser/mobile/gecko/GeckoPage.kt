@@ -139,6 +139,14 @@ class GeckoPage(
     private var backable = false
     private var forwardable = false
     private var loading = false
+
+    /**
+     * Whether this session has ever committed a real document —
+     * the staleness signal. `loadCompleted` is useless for it: an
+     * aborted restore (finishInitialization's stop) or an empty
+     * SessionState still reports onPageStop success.
+     */
+    private var hasCommittedDoc = false
     private var pageProgress = 100
     private var sslState: SslState = SslState.None
     private var latestSessionState: GeckoSession.SessionState? = null
@@ -399,6 +407,9 @@ class GeckoPage(
             currentUrl = it
             committedUrl = it
         }
+        // The restore's commit resets this — an aborted/empty restore
+        // leaves the flag false so the tab reads as stale on select.
+        hasCommittedDoc = false
         if (runCatching { session.restoreState(sessionState) }.isFailure) {
             return false
         }
@@ -583,7 +594,7 @@ class GeckoPage(
      * takes the same path via the never-loaded branch.
      */
     override fun reloadIfStale() {
-        if (!contentCrashed && session.isOpen && (loading || loadCompleted)) {
+        if (!contentCrashed && session.isOpen && (loading || hasCommittedDoc)) {
             return
         }
         val wasCrashed = contentCrashed
@@ -778,6 +789,9 @@ class GeckoPage(
         ) {
             if (url == null) return
             committedUrl = url
+            if (url.isNotBlank() && url != "about:blank") {
+                hasCommittedDoc = true
+            }
             if (url.isGeneratedPageUrl()) {
                 // Generated commit — keep reporting the original URL
                 // (upstream #281); the real address stays in currentUrl.
