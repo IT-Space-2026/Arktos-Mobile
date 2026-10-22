@@ -1042,7 +1042,14 @@ class GeckoPage(
         override fun onPageStop(session: GeckoSession, success: Boolean) {
             loading = false
             pageProgress = 100
-            if (success) loadCompleted = true
+            if (success) {
+                loadCompleted = true
+            } else {
+                // Aborted/failed — the location commit may already have
+                // set hasCommittedDoc, but no document finished; the
+                // tab is stale and must re-issue its load on select.
+                hasCommittedDoc = false
+            }
             onLoadStatusChanged?.invoke(
                 if (success) LoadStatus.Succeeded else LoadStatus.Failed
             )

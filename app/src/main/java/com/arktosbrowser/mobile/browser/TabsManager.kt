@@ -494,7 +494,7 @@ class TabsManager @Inject constructor(
         } else {
             tabList[position].also {
                 currentTab = it
-                if(!it.url.contains(":///") && !userPreferences.allTabs){
+                if(!it.url.contains(":///")){
                     it.reloadIfStale()
                 }
             }
