@@ -243,6 +243,15 @@ class GeckoPage(
             }
             return
         }
+        // Track the intended URL eagerly — onLocationChange only
+        // reports committed loads, so an aborted first load (the
+        // finishInitialization stop()) would otherwise leave the tab
+        // addressless and unrecoverable. A real navigation also ends
+        // any generated-page tracking; otherwise a reload fired before
+        // the commit would re-issue the stale interstitial URL.
+        generatedPageOriginalUrl = null
+        committedUrl = url
+        currentUrl = url
         session.load(
             GeckoSession.Loader()
                 .uri(url)
@@ -365,22 +374,27 @@ class GeckoPage(
             }
         }
 
-    override fun restoreState(state: Bundle) {
+    override fun restoreState(state: Bundle): Boolean {
         // SessionState is a GeckoView Parcelable — the bundle needs this
         // class's loader to unparcel it. An unparcel or restore failure
-        // falls back to loading the saved URL instead of dropping the
-        // tab (or erroring the whole restore stream).
+        // reports false so the caller falls back to a URL load.
         state.classLoader = GeckoSession.SessionState::class.java.classLoader
         @Suppress("DEPRECATION")
         val sessionState = runCatching {
             state.getParcelable<GeckoSession.SessionState>(STATE_KEY)
-        }.getOrNull()
-        if (sessionState != null &&
-            runCatching { session.restoreState(sessionState) }.isSuccess
-        ) {
-            return
+        }.getOrNull() ?: return false
+        if (runCatching { session.restoreState(sessionState) }.isFailure) {
+            return false
         }
-        state.getString(TabsManager.URL_KEY)?.let(::loadUrl)
+        // Keep the restored state — finishInitialization's stop() can
+        // abort the restore's load on background tabs, and
+        // reloadIfStale re-issues it from latestSessionState on select.
+        latestSessionState = sessionState
+        state.getString(TabsManager.URL_KEY)?.let {
+            currentUrl = it
+            committedUrl = it
+        }
+        return true
     }
 
     // GeckoView's surface for this is font inflation / display density —
@@ -570,7 +584,14 @@ class GeckoPage(
             session.open(engine.runtime)
             if (state != null) session.restoreState(state) else session.loadUri(currentUrl)
         } else if (state != null) {
+            // A stopped restore (finishInitialization) or dead session
+            // gets its state re-applied — restores scroll too.
             session.restoreState(state)
+        } else if (currentUrl.isNotBlank()) {
+            // Aborted load with no state — re-issue the intended
+            // navigation; reload() on a session with no committed
+            // entry is a no-op.
+            session.loadUri(currentUrl)
         } else {
             reload()
         }

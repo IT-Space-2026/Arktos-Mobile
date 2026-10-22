@@ -185,8 +185,12 @@ class ResultMessageInitializer(private val resultMessage: Message) : TabInitiali
 class BundleInitializer(private val bundle: Bundle) : TabInitializer {
 
     override fun initialize(page: Page, headers: Map<String, String>) {
-        bundle.getString(TabsManager.URL_KEY)?.let { page.load(it, headers) }
-            ?: page.restoreState(bundle)
+        // Engine state first — it carries scroll + history; the saved
+        // URL is the fallback when the bundle holds no usable state or
+        // its Parcelable can't unmarshal.
+        if (!page.restoreState(bundle)) {
+            bundle.getString(TabsManager.URL_KEY)?.let { page.load(it, headers) }
+        }
     }
 
 }

@@ -259,7 +259,9 @@ interface Page {
     // Serialized page state for tab persistence. Engines without a
     // WebView-style state blob may return an empty bundle.
     fun saveState(): Bundle
-    fun restoreState(state: Bundle)
+    // true when the bundle carried usable engine state and it was
+    // applied — false lets callers fall back to a plain URL load.
+    fun restoreState(state: Bundle): Boolean
 
     var zoomFactor: Float
     val scrollPosition: Pair<Float, Float>

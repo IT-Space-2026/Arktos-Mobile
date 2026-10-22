@@ -790,9 +790,8 @@ class ArktosCookieView(
         webView?.loadDataWithBaseURL(baseUrl, data, mimeType, encoding, historyUrl)
     }
 
-    override fun restoreState(state: Bundle) {
-        webView?.restoreState(state)
-    }
+    override fun restoreState(state: Bundle): Boolean =
+        webView?.restoreState(state) != null
 
     override fun historyItems(): List<HistoryEntry> =
         webView?.copyBackForwardList()?.let { list ->
