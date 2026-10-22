@@ -26,18 +26,33 @@ import org.mozilla.geckoview.GeckoSession
 class GeckoPermissionDelegate(
     private val activity: Activity,
     private val uiController: UIController,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    persist: Boolean
 ) : GeckoSession.PermissionDelegate {
 
     /**
-     * Per-origin decisions for this session's lifetime — Firefox's
-     * session-scoped permission model. Sites re-request on
-     * focus/visibilitychange, which fires on every session re-bind
-     * (tab switch), so without a remembered answer the prompt would
-     * come back on every switch.
+     * Per-origin decisions — Firefox's permission model: answered
+     * prompts must not come back. Sites re-request on
+     * focus/visibilitychange (which fires on every session re-bind,
+     * i.e. tab switch), so without a remembered answer the prompt
+     * returns on every switch. For regular tabs the answers persist
+     * across restarts via SharedPreferences; incognito sessions keep
+     * them memory-only for the tab's lifetime.
      */
+    private val prefs = if (persist) {
+        activity.getSharedPreferences(PREFS_NAME, Activity.MODE_PRIVATE)
+    } else {
+        null
+    }
     private val decisions = mutableMapOf<String, Int>()
-    private val mediaGranted = mutableMapOf<String, Boolean>()
+
+    private fun decisionFor(key: String): Int? =
+        decisions[key] ?: prefs?.getInt(key, ABSENT)?.takeIf { it != ABSENT }
+
+    private fun recordDecision(key: String, value: Int) {
+        decisions[key] = value
+        prefs?.edit()?.putInt(key, value)?.apply()
+    }
 
     private fun originOf(uri: String): String =
         try {
@@ -65,7 +80,7 @@ class GeckoPermissionDelegate(
         session: GeckoSession,
         perm: GeckoSession.PermissionDelegate.ContentPermission
     ): GeckoResult<Int>? {
-        decisions["${originOf(perm.uri)}|${perm.permission}"]?.let {
+        decisionFor("${originOf(perm.uri)}|${perm.permission}")?.let {
             return GeckoResult.fromValue(it)
         }
         return when (perm.permission) {
@@ -92,7 +107,7 @@ class GeckoPermissionDelegate(
         val result = GeckoResult<Int>()
         val key = "${originOf(perm.uri)}|${perm.permission}"
         fun answer(value: Int) {
-            decisions[key] = value
+            recordDecision(key, value)
             result.complete(value)
         }
         uiController.requestRuntimePermissions(
@@ -133,7 +148,7 @@ class GeckoPermissionDelegate(
         val result = GeckoResult<Int>()
         val key = "${originOf(perm.uri)}|${perm.permission}"
         fun answer(value: Int) {
-            decisions[key] = value
+            recordDecision(key, value)
             result.complete(value)
         }
         activity.runOnUiThread {
@@ -186,10 +201,13 @@ class GeckoPermissionDelegate(
             callback.reject()
             return
         }
-        val origin = originOf(uri)
-        mediaGranted[origin]?.let { granted ->
-            if (granted) callback.grant(video?.firstOrNull(), audio?.firstOrNull())
-            else callback.reject()
+        val key = "media|${originOf(uri)}"
+        decisionFor(key)?.let { decision ->
+            if (decision == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW) {
+                callback.grant(video?.firstOrNull(), audio?.firstOrNull())
+            } else {
+                callback.reject()
+            }
             return
         }
         activity.runOnUiThread {
@@ -203,18 +221,23 @@ class GeckoPermissionDelegate(
                 message = R.string.message_permission_request,
                 messageArguments = arrayOf(uri, resources),
                 positiveButton = DialogItem(title = R.string.action_allow) {
-                    mediaGranted[origin] = true
+                    recordDecision(key, GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW)
                     callback.grant(video?.firstOrNull(), audio?.firstOrNull())
                 },
                 negativeButton = DialogItem(title = R.string.action_dont_allow) {
-                    mediaGranted[origin] = false
+                    recordDecision(key, GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                     callback.reject()
                 },
                 onCancel = {
-                    mediaGranted[origin] = false
+                    recordDecision(key, GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY)
                     callback.reject()
                 }
             )
         }
+    }
+
+    private companion object {
+        private const val PREFS_NAME = "gecko_site_permissions"
+        private const val ABSENT = Int.MIN_VALUE
     }
 }

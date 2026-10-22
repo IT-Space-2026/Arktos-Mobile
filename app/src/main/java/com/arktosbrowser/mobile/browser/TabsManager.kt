@@ -6,6 +6,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.os.Bundle
+import java.io.File
 import com.arktosbrowser.mobile.utils.isFileUrl
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.DiskScheduler
@@ -19,6 +20,7 @@ import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.search.SearchEngineProvider
 import com.arktosbrowser.mobile.utils.*
 import com.arktosbrowser.mobile.view.*
+import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Scheduler
@@ -175,6 +177,27 @@ class TabsManager @Inject constructor(
                     else -> UrlInitializer(url)
                 }
             } ?: BundleInitializer(bundle)
+        }
+        .onErrorResumeNext { throwable: Throwable ->
+            // The parcel couldn't be read at all — restore whatever the
+            // plain-URL fallback file holds rather than losing the tabs.
+            logger.log(TAG, "Saved tab parcel unreadable; falling back to URL list", throwable)
+            savedUrlFallback()
+        }
+        .switchIfEmpty(savedUrlFallback())
+
+    private fun savedUrlFallback(): Observable<TabInitializer> =
+        Observable.fromCallable {
+            File(application.filesDir, URL_STORAGE).takeIf { it.isFile }
+                ?.readLines().orEmpty().filter { it.isNotBlank() }
+        }.flatMapIterable { it }.map { url ->
+            when {
+                url.isBookmarkUrl() -> bookmarkPageInitializer
+                url.isDownloadsUrl() -> downloadPageInitializer
+                url.isStartPageUrl() -> homePageInitializer
+                url.isHistoryUrl() -> historyPageInitializer
+                else -> UrlInitializer(url)
+            }
         }
 
 
@@ -390,13 +413,27 @@ class TabsManager @Inject constructor(
         FileUtils.writeBundleToStorage(application, outState, BUNDLE_STORAGE)
             .subscribeOn(diskScheduler)
             .subscribeBy(onError = { logger.log(TAG, "Failed to save tab state", it) })
+
+        // Plain-URL companion file — the restore fallback when the
+        // parcel itself can't be read (corruption, engine-Parcelable
+        // unmarshal failure). Cheap and format-proof.
+        Completable.fromAction {
+            File(application.filesDir, URL_STORAGE).writeText(
+                tabList.map { it.url }.filter { it.isNotBlank() }.joinToString("\n")
+            )
+        }.subscribeOn(diskScheduler).subscribeBy(
+            onError = { logger.log(TAG, "Failed to save tab URL list", it) }
+        )
     }
 
     /**
      * Use this method to clear the saved state if you do not wish it to be restored when the
      * browser next starts.
      */
-    fun clearSavedState() = FileUtils.deleteBundleInStorage(application, BUNDLE_STORAGE)
+    fun clearSavedState() {
+        FileUtils.deleteBundleInStorage(application, BUNDLE_STORAGE)
+        FileUtils.deleteBundleInStorage(application, URL_STORAGE)
+    }
 
     /**
      * Creates an [Observable] that emits the [Bundle] state stored for each previously opened tab
@@ -412,7 +449,11 @@ class TabsManager @Inject constructor(
                 // key-hash order — sort explicitly or tabs restore
                 // in a scrambled order once there are >9 of them.
                 .sortedBy { it.removePrefix(BUNDLE_KEY).toIntOrNull() ?: Int.MAX_VALUE }
-                .mapNotNull(bundle::getBundle)
+                // A single ununmarshallable per-tab bundle must not
+                // error the whole restore stream — drop just that tab.
+                .mapNotNull { key ->
+                    runCatching { bundle.getBundle(key) }.getOrNull()
+                }
         }
         .doOnNext { logger.log(TAG, "Restoring previous WebView state now") }
 
@@ -467,6 +508,7 @@ class TabsManager @Inject constructor(
         private const val BUNDLE_KEY = "WEBVIEW_"
         internal const val URL_KEY = "URL_KEY"
         private const val BUNDLE_STORAGE = "SAVED_TABS.parcel"
+        private const val URL_STORAGE = "SAVED_TAB_URLS.txt"
     }
 
 }

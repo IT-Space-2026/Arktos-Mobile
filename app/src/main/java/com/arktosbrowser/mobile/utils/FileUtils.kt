@@ -100,6 +100,11 @@ object FileUtils {
             Log.e(TAG, "Unable to read bundle from storage")
         } catch (e: IOException) {
             Log.e(TAG, "Unable to read bundle from storage", e)
+        } catch (e: RuntimeException) {
+            // A corrupt or ununmarshallable parcel (BadParcelableException
+            // on an engine Parcelable) must degrade to "nothing saved",
+            // not propagate and error the whole restore stream.
+            Log.e(TAG, "Unable to unparcel saved bundle", e)
         } finally {
             Utils.close(inputStream)
         }

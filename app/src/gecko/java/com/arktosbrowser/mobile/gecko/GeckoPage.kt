@@ -193,7 +193,12 @@ class GeckoPage(
         session.historyDelegate = GeckoHistoryDelegate()
         session.promptDelegate = GeckoPromptDelegate(activity, uiController, logger)
         session.permissionDelegate =
-            GeckoPermissionDelegate(activity, uiController, userPreferences)
+            GeckoPermissionDelegate(
+                activity,
+                uiController,
+                userPreferences,
+                persist = !profile.isOffTheRecord
+            )
         session.finder.setDisplayFlags(
             GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL or
                 GeckoSession.FINDER_DISPLAY_DIM_PAGE
@@ -216,6 +221,28 @@ class GeckoPage(
     // ---- load / navigation ---------------------------------------------
 
     override fun load(url: String, headers: Map<String, String>) {
+        // arktos:// chrome pages and bundled file:// generated pages are
+        // served as data loads *here*, before they ever reach a session
+        // navigation — serving them from inside onLoadRequest (nested
+        // load on a pending navigation) stalls the pipeline for seconds.
+        if (url.startsWith("arktos://")) {
+            if (ArktosCore.isChangelogUrl(url)) {
+                serveBundledAsset("changelog.html", ChangelogPage.URL, applyTheme = true)
+            }
+            return
+        }
+        if (url.isFileUrl() && url.isSpecialUrl()) {
+            val file = File(url.removePrefix("file://"))
+            runCatching { file.readText() }.getOrNull()?.let { html ->
+                generatedPageOriginalUrl = url
+                session.load(
+                    GeckoSession.Loader().data(
+                        inlineAssetUrls(html).toByteArray(Charsets.UTF_8), "text/html"
+                    )
+                )
+            }
+            return
+        }
         session.load(
             GeckoSession.Loader()
                 .uri(url)
@@ -226,6 +253,26 @@ class GeckoPage(
                     }
                 }
         )
+    }
+
+    /**
+     * Serve a bundled asset as a generated page — shared by the direct
+     * load path and the onLoadRequest backstop for in-page chrome links.
+     */
+    private fun serveBundledAsset(asset: String, originalUrl: String, applyTheme: Boolean) {
+        runCatching {
+            activity.assets.open(asset).use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()?.let { raw ->
+            generatedPageOriginalUrl = originalUrl
+            val dark = applyTheme && userPreferences.useTheme != AppTheme.LIGHT &&
+                userPreferences.useTheme != AppTheme.ARKTOS_LIGHT
+            session.load(
+                GeckoSession.Loader().data(
+                    inlineAssetUrls(ChangelogPage.applyDarkTheme(raw, dark))
+                        .toByteArray(Charsets.UTF_8), "text/html"
+                )
+            )
+        }
     }
 
     override fun loadData(
@@ -307,30 +354,33 @@ class GeckoPage(
      */
     override fun saveState(): Bundle =
         Bundle(GeckoSession.SessionState::class.java.classLoader).also {
-            if (isShowingGeneratedPage) {
+            // The URL rides along in every saved bundle: it is the
+            // restore fallback when the SessionState can't unparcel —
+            // a session-state failure must never cost the tab itself.
+            if (url.isNotBlank()) {
                 it.putString(TabsManager.URL_KEY, url)
-            } else {
-                val sessionState = latestSessionState
-                if (sessionState != null) {
-                    it.putParcelable(STATE_KEY, sessionState)
-                } else if (url.isNotBlank()) {
-                    // onSessionStateChange hasn't fired yet (fresh tab)
-                    // — persist the URL so the restore path still gets
-                    // the page back, just without scroll/form state.
-                    it.putString(TabsManager.URL_KEY, url)
-                }
+            }
+            if (!isShowingGeneratedPage) {
+                latestSessionState?.let { state -> it.putParcelable(STATE_KEY, state) }
             }
         }
 
     override fun restoreState(state: Bundle) {
         // SessionState is a GeckoView Parcelable — the bundle needs this
-        // class's loader to unparcel it.
+        // class's loader to unparcel it. An unparcel or restore failure
+        // falls back to loading the saved URL instead of dropping the
+        // tab (or erroring the whole restore stream).
         state.classLoader = GeckoSession.SessionState::class.java.classLoader
         @Suppress("DEPRECATION")
-        val sessionState = state.getParcelable<GeckoSession.SessionState>(STATE_KEY)
-        if (sessionState != null) {
-            session.restoreState(sessionState)
+        val sessionState = runCatching {
+            state.getParcelable<GeckoSession.SessionState>(STATE_KEY)
+        }.getOrNull()
+        if (sessionState != null &&
+            runCatching { session.restoreState(sessionState) }.isSuccess
+        ) {
+            return
         }
+        state.getString(TabsManager.URL_KEY)?.let(::loadUrl)
     }
 
     // GeckoView's surface for this is font inflation / display density —
@@ -731,26 +781,16 @@ class GeckoPage(
             if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW) {
                 return GeckoResult.fromValue(AllowOrDeny.DENY)
             }
-            // arktos:// chrome pages (the changelog). The WebView backend
-            // serves these via shouldInterceptRequest; gecko has no
-            // subresource interception surface, so the bundled HTML is
-            // injected as a data load with its artwork inlined — the
-            // navigation itself is denied either way.
+            // arktos:// chrome pages (the changelog). Deny the
+            // navigation, then serve the bundled HTML on the next
+            // main-loop turn — a synchronous session.load() inside
+            // onLoadRequest stalls the navigation pipeline (the
+            // seconds-long changelog freeze). load() pre-intercepts
+            // these URLs, so this is only the in-page-link backstop.
             if (request.uri.startsWith("arktos://")) {
                 if (ArktosCore.isChangelogUrl(request.uri)) {
-                    runCatching {
-                        activity.assets.open("changelog.html")
-                            .use { it.readBytes().toString(Charsets.UTF_8) }
-                    }.getOrNull()?.let { raw ->
-                        generatedPageOriginalUrl = ChangelogPage.URL
-                        val dark = userPreferences.useTheme != AppTheme.LIGHT &&
-                            userPreferences.useTheme != AppTheme.ARKTOS_LIGHT
-                        session.load(
-                            GeckoSession.Loader().data(
-                                inlineAssetUrls(ChangelogPage.applyDarkTheme(raw, dark))
-                                    .toByteArray(Charsets.UTF_8), "text/html"
-                            )
-                        )
+                    activity.window.decorView.post {
+                        serveBundledAsset("changelog.html", ChangelogPage.URL, applyTheme = true)
                     }
                 }
                 return GeckoResult.fromValue(AllowOrDeny.DENY)
@@ -759,18 +799,18 @@ class GeckoPage(
             // Bundled app pages (the start/bookmark/history/incognito/
             // download pages) live under filesDir — GeckoView can't open
             // `file:///data/...` paths, so they're served as data loads
-            // instead. A `resource://` variant can't work either (it only
-            // resolves APK assets); the commit is a data: URI and the
-            // generated-page tracking keeps reporting the file URL.
+            // instead, posted for the same reason as above.
             if (request.uri.isFileUrl() && request.uri.isSpecialUrl()) {
                 val file = File(request.uri.removePrefix("file://"))
                 runCatching { file.readText() }.getOrNull()?.let { html ->
                     generatedPageOriginalUrl = request.uri
-                    session.load(
-                        GeckoSession.Loader().data(
-                            inlineAssetUrls(html).toByteArray(Charsets.UTF_8), "text/html"
+                    activity.window.decorView.post {
+                        session.load(
+                            GeckoSession.Loader().data(
+                                inlineAssetUrls(html).toByteArray(Charsets.UTF_8), "text/html"
+                            )
                         )
-                    )
+                    }
                 }
                 return GeckoResult.fromValue(AllowOrDeny.DENY)
             }
