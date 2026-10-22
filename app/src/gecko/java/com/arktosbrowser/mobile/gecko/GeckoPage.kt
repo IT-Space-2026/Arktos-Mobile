@@ -147,6 +147,16 @@ class GeckoPage(
      * SessionState still reports onPageStop success.
      */
     private var hasCommittedDoc = false
+
+    /**
+     * Our own abort signal — set when the shell calls [stop] (the
+     * finishInitialization background-tab pass, or a user stop), cleared
+     * when a new document commits. This must not rely on onPageStop:
+     * whether an aborted load still reports the callback is engine
+     * behavior, and a miss leaves loading/hasCommittedDoc looking
+     * healthy on a tab that never finished loading.
+     */
+    private var loadAborted = false
     private var pageProgress = 100
     private var sslState: SslState = SslState.None
     private var latestSessionState: GeckoSession.SessionState? = null
@@ -330,7 +340,12 @@ class GeckoPage(
             }.getOrNull() ?: match.value
         }
 
-    override fun stop() = session.stop()
+    override fun stop() {
+        // A deliberate abort — the tab may hold a committed location
+        // but no finished document; recover on next select.
+        if (loading) loadAborted = true
+        session.stop()
+    }
 
     override fun reload() {
         // Same proxy-readiness gate as the WebView's reload.
@@ -599,11 +614,20 @@ class GeckoPage(
      * takes the same path via the never-loaded branch.
      */
     override fun reloadIfStale() {
-        if (!contentCrashed && session.isOpen && (loading || hasCommittedDoc)) {
+        // Stale signals, in order of certainty: a crashed/killed
+        // session, a deliberate abort whose load never finished, or no
+        // committed document at all. `loading` only vetoes while the
+        // tab isn't known-stale — an in-flight load isn't disturbed,
+        // but a stuck flag can't veto a tab that already lost its load.
+        if (!contentCrashed && !loadAborted && !hasCommittedDoc && loading && session.isOpen) {
+            return
+        }
+        if (!contentCrashed && !loadAborted && hasCommittedDoc && session.isOpen) {
             return
         }
         val wasCrashed = contentCrashed
         contentCrashed = false
+        loadAborted = false
         val state = latestSessionState
         if (!session.isOpen) {
             session.open(engine.runtime)
@@ -795,7 +819,10 @@ class GeckoPage(
             if (url == null) return
             committedUrl = url
             if (url.isNotBlank() && url != "about:blank") {
+                // A real document committed — whatever the earlier
+                // abort left behind, the tab is healthy again.
                 hasCommittedDoc = true
+                loadAborted = false
             }
             if (url.isGeneratedPageUrl()) {
                 // Generated commit — keep reporting the original URL

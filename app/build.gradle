@@ -26,7 +26,7 @@ android {
         minSdkVersion project.minSdkVersion
         targetSdkVersion project.targetSdkVersion
         versionName "1.1"
-        versionCode 154
+        versionCode 155
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -222,8 +222,11 @@ dependencies {
     // ENG03 — GeckoView backend, gecko engine flavor only.
     // The unsuffixed `geckoview` artifact is the STABLE channel
     // (-beta / -nightly are the other two) — keep pinned to the
-    // latest stable from maven.mozilla.org for engine CVE fixes.
-    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261021001945'
+    // latest KNOWN-GOOD stable from maven.mozilla.org for engine
+    // CVE fixes. 158.0.2 (20261021001945) regressed restored
+    // background tabs (loads abort without recovery), so the pin
+    // stays on 158.0.1 until a newer stable verifies clean.
+    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261019185856'
 
     // lifecycleScope for coroutine-backed background work (MOD02)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
