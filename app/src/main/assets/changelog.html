@@ -262,6 +262,19 @@
             <li>GeckoView parity: navigation policy, SSL errors, tab state, prompts, downloads, storage/cookies, proxy/I2P and userscripts.</li>
         </ul>
 
+        <h3>Gecko engine hardening (v1.0 maintenance)</h3>
+        <ul>
+            <li>Tab switching reworked around one shared GeckoView (the mozilla-components model) — per-tab views lost their compositor surface on detach and painted black; the shared view binds sessions in place.</li>
+            <li>The shared view releases its session before any window detach so GeckoView can't auto-close it — the root cause of dead/frozen tabs when swapping to generated pages or entering fullscreen.</li>
+            <li>Killed content processes recover via onKill/onCrash handling — dead sessions re-open and re-apply their saved state on next select.</li>
+            <li>Tab restore hardened end to end: URL fallback per tab, a plain-URL list when the parcel is unreadable, and engine state restored first so scroll and history survive.</li>
+            <li>Site permission decisions (geolocation, notifications, camera/mic) persist per origin for regular tabs — prompts no longer repeat on tab switches or restarts; incognito keeps them memory-only.</li>
+            <li>Generated chrome pages (arktos://changelog, start/bookmark/history pages) serve as data loads with artwork inlined — no more missing logos or stalled chrome pages.</li>
+            <li>Startup fix: engine init runs only in browser processes — GeckoView's child service processes no longer race the main profile.</li>
+            <li>Text reflow on gecko rides the bundled userscript WebExtension — driven by visualViewport with a live toggle.</li>
+            <li>DuckDuckGo is now the default search engine and suggestions provider.</li>
+        </ul>
+
         <h3>Incognito hardening</h3>
         <ul>
             <li>The incognito data partition is wiped when the session ends and on fresh start — cookies and logins can't carry between private sessions.</li>

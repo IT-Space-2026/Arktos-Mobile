@@ -236,7 +236,8 @@ class GeckoEngine(
                 // A session that died (crash/kill) must be re-opened
                 // before binding — setSession() on a closed session
                 // silently leaves the surface unbound.
-                if (!page.session.isOpen) page.session.open(runtime)
+                val coldStart = !page.session.isOpen
+                if (coldStart) page.session.open(runtime)
                 // Activate before the display binds — a session bound
                 // while inactive can leave the surface unpainted
                 // (black) until its next invalidation, the same reason
@@ -244,10 +245,14 @@ class GeckoEngine(
                 // render().
                 page.session.setActive(true)
                 gv.setSession(page.session)
-                // Cover with the window background until the new
-                // session composites — a swapped session can otherwise
-                // show a stale or black surface indefinitely.
-                gv.coverUntilFirstPaint(backgroundColor(page.activity))
+                // Cover only on a cold/recovery bind — a live session's
+                // rebind repaints immediately, and holding the cover
+                // until its next composite made every switch look like
+                // a slow page load. mozilla-components uses the cover
+                // for theme changes, never per-swap.
+                if (coldStart) {
+                    gv.coverUntilFirstPaint(backgroundColor(page.activity))
+                }
             }
             gv.pendingSession = page.session
             page.session.setFocused(true)

@@ -302,3 +302,43 @@ Dependency updates (v1.0):
   runs the real nested action and is scoped to rust/ so build-time
   Gradle tooling is no longer mis-flagged; dependency-verification
   metadata regenerated to cover the previously-missing BOM modules.
+
+Gecko engine hardening (v1.0 maintenance):
+- Tab switching reworked around one shared GeckoView — the
+  mozilla-components EngineView model — binding and unbinding
+  sessions in place. Per-tab GeckoViews lost their compositor
+  surface on detach/reattach and painted black.
+- ArktosGeckoView releases its session before any window detach so
+  GeckoView can't auto-close it — the root cause of dead/frozen tabs
+  when swapping to WebView-backed pages (homepage, bookmarks) or
+  entering fullscreen; the pending session re-binds on re-attach.
+- Killed content processes recover: GeckoView reports process kills
+  via onKill (not onCrash); dead sessions re-open and re-apply their
+  SessionState on next select — immediately for the foreground tab —
+  and setSession never binds a closed session.
+- Tab restore hardened end to end: saved bundles unparcel with the
+  app classloader, every saved tab carries a URL fallback, a plain
+  URL list restores tabs when the parcel itself is unreadable, and a
+  bad per-tab bundle drops only that tab instead of the whole
+  restore. Engine state restores ahead of the URL fallback so scroll
+  and history survive.
+- Restored background tabs no longer come back empty: the intended
+  URL is tracked eagerly (WebView getUrl() parity) and loads aborted
+  by the post-initialization stop() are re-issued on select.
+- Site permission decisions (geolocation, notifications, autoplay,
+  camera/mic) are remembered per origin — persisted for regular tabs,
+  memory-only in incognito — so prompts stop repeating on every tab
+  switch and restart.
+- Generated chrome pages on gecko: arktos://changelog and bundled
+  file:// pages serve their HTML as data loads with artwork inlined
+  as data URIs, intercepted before navigation so the pipeline can't
+  stall; window.close() maps to tab close (WebView parity) and
+  fullscreen exit re-attaches the shared view.
+- Startup fix: BrowserApp runs engine init only in browser processes —
+  GeckoView's ~10 child service processes (crashhelper, gpu, tab,
+  media) no longer race the main profile and kill the launch.
+- Text reflow on gecko rides the bundled userscript WebExtension —
+  element-tagging reflow driven by visualViewport with a live toggle
+  (no reload needed); font-inflation double-apply removed.
+- Search defaults: DuckDuckGo is the default engine and the default
+  suggestions provider.

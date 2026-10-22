@@ -48,6 +48,17 @@ Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues
   dead toggles; the remaining gaps (SSL bypass, favicons, printing,
   per-request cookie get/set) are tracked in `.devin/ENGINE.md`.
 
+  Gecko tab/window handling follows the mozilla-components
+  `EngineView` model: a single shared `GeckoView` (`ArktosGeckoView`)
+  binds and unbinds sessions in place, keeps them alive across window
+  detaches (tab swaps to generated pages, fullscreen reparents), and
+  re-opens sessions whose content process was killed — restoring their
+  `SessionState` on next select. Tabs restore across restarts with
+  scroll and history where the session state unparcels, and a plain
+  URL list catches corrupted parcels. Per-site permission decisions
+  (geolocation, notifications, autoplay, camera/mic) persist per
+  origin for regular tabs and stay memory-only in incognito.
+
 - The build cross-compiles the Rust core (`rust/arktos-core` →
   `libarktos.so`, consumed through UniFFI-generated Kotlin bindings).
   Required on PATH: a Rust toolchain (`rustup`/`cargo`) with the Android
