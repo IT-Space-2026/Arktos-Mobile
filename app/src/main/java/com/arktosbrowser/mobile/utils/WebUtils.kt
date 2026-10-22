@@ -36,7 +36,12 @@ object WebUtils {
     }
 
     fun eraseWebStorage(context: Context) {
-        Engines.defaultProfile.clear(setOf(StorageArea.LocalStorage, StorageArea.IndexedDb))
+        // SitePermissions ride the web-storage wipe — "clear web
+        // storage" is the umbrella users expect to cover site grants.
+        Engines.defaultProfile.clear(setOf(
+            StorageArea.LocalStorage, StorageArea.IndexedDb,
+            StorageArea.SitePermissions
+        ))
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.N) {
             deleteData(context)

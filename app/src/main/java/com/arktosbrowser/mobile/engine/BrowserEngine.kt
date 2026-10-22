@@ -411,8 +411,15 @@ enum class StorageArea(val flag: Int) {
     HttpAuth(64),
     SslDecisions(128),
     AppPrivateData(256),
-    All(0x1FF)
+    // Remembered per-origin permission grants (geolocation,
+    // notifications, autoplay, camera/mic) — GeckoView keeps them in
+    // a SharedPreferences store, WebView in GeolocationPermissions.
+    SitePermissions(512),
+    All(0x3FF)
 }
+
+/** One remembered per-origin permission decision, e.g. the settings UI lists. */
+data class SitePermissionGrant(val origin: String, val permission: String)
 
 data class ProfileOptions(
     val storageName: String?,
@@ -452,6 +459,17 @@ interface Profile {
     // Wipe one origin's site data (cookies for the origin + DOM
     // storage), e.g. the site panel's "clear site data".
     fun clearSiteData(url: String)
+
+    /**
+     * The remembered per-origin permission grants — what
+     * [StorageArea.SitePermissions] wipes — delivered async because
+     * the WebView surface (GeolocationPermissions.getOrigins) is a
+     * callback API.
+     */
+    fun sitePermissionGrants(callback: (List<SitePermissionGrant>) -> Unit)
+
+    /** Revoke one remembered grant — the settings UI's per-row remove. */
+    fun clearSitePermissionGrant(grant: SitePermissionGrant)
 
     // Cookie surface -------------------------------------------------------
 

@@ -7,12 +7,14 @@ import android.net.Uri
 import android.os.Build
 import android.webkit.CookieManager
 import android.webkit.CookieSyncManager
+import android.webkit.GeolocationPermissions
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewDatabase
 import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.engine.Profile
 import com.arktosbrowser.mobile.engine.RequestPolicy
+import com.arktosbrowser.mobile.engine.SitePermissionGrant
 import com.arktosbrowser.mobile.engine.StorageArea
 import com.arktosbrowser.mobile.engine.UserScript
 import com.arktosbrowser.mobile.utils.WebUtils
@@ -96,6 +98,17 @@ class WebViewProfile(
             }
         }
 
+        // Remembered site-permission grants — GeolocationPermissions
+        // is the only origin-scoped permission store WebView keeps.
+        // clearAll() is API 30+, so iterate origins (works on 26+).
+        if (StorageArea.SitePermissions in expanded) {
+            GeolocationPermissions.getInstance().getOrigins { origins ->
+                origins?.forEach {
+                    GeolocationPermissions.getInstance().clear(it)
+                }
+            }
+        }
+
         // The sledgehammer the old eraseWebStorage path used for
         // incognito hardening: delete the partition's data dir.
         // [dataDirName] is this process's own partition — inside the
@@ -106,6 +119,24 @@ class WebViewProfile(
         ) {
             WebUtils.deleteDir(File(context.dataDir, dataDirName))
         }
+    }
+
+    /**
+     * WebView only persists geolocation grants — the dialog's
+     * `callback.invoke(origin, granted, remember=true)` lands here.
+     */
+    override fun sitePermissionGrants(
+        callback: (List<SitePermissionGrant>) -> Unit
+    ) {
+        GeolocationPermissions.getInstance().getOrigins { origins ->
+            callback(origins.orEmpty().map {
+                SitePermissionGrant(it, "geolocation")
+            })
+        }
+    }
+
+    override fun clearSitePermissionGrant(grant: SitePermissionGrant) {
+        GeolocationPermissions.getInstance().clear(grant.origin)
     }
 
     /**

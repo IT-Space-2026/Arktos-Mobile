@@ -323,6 +323,11 @@
     <string name="clear_web_storage">Clear web storage</string>
     <string name="clear_web_storage_exit">Clear web storage on exit</string>
     <string name="message_web_storage_cleared">Web storage cleared</string>
+    <string name="site_permissions">Site permissions</string>
+    <string name="site_permissions_summary">Review and revoke remembered permission grants</string>
+    <string name="message_no_site_permissions">No stored site permissions</string>
+    <string name="action_clear_all">Clear all</string>
+    <string name="message_permissions_cleared">Site permissions cleared</string>
     <string name="hosts_source">Hosts file ad blocking source</string>
     <string name="settings_adblock">Content block settings</string>
     <string name="adblock_summary">Ad block...</string>

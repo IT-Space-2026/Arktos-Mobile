@@ -23,11 +23,11 @@ import org.mozilla.geckoview.GeckoSession
  * `onGeolocationPermissionsShowPrompt`), and getUserMedia requests
  * gated on the WebRTC toggle like `onPermissionRequest`.
  */
-class GeckoPermissionDelegate(
+internal class GeckoPermissionDelegate(
     private val activity: Activity,
     private val uiController: UIController,
     private val userPreferences: UserPreferences,
-    persist: Boolean
+    store: GeckoPermissionStore?
 ) : GeckoSession.PermissionDelegate {
 
     /**
@@ -36,22 +36,18 @@ class GeckoPermissionDelegate(
      * focus/visibilitychange (which fires on every session re-bind,
      * i.e. tab switch), so without a remembered answer the prompt
      * returns on every switch. For regular tabs the answers persist
-     * across restarts via SharedPreferences; incognito sessions keep
-     * them memory-only for the tab's lifetime.
+     * across restarts via the engine's [GeckoPermissionStore];
+     * incognito sessions keep them memory-only for the tab's lifetime.
      */
-    private val prefs = if (persist) {
-        activity.getSharedPreferences(PREFS_NAME, Activity.MODE_PRIVATE)
-    } else {
-        null
-    }
+    private val store = store
     private val decisions = mutableMapOf<String, Int>()
 
     private fun decisionFor(key: String): Int? =
-        decisions[key] ?: prefs?.getInt(key, ABSENT)?.takeIf { it != ABSENT }
+        decisions[key] ?: store?.get(key)
 
     private fun recordDecision(key: String, value: Int) {
         decisions[key] = value
-        prefs?.edit()?.putInt(key, value)?.apply()
+        store?.put(key, value)
     }
 
     private fun originOf(uri: String): String =
@@ -236,8 +232,4 @@ class GeckoPermissionDelegate(
         }
     }
 
-    private companion object {
-        private const val PREFS_NAME = "gecko_site_permissions"
-        private const val ABSENT = Int.MIN_VALUE
-    }
 }

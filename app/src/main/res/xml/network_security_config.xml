@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A browser must keep cleartextTrafficPermitted="true" — users can
+     navigate to plain http:// sites and we can't forbid them wholesale.
+     The risk is covered in-app instead: the Force-HTTPS preference
+     warns on cleartext navigation, and Prefer-HTTPS upgrades requests.
+     Trust anchors stay system-only (no user CAs — injected user
+     certificates must never silently trust inside the browser), and
+     there is no certificate pinning: pinning user-visited origins
+     would break sites at every rotation. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

@@ -174,6 +174,40 @@
     </div>
 
     <div class="entry">
+        <h2>1.1 — Stability &amp; maintenance release</h2>
+
+        <h3>Engine</h3>
+        <ul>
+            <li>GeckoView pinned to the stable release channel (the unsuffixed <code>geckoview</code> artifact) and bumped to 158.0.20261021001945 so engine security fixes ship promptly.</li>
+        </ul>
+
+        <h3>Privacy &amp; permissions</h3>
+        <ul>
+            <li>Site-permission grants are covered by the engine storage model: clearing web storage now wipes remembered geolocation, notification, autoplay, camera and microphone decisions on both engines.</li>
+            <li>New "Site permissions" row in Privacy settings lists every stored per-origin grant with per-origin removal and a clear-all action.</li>
+        </ul>
+
+        <h3>Networking</h3>
+        <ul>
+            <li>Cleartext/network-security audit: plain HTTP stays permitted (a browser must load http:// sites), the manifest policy is documented, and the Force-HTTPS warning path covers the risk.</li>
+        </ul>
+
+        <h3>Persistence &amp; restore</h3>
+        <ul>
+            <li>Tab restore treats the plain URL list as authoritative — engine session state is applied opportunistically on top, so an engine-upgrade-incompatible bundle can never white-screen a tab.</li>
+            <li>Regression tests cover the save→kill→restore path: aborted background restores re-issue their URL instead of staying blank.</li>
+        </ul>
+
+        <h3>Architecture &amp; modernization</h3>
+        <ul>
+            <li>Tab-view swapping and fullscreen plumbing extracted from BrowserActivity into a dedicated controller — smaller blast radius for display/tab changes.</li>
+            <li>Deprecated-API sweep: typed getParcelable calls, modern display-metrics lookup, OnBackPressedDispatcher and the Activity Result API replace deprecated surfaces.</li>
+            <li>Adblock subscription staleness verified — lists refresh on the documented cadence.</li>
+            <li>Android Autofill framework integration so system password managers can fill and save through the browser (WebView opt-in; GeckoView's built-in AndroidAutofillDelegate) — disabled on incognito pages on both engines.</li>
+        </ul>
+    </div>
+
+    <div class="entry">
         <h2>1.0 — Arktos Mobile: first release</h2>
 
         <h3>Rebrand &amp; project</h3>

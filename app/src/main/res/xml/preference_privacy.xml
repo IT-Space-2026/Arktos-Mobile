@@ -193,5 +193,10 @@
             android:key="clear_webstorage"
             android:singleLineTitle="false"
             android:title="@string/clear_web_storage"/>
+        <Preference
+            android:key="site_permissions"
+            android:singleLineTitle="false"
+            android:summary="@string/site_permissions_summary"
+            android:title="@string/site_permissions"/>
     </PreferenceCategory>
 </PreferenceScreen>

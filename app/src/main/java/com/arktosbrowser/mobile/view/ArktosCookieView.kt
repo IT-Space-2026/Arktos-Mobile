@@ -275,7 +275,14 @@ class ArktosCookieView(
             setBackgroundColor(Color.WHITE)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_YES
+                // AUTOF01 — system autofill (password managers, form
+                // fill services) fills and saves through the view,
+                // but an incognito tab must do neither.
+                importantForAutofill = if (isIncognito) {
+                    View.IMPORTANT_FOR_AUTOFILL_NO
+                } else {
+                    View.IMPORTANT_FOR_AUTOFILL_YES
+                }
             }
 
             isScrollbarFadingEnabled = true
@@ -1182,7 +1189,7 @@ class ArktosCookieView(
      * reference to the WebView and therefore will not
      * leak it if the WebView is garbage collected.
      */
-    private class WebViewHandler(view: ArktosCookieView) : Handler() {
+    private class WebViewHandler(view: ArktosCookieView) : Handler(android.os.Looper.getMainLooper()) {
 
         private val reference: WeakReference<ArktosCookieView> = WeakReference(view)
 

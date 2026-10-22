@@ -166,31 +166,41 @@ class TabsManager @Inject constructor(
      * Returns an observable that emits the [TabInitializer] for each previously opened tab as
      * saved on disk. Can potentially be empty.
      */
-    private fun restorePreviousTabs(): Observable<TabInitializer> = readSavedStateFromDisk()
-        .map { bundle ->
-            return@map bundle.getString(URL_KEY)?.let { url ->
-                when {
-                    url.isBookmarkUrl() -> bookmarkPageInitializer
-                    url.isDownloadsUrl() -> downloadPageInitializer
-                    url.isStartPageUrl() -> homePageInitializer
-                    url.isHistoryUrl() -> historyPageInitializer
-                    else -> UrlInitializer(url)
-                }
-            } ?: BundleInitializer(bundle)
-        }
-        .onErrorResumeNext { throwable: Throwable ->
-            // The parcel couldn't be read at all — restore whatever the
-            // plain-URL fallback file holds rather than losing the tabs.
-            logger.log(TAG, "Saved tab parcel unreadable; falling back to URL list", throwable)
-            savedUrlFallback()
-        }
-        .switchIfEmpty(savedUrlFallback())
+    private fun restorePreviousTabs(): Observable<TabInitializer> {
+        // The plain-URL list is authoritative — bundles restore in the
+        // same positional order, so a bundle carrying no URL_KEY and an
+        // engine state it can't unparcel still gets its URL line.
+        val urls = savedUrlLines()
+        val position = java.util.concurrent.atomic.AtomicInteger(0)
+        return readSavedStateFromDisk()
+            .map { bundle ->
+                val pos = position.getAndIncrement()
+                return@map bundle.getString(URL_KEY)?.let { url ->
+                    when {
+                        url.isBookmarkUrl() -> bookmarkPageInitializer
+                        url.isDownloadsUrl() -> downloadPageInitializer
+                        url.isStartPageUrl() -> homePageInitializer
+                        url.isHistoryUrl() -> historyPageInitializer
+                        else -> UrlInitializer(url)
+                    }
+                } ?: BundleInitializer(bundle, urls.getOrNull(pos))
+            }
+            .onErrorResumeNext { throwable: Throwable ->
+                // The parcel couldn't be read at all — restore whatever the
+                // plain-URL fallback file holds rather than losing the tabs.
+                logger.log(TAG, "Saved tab parcel unreadable; falling back to URL list", throwable)
+                savedUrlFallback()
+            }
+            .switchIfEmpty(savedUrlFallback())
+    }
+
+    private fun savedUrlLines(): List<String> = runCatching {
+        File(application.filesDir, URL_STORAGE).takeIf { it.isFile }
+            ?.readLines().orEmpty().filter { it.isNotBlank() }
+    }.getOrDefault(emptyList())
 
     private fun savedUrlFallback(): Observable<TabInitializer> =
-        Observable.fromCallable {
-            File(application.filesDir, URL_STORAGE).takeIf { it.isFile }
-                ?.readLines().orEmpty().filter { it.isNotBlank() }
-        }.flatMapIterable { it }.map { url ->
+        Observable.fromIterable(savedUrlLines()).map { url ->
             when {
                 url.isBookmarkUrl() -> bookmarkPageInitializer
                 url.isDownloadsUrl() -> downloadPageInitializer

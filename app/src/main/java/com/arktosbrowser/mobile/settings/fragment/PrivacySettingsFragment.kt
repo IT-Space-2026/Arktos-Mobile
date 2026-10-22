@@ -28,7 +28,9 @@ import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.dialog.TapjackingGuard
+import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.extensions.withSingleChoiceItems
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.arktosbrowser.mobile.isSupported
 import com.arktosbrowser.mobile.network.ReferrerPolicy
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -147,6 +149,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         clickablePreference(preference = SETTINGS_CLEARHISTORY, onClick = this::clearHistoryDialog)
         clickablePreference(preference = SETTINGS_CLEARCOOKIES, onClick = this::clearCookiesDialog)
         clickablePreference(preference = SETTINGS_CLEARWEBSTORAGE, onClick = this::clearWebStorageDialog)
+        clickablePreference(preference = SETTINGS_SITE_PERMISSIONS, onClick = this::sitePermissionsDialog)
 
         switchPreference(
             preference = SETTINGS_LOCATION,
@@ -693,6 +696,44 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
         )
     }
 
+    /**
+     * List the remembered per-origin permission grants; tapping a row
+     * revokes it and re-opens the refreshed list, "Clear all" wipes
+     * the store through the engine's SitePermissions area.
+     */
+    private fun sitePermissionsDialog() {
+        val activity = activity as? Activity ?: return
+        Engines.defaultProfile.sitePermissionGrants { grants ->
+            activity.runOnUiThread {
+                if (grants.isEmpty()) {
+                    Toast.makeText(
+                        activity, R.string.message_no_site_permissions,
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@runOnUiThread
+                }
+                val items = grants.map {
+                    "${it.origin} — ${it.permission}"
+                }.toTypedArray()
+                MaterialAlertDialogBuilder(activity).apply {
+                    setTitle(R.string.site_permissions)
+                    setItems(items) { _, which ->
+                        Engines.defaultProfile.clearSitePermissionGrant(grants[which])
+                        sitePermissionsDialog()
+                    }
+                    setNeutralButton(R.string.action_clear_all) { _, _ ->
+                        Engines.defaultProfile.clear(setOf(StorageArea.SitePermissions))
+                        Toast.makeText(
+                            activity, R.string.message_permissions_cleared,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    setNegativeButton(R.string.action_cancel, null)
+                }.resizeAndShow()
+            }
+        }
+    }
+
     private fun clearWebStorageDialog() {
         BrowserDialog.showPositiveNegativeDialog(
             activity = activity as Activity,
@@ -770,7 +811,12 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun clearWebStorage() {
-        Engines.defaultProfile.clear(setOf(StorageArea.FormData, StorageArea.SslDecisions))
+        // Remembered site-permission grants ride the "web storage"
+        // wipe — site data a user expects gone stays gone.
+        Engines.defaultProfile.clear(setOf(
+            StorageArea.FormData, StorageArea.SslDecisions,
+            StorageArea.SitePermissions
+        ))
         context?.let { WebUtils.eraseWebStorage(it) }
 
         toastMessage?.cancel()
@@ -779,6 +825,7 @@ class PrivacySettingsFragment : AbstractSettingsFragment() {
     }
 
     companion object {
+        private const val SETTINGS_SITE_PERMISSIONS = "site_permissions"
         private const val SETTINGS_LOCATION = "location"
         private const val SETTINGS_THIRDPCOOKIES = "third_party"
         private const val SETTINGS_SAVEPASSWORD = "password"

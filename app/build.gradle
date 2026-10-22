@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion project.minSdkVersion
         targetSdkVersion project.targetSdkVersion
-        versionName "1.0"
-        versionCode 153
+        versionName "1.1"
+        versionCode 154
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -219,10 +219,11 @@ dependencies {
     // webview tools
     implementation 'androidx.webkit:webkit:1.17.1'
 
-    // ENG03 — GeckoView backend, gecko engine flavor only
-    // (maven.mozilla.org is already a project repository; version kept
-    // in step with the other mozilla.components deps above).
-    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261019185856'
+    // ENG03 — GeckoView backend, gecko engine flavor only.
+    // The unsuffixed `geckoview` artifact is the STABLE channel
+    // (-beta / -nightly are the other two) — keep pinned to the
+    // latest stable from maven.mozilla.org for engine CVE fixes.
+    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261021001945'
 
     // lifecycleScope for coroutine-backed background work (MOD02)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'

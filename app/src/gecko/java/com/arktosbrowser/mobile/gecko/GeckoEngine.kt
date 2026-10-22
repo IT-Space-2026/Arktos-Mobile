@@ -121,6 +121,13 @@ class GeckoEngine(
         private set
 
     /**
+     * The persisted site-permission store — owned here so
+     * [GeckoProfile]'s SitePermissions clear/enumeration and every
+     * page's [GeckoPermissionDelegate] share one backing file.
+     */
+    internal val permissionStore = GeckoPermissionStore(application)
+
+    /**
      * The host when the runtime exists, else null — `::isInitialized`
      * on a `lateinit` is only readable inside this class, so callers
      * use this guard.
@@ -255,6 +262,13 @@ class GeckoEngine(
                 }
             }
             gv.pendingSession = page.session
+            // AUTOF01 — the Android autofill delegate is enabled by
+            // default (GeckoView wires AndroidAutofillDelegate into
+            // every setSession); private-mode pages must neither
+            // offer fills nor hand session commits to the system
+            // autofill service, so the flag follows the bound
+            // profile's privacy on every swap.
+            gv.autofillEnabled = !page.isOffTheRecord
             page.session.setFocused(true)
             boundPage = page
         }

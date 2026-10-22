@@ -242,7 +242,7 @@ class ExportSettingsFragment : AbstractSettingsFragment() {
                 R.string.reset_settings, Toast.LENGTH_LONG
             ).show()
 
-            val handler = Handler()
+            val handler = Handler(android.os.Looper.getMainLooper())
             handler.postDelayed(Runnable {
                 (activity?.getSystemService(ACTIVITY_SERVICE) as ActivityManager)
                     .clearApplicationUserData()

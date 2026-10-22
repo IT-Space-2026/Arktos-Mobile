@@ -5,6 +5,7 @@ package com.arktosbrowser.mobile.gecko
 import android.net.Uri
 import com.arktosbrowser.mobile.engine.Profile
 import com.arktosbrowser.mobile.engine.RequestPolicy
+import com.arktosbrowser.mobile.engine.SitePermissionGrant
 import com.arktosbrowser.mobile.engine.StorageArea
 import com.arktosbrowser.mobile.engine.UserScript
 import org.mozilla.geckoview.StorageController
@@ -70,11 +71,25 @@ class GeckoProfile(
                 StorageArea.AppPrivateData -> StorageController.ClearFlags.ALL
                 StorageArea.FormData, StorageArea.SslDecisions,
                 StorageArea.SessionOnly -> 0L
+                // Handled below — the grant store is app-side, not
+                // StorageController data.
+                StorageArea.SitePermissions -> 0L
             }
         }
         if (flags != 0L) {
             engine.runtime.storageController.clearData(flags)
         }
+        if (StorageArea.SitePermissions in areas || StorageArea.All in areas) {
+            engine.permissionStore.clear()
+        }
+    }
+
+    override fun sitePermissionGrants(
+        callback: (List<SitePermissionGrant>) -> Unit
+    ) = callback(engine.permissionStore.grants())
+
+    override fun clearSitePermissionGrant(grant: SitePermissionGrant) {
+        engine.permissionStore.remove(grant)
     }
 
     /** Wipe one origin's site data (cookies + DOM storage for the host). */

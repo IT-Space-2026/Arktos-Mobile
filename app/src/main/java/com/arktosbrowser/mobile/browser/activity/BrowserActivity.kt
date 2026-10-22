@@ -18,7 +18,6 @@ import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,7 +26,6 @@ import android.os.Message
 import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.text.InputType
-import android.util.DisplayMetrics
 import android.util.Log
 import android.util.TypedValue
 import android.view.*
@@ -52,6 +50,10 @@ import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.core.view.GravityCompat
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.marginLeft
 import androidx.core.view.marginRight
 import androidx.core.view.marginTop
@@ -136,19 +138,21 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var homeImageView: ImageView? = null
     private var tabCountView: TabCountView? = null
 
-    // Current tab view being displayed
-    private var currentTabView: View? = null
+    // Tab-display + video-fullscreen plumbing — extracted to the
+    // controller; currentTabView stays a delegated property so every
+    // existing read/write site keeps working unchanged.
+    private lateinit var tabViewController: TabViewController
 
-    // Full Screen Video Views
-    private var fullscreenContainerView: FrameLayout? = null
-    private var videoView: VideoView? = null
-    private var customView: View? = null
+    private var currentTabView: View?
+        get() = tabViewController.currentTabView
+        set(value) {
+            tabViewController.currentTabView = value
+        }
 
     // Adapter
     private var suggestionsAdapter: SuggestionsAdapter? = null
 
     // Callback
-    private var customViewCallback: (() -> Unit)? = null
     private var filePathCallback: ((Array<Uri>?) -> Unit)? = null
 
     // Primitives
@@ -160,7 +164,6 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     private var swapBookmarksAndTabs: Boolean = false
     private var swapDrawerIcons: Boolean = false
 
-    private var originalOrientation: Int = 0
     private var currentUiColor = Color.BLACK
     private var keyDownStartTime: Long = 0
     private var searchText: String? = null
@@ -322,6 +325,22 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        onBackPressedDispatcher.addCallback(this, backPressCallback)
+
+        tabViewController = TabViewController(
+            activity = this,
+            contentFrame = binding.contentFrame,
+            toolbarLayout = binding.toolbarLayout,
+            drawerLayout = binding.drawerLayout,
+            mainHandler = mainHandler,
+            logger = logger,
+            currentTab = { tabsManager.currentTab },
+            isFullScreenMode = { isFullScreen },
+            hideStatusBar = { userPreferences.hideStatusBarEnabled },
+            setFullscreen = this::setFullscreen,
+            showActionBar = this::showActionBar
+        )
 
         DynamicColors.applyIfAvailable(this)
 
@@ -1500,59 +1519,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     override fun removeTabView() {
-
         logger.log(TAG, "Remove the tab view")
-
-        currentTabView.removeFromParent()
-
-        currentTabView = null
-
-        // Use a delayed handler to make the transition smooth
-        // otherwise it will get caught up with the showTab code
-        // and cause a janky motion
-        mainHandler.postDelayed(binding.drawerLayout::closeDrawers, 200)
-
+        tabViewController.removeTabView()
     }
-    override fun setTabView(view: View) {
-        if (currentTabView == view) {
-            // Same widget re-shown — the Gecko backend swaps the
-            // session inside its one shared GeckoView, so this path is
-            // its every-switch route: still focus the view and close
-            // the drawer like a real swap.
-            view.requestFocus()
-            mainHandler.postDelayed(binding.drawerLayout::closeDrawers, 200)
-            return
-        }
 
-        logger.log(TAG, "Setting the tab view")
-
-        view.removeFromParent()
-        currentTabView.removeFromParent()
-
-        binding.contentFrame.addView(view, 0, MATCH_PARENT)
-
-         if(isFullScreen) {
-            view.translationY = binding.toolbarLayout.height + binding.toolbarLayout.translationY
-        }
-        else {
-         view.translationY = 0f
-       }
-
-        val displayMetrics =  DisplayMetrics()
-        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics)
-        val height = displayMetrics.heightPixels
-
-        currentTabView = view
-
-        view.requestFocus()
-
-        showActionBar()
-
-        // Use a delayed handler to make the transition smooth
-        // otherwise it will get caught up with the showTab code
-        // and cause a janky motion
-        mainHandler.postDelayed(binding.drawerLayout::closeDrawers, 200)
-    }
+    override fun setTabView(view: View) = tabViewController.setTabView(view)
 
     override fun showBlockedLocalFileDialog(onPositiveClick: Function0<Unit>) {
         MaterialAlertDialogBuilder(this)
@@ -1739,12 +1710,18 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     fun getScreenSize(): Int{
-        var display: Display = getWindowManager().getDefaultDisplay()
         var size: Point = Point()
         var extra = 0
         var height = 0
         var barHeight = 0
-        display.getSize(size)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = windowManager.currentWindowMetrics.bounds
+            size.x = bounds.width()
+            size.y = bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            getWindowManager().getDefaultDisplay().getSize(size)
+        }
         Log.d("displayMetrics", size.y.toString())
         var resources = getResources()
         var resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
@@ -1816,38 +1793,45 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         a.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(a)
     }
-    override fun onBackPressed() {
-        if (lockScreen != null) {
-            // Locked — swallow back presses so nothing underneath is
-            // reachable; Exit on the lock screen is the way out.
-            return
-        }
-        val currentTab = tabsManager.currentTab
-        if (binding.drawerLayout.isDrawerOpen(getTabDrawer())) {
-            binding.drawerLayout.closeDrawer(getTabDrawer())
-        } else if (binding.drawerLayout.isDrawerOpen(getBookmarkDrawer())) {
-            bookmarksView?.navigateBack()
-        } else {
-            if (currentTab != null) {
-                logger.log(TAG, "onBackPressed")
-                if (searchView?.hasFocus() == true) {
-                    currentTab.requestFocus()
-                } else if (currentTab.canGoBack) {
-                    if (!currentTab.isShown) {
-                        onHideCustomView()
+    // Registered on the dispatcher in onCreate — the deprecated
+    // `onBackPressed()` override would also miss predictive-back
+    // handling on modern Android.
+    private val backPressCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (lockScreen != null) {
+                // Locked — swallow back presses so nothing underneath is
+                // reachable; Exit on the lock screen is the way out.
+                return
+            }
+            val currentTab = tabsManager.currentTab
+            if (binding.drawerLayout.isDrawerOpen(getTabDrawer())) {
+                binding.drawerLayout.closeDrawer(getTabDrawer())
+            } else if (binding.drawerLayout.isDrawerOpen(getBookmarkDrawer())) {
+                bookmarksView?.navigateBack()
+            } else {
+                if (currentTab != null) {
+                    logger.log(TAG, "onBackPressed")
+                    if (searchView?.hasFocus() == true) {
+                        currentTab.requestFocus()
+                    } else if (currentTab.canGoBack) {
+                        if (!currentTab.isShown) {
+                            onHideCustomView()
+                        } else {
+                            currentTab.goBack()
+                        }
                     } else {
-                        currentTab.goBack()
+                        if (tabViewController.isVideoFullscreen) {
+                            onHideCustomView()
+                        } else {
+                            presenter?.deleteTab(tabsManager.positionOf(currentTab), true)
+                        }
                     }
                 } else {
-                    if (customView != null || customViewCallback != null) {
-                        onHideCustomView()
-                    } else {
-                        presenter?.deleteTab(tabsManager.positionOf(currentTab), true)
-                    }
+                    logger.log(TAG, "This shouldn't happen ever")
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
                 }
-            } else {
-                logger.log(TAG, "This shouldn't happen ever")
-                super.onBackPressed()
             }
         }
     }
@@ -2284,117 +2268,10 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         })
     }
 
-    override fun onShowCustomView(view: View, callback: () -> Unit, requestedOrientation: Int) {
-        val currentTab = tabsManager.currentTab
-        if (customView != null) {
-            try {
-                callback()
-            } catch (e: Exception) {
-                logger.log(TAG, "Error hiding custom view", e)
-            }
+    override fun onShowCustomView(view: View, callback: () -> Unit, requestedOrientation: Int) =
+        tabViewController.onShowCustomView(view, callback, requestedOrientation)
 
-            return
-        }
-
-        try {
-            view.keepScreenOn = true
-        } catch (e: SecurityException) {
-            logger.log(TAG, "WebView is not allowed to keep the screen on")
-        }
-
-        originalOrientation = getRequestedOrientation()
-        customViewCallback = callback
-        customView = view
-
-        //setRequestedOrientation(requestedOrientation)
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR)
-        val decorView = window.decorView as FrameLayout
-
-        fullscreenContainerView = FrameLayout(this)
-        fullscreenContainerView?.setBackgroundColor(ContextCompat.getColor(this, R.color.black))
-        if (view is FrameLayout) {
-            val child = view.focusedChild
-            if (child is VideoView) {
-                videoView = child
-                child.setOnErrorListener(VideoCompletionListener())
-                child.setOnCompletionListener(VideoCompletionListener())
-            }
-        } else if (view is VideoView) {
-            videoView = view
-            view.setOnErrorListener(VideoCompletionListener())
-            view.setOnCompletionListener(VideoCompletionListener())
-        }
-        decorView.addView(fullscreenContainerView, COVER_SCREEN_PARAMS)
-        fullscreenContainerView?.addView(customView, COVER_SCREEN_PARAMS)
-        decorView.requestLayout()
-        setFullscreen(enabled = true, immersive = true)
-        currentTab?.setVisibility(INVISIBLE)
-    }
-
-    override fun onHideCustomView() {
-        val currentTab = tabsManager.currentTab
-        if (customView == null || customViewCallback == null || currentTab == null) {
-            if (customViewCallback != null) {
-                try {
-                    customViewCallback?.invoke()
-                } catch (e: Exception) {
-                    logger.log(TAG, "Error hiding custom view", e)
-                }
-
-                customViewCallback = null
-            }
-            return
-        }
-        logger.log(TAG, "onHideCustomView")
-        currentTab.setVisibility(VISIBLE)
-        try {
-            customView?.keepScreenOn = false
-        } catch (e: SecurityException) {
-            logger.log(TAG, "WebView is not allowed to keep the screen on")
-        }
-
-        setFullscreen(userPreferences.hideStatusBarEnabled, false)
-        if (fullscreenContainerView != null) {
-            val parent = fullscreenContainerView?.parent as ViewGroup
-            parent.removeView(fullscreenContainerView)
-            fullscreenContainerView?.removeAllViews()
-        }
-
-        fullscreenContainerView = null
-        customView = null
-
-        logger.log(TAG, "VideoView is being stopped")
-        videoView?.stopPlayback()
-        videoView?.setOnErrorListener(null)
-        videoView?.setOnCompletionListener(null)
-        videoView = null
-
-        try {
-            customViewCallback?.invoke()
-        } catch (e: Exception) {
-            logger.log(TAG, "Error hiding custom view", e)
-        }
-
-        customViewCallback = null
-        requestedOrientation = originalOrientation
-
-        // An engine that lends its page widget as the fullscreen view
-        // (GeckoView) came out of the fullscreen container detached —
-        // put it back. The WebView's custom view is a separate
-        // surface, so a still-attached current view skips this.
-        currentTabView?.takeIf { it.parent == null }?.let {
-            binding.contentFrame.addView(it, 0, MATCH_PARENT)
-            it.requestFocus()
-        }
-    }
-
-    private inner class VideoCompletionListener : MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
-
-        override fun onError(mp: MediaPlayer, what: Int, extra: Int): Boolean = false
-
-        override fun onCompletion(mp: MediaPlayer) = onHideCustomView()
-
-    }
+    override fun onHideCustomView() = tabViewController.onHideCustomView()
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -2448,22 +2325,20 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         isImmersiveMode = immersive
         val window = window
         val decor = window.decorView
+        val insetsController = WindowCompat.getInsetsController(window, decor)
         if (enabled) {
             if (immersive) {
-                decor.systemUiVisibility = (SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        or SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        or SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        or SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or SYSTEM_UI_FLAG_FULLSCREEN
-                        or SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+                insetsController.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                insetsController.hide(WindowInsetsCompat.Type.systemBars())
             } else {
-                decor.systemUiVisibility = SYSTEM_UI_FLAG_VISIBLE
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
             }
             window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            decor.systemUiVisibility = SYSTEM_UI_FLAG_VISIBLE
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 

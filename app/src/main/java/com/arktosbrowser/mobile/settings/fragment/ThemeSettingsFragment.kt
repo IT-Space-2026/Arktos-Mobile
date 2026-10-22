@@ -96,7 +96,7 @@ class ThemeSettingsFragment : AbstractSettingsFragment() {
             }
             setOnCancelListener {
                 if (currentTheme != userPreferences.useTheme) {
-                    activity?.onBackPressed()
+                    activity?.onBackPressedDispatcher?.onBackPressed()
                 }
             }
         }.resizeAndShow()

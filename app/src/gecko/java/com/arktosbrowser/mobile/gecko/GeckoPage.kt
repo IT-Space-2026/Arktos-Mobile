@@ -205,7 +205,11 @@ class GeckoPage(
                 activity,
                 uiController,
                 userPreferences,
-                persist = !profile.isOffTheRecord
+                store = if (profile.isOffTheRecord) {
+                    null
+                } else {
+                    engine.permissionStore
+                }
             )
         session.finder.setDisplayFlags(
             GeckoSession.FINDER_DISPLAY_HIGHLIGHT_ALL or
@@ -387,9 +391,10 @@ class GeckoPage(
         // class's loader to unparcel it. An unparcel or restore failure
         // reports false so the caller falls back to a URL load.
         state.classLoader = GeckoSession.SessionState::class.java.classLoader
-        @Suppress("DEPRECATION")
         val sessionState = runCatching {
-            state.getParcelable<GeckoSession.SessionState>(STATE_KEY)
+            androidx.core.os.BundleCompat.getParcelable(
+                state, STATE_KEY, GeckoSession.SessionState::class.java
+            )
         }.getOrNull() ?: return false
         // Extract the current entry's URL from the state itself — a
         // SessionState that "reproduced" as empty (geckoview logs

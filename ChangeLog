@@ -6,6 +6,53 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.1 — Stability & maintenance release
+
+Engine:
+- GeckoView pinned to the stable release channel
+  (org.mozilla.geckoview:geckoview — the unsuffixed artifact is the
+  stable line; -beta/-nightly are not used), bumped to
+  158.0.20261021001945 so engine security fixes ship promptly.
+
+Privacy & permissions:
+- Site-permission grants are now covered by the engine StorageArea
+  model (SitePermissions): clearing web storage wipes remembered
+  geolocation/notification/autoplay/camera/mic decisions on both
+  engines — GeckoView's SharedPreferences store and the WebView
+  GeolocationPermissions database — instead of leaving them behind.
+- New "Site permissions" row in Privacy settings lists every stored
+  per-origin grant with per-origin removal and a clear-all action.
+
+Networking:
+- Cleartext/network-security audit: plain HTTP remains permitted
+  (a browser must load http:// sites) but the manifest
+  networkSecurityConfig now documents the policy and the
+  Force-HTTPS warning path covers the risk.
+
+Persistence & restore:
+- Tab restore no longer trusts the engine SessionState parcel as
+  the source of truth — the plain URL list is authoritative and
+  engine state is applied opportunistically on top, so an
+  engine-upgrade-incompatible bundle can never white-screen a tab.
+- Regression tests cover the save→kill→restore path: aborted
+  background restores re-issue their URL instead of staying blank.
+
+Architecture & modernization:
+- Tab-view swapping and fullscreen plumbing extracted from
+  BrowserActivity (2,700+ lines) into a dedicated controller —
+  smaller blast radius for future display/tab changes.
+- Deprecated-API sweep: typed getParcelable calls, modern
+  display-metrics lookup, OnBackPressedDispatcher, and the
+  Activity Result API replace the deprecated surfaces lint flags.
+- Adblock subscription staleness verified — lists refresh on the
+  documented cadence instead of shipping stale.
+- Android Autofill framework integration so system password
+  managers can fill and save through the browser: the WebView
+  flavor opts the view into autofill, and the Gecko flavor rides
+  GeckoView's built-in AndroidAutofillDelegate — disabled on
+  incognito pages on both engines so private sessions neither
+  fill nor save.
+
 1.0 — Arktos Mobile: first release
 Rebrand / project:
 - Rebranded the project from SmartCookieWeb to Arktos Mobile: package

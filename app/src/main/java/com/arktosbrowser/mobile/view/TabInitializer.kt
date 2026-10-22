@@ -182,14 +182,19 @@ class ResultMessageInitializer(private val resultMessage: Message) : TabInitiali
  * instead of serialized engine state (e.g. generated error pages, which commit as `data:` URIs)
  * load that URL directly.
  */
-class BundleInitializer(private val bundle: Bundle) : TabInitializer {
+class BundleInitializer(
+    private val bundle: Bundle,
+    private val fallbackUrl: String? = null
+) : TabInitializer {
 
     override fun initialize(page: Page, headers: Map<String, String>) {
         // Engine state first — it carries scroll + history; the saved
-        // URL is the fallback when the bundle holds no usable state or
-        // its Parcelable can't unmarshal.
+        // URL (bundle's own, then the positional line from the plain
+        // URL file) is the fallback when the bundle holds no usable
+        // state or its Parcelable can't unmarshal.
         if (!page.restoreState(bundle)) {
-            bundle.getString(TabsManager.URL_KEY)?.let { page.load(it, headers) }
+            (bundle.getString(TabsManager.URL_KEY) ?: fallbackUrl)
+                ?.let { page.load(it, headers) }
         }
     }
 
