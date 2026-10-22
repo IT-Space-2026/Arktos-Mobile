@@ -383,16 +383,24 @@ class GeckoPage(
         val sessionState = runCatching {
             state.getParcelable<GeckoSession.SessionState>(STATE_KEY)
         }.getOrNull() ?: return false
-        if (runCatching { session.restoreState(sessionState) }.isFailure) {
-            return false
-        }
+        // Extract the current entry's URL from the state itself — a
+        // SessionState that "reproduced" as empty (geckoview logs
+        // "Can't reproduce session state from Parcel" internally and
+        // yields a state with no history) restores to a blank tab, so
+        // the URL is the only dependable payload.
+        val stateUrl = runCatching {
+            sessionState.getOrNull(sessionState.currentIndex)?.uri
+        }.getOrNull()
         // Keep the restored state — finishInitialization's stop() can
         // abort the restore's load on background tabs, and
-        // reloadIfStale re-issues it from latestSessionState on select.
+        // reloadIfStale re-issues recovery on select.
         latestSessionState = sessionState
-        state.getString(TabsManager.URL_KEY)?.let {
+        (state.getString(TabsManager.URL_KEY) ?: stateUrl)?.let {
             currentUrl = it
             committedUrl = it
+        }
+        if (runCatching { session.restoreState(sessionState) }.isFailure) {
+            return false
         }
         return true
     }
@@ -578,20 +586,23 @@ class GeckoPage(
         if (!contentCrashed && session.isOpen && (loading || loadCompleted)) {
             return
         }
+        val wasCrashed = contentCrashed
         contentCrashed = false
         val state = latestSessionState
         if (!session.isOpen) {
             session.open(engine.runtime)
             if (state != null) session.restoreState(state) else session.loadUri(currentUrl)
-        } else if (state != null) {
-            // A stopped restore (finishInitialization) or dead session
-            // gets its state re-applied — restores scroll too.
+        } else if (wasCrashed && state != null) {
+            // Crash/kill recovery — re-apply the state to keep scroll.
             session.restoreState(state)
         } else if (currentUrl.isNotBlank()) {
-            // Aborted load with no state — re-issue the intended
-            // navigation; reload() on a session with no committed
-            // entry is a no-op.
+            // Aborted load or a restore that produced nothing — the
+            // tracked URL is dependable where re-restoring a possibly
+            // empty SessionState is not; reload() on a session with no
+            // committed entry is a no-op.
             session.loadUri(currentUrl)
+        } else if (state != null) {
+            session.restoreState(state)
         } else {
             reload()
         }
