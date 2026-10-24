@@ -1291,10 +1291,12 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     private fun setWebViewTranslation(translation: Float) =
-            if (isFullScreen) {
-                currentTabView?.translationY = translation
-            } else {
-                currentTabView?.translationY = 0f
+            when {
+                // While a video fullscreen owns the tab view, scroll
+                // and resume handlers must not re-shift it offscreen.
+                tabViewController.isVideoFullscreen -> Unit
+                isFullScreen -> currentTabView?.translationY = translation
+                else -> currentTabView?.translationY = 0f
             }
 
 

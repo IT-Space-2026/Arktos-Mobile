@@ -49,6 +49,9 @@ internal class TabViewController(
     private var videoView: VideoView? = null
     private var originalOrientation: Int = 0
 
+    /** The tab view's toolbar-offset before gecko fullscreen zeroed it. */
+    private var preFullscreenTranslationY: Float? = null
+
     /** Whether a video-fullscreen surface is currently active. */
     val isVideoFullscreen: Boolean
         get() = customView != null || customViewCallback != null
@@ -130,7 +133,11 @@ internal class TabViewController(
             // Reparenting it into an overlay would tear the session's
             // display binding, which gecko reads as a fullscreen-exit
             // — and the element only grows to the widget's own bounds
-            // anyway (the Fenix/mozilla-components model).
+            // anyway (the Fenix/mozilla-components model). The
+            // toolbar-offset translation has to come off too, or the
+            // top stays white and the bottom clips.
+            preFullscreenTranslationY = view.translationY
+            view.translationY = 0f
             toolbarLayout.visibility = View.GONE
             setFullscreen(true, true)
             return
@@ -185,7 +192,10 @@ internal class TabViewController(
 
         setFullscreen(hideStatusBar(), false)
         // The chrome-hide path (GeckoView fullscreen) suppressed the
-        // toolbar — bring it back; the WebView path never hid it.
+        // toolbar — bring it back at its home offset; the WebView
+        // path never hid it. A scroll-hide animation that ran while
+        // fullscreen could have left it translated offscreen.
+        toolbarLayout.translationY = 0f
         toolbarLayout.visibility = VISIBLE
         if (fullscreenContainerView != null) {
             val parent = fullscreenContainerView?.parent as ViewGroup
@@ -225,6 +235,8 @@ internal class TabViewController(
             contentFrame.addView(it, 0, MATCH_PARENT)
             it.requestFocus()
         }
+        preFullscreenTranslationY?.let { currentTabView?.translationY = it }
+        preFullscreenTranslationY = null
     }
 
     private inner class VideoCompletionListener :
