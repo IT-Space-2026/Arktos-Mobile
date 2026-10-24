@@ -121,6 +121,21 @@ internal class TabViewController(
         //activity.setRequestedOrientation(requestedOrientation)
         activity.requestedOrientation =
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR
+
+        if (view === currentTabView) {
+            // The engine lent its page widget (GeckoView): gecko
+            // renders the fullscreen element inside the existing
+            // view, so fullscreen here is a layout matter — hide the
+            // chrome so the widget's bounds cover the window.
+            // Reparenting it into an overlay would tear the session's
+            // display binding, which gecko reads as a fullscreen-exit
+            // — and the element only grows to the widget's own bounds
+            // anyway (the Fenix/mozilla-components model).
+            toolbarLayout.visibility = View.GONE
+            setFullscreen(true, true)
+            return
+        }
+
         val decorView = activity.window.decorView as FrameLayout
 
         fullscreenContainerView = FrameLayout(activity)
@@ -140,21 +155,11 @@ internal class TabViewController(
             view.setOnCompletionListener(VideoCompletionListener())
         }
         decorView.addView(fullscreenContainerView, COVER_SCREEN_PARAMS)
-        // Gecko's fullscreen hands over the tab view itself — it is
-        // still attached to contentFrame at this point, and addView
-        // throws on an already-parented child. The detach-safe
-        // GeckoView releases its session on the way out and re-binds
-        // on attach, so the reparent keeps the video playing.
         view.removeFromParent()
         fullscreenContainerView?.addView(customView, COVER_SCREEN_PARAMS)
         decorView.requestLayout()
         setFullscreen(true, true)
-        // Gecko's custom view IS the tab view — hiding it here would
-        // blank the fullscreen video. The WebView path hides a
-        // different widget, which stays correct.
-        if (view !== currentTabView) {
-            currentTab()?.setVisibility(INVISIBLE)
-        }
+        currentTab()?.setVisibility(INVISIBLE)
     }
 
     fun onHideCustomView() {
@@ -179,6 +184,9 @@ internal class TabViewController(
         }
 
         setFullscreen(hideStatusBar(), false)
+        // The chrome-hide path (GeckoView fullscreen) suppressed the
+        // toolbar — bring it back; the WebView path never hid it.
+        toolbarLayout.visibility = VISIBLE
         if (fullscreenContainerView != null) {
             val parent = fullscreenContainerView?.parent as ViewGroup
             parent.removeView(fullscreenContainerView)
