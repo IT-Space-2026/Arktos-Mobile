@@ -38,9 +38,15 @@ typealias TabInitializer = PageInitializer
 /**
  * An initializer that loads a [url].
  */
-class UrlInitializer(private val url: String) : TabInitializer {
+class UrlInitializer(
+    private val url: String,
+    private val title: String? = null
+) : TabInitializer {
 
     override fun initialize(page: Page, headers: Map<String, String>) {
+        // Persisted titles show the tab's name before the reload
+        // commits (upstream engines get this from saved history).
+        title?.let { page.restoreTitle(it) }
         page.load(url, headers)
     }
 

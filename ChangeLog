@@ -19,6 +19,15 @@ Engine:
   arms its own abort signal and a committed document clears it,
   so a tab whose load was killed without a callback still
   recovers on select.
+- Tab titles persist in saved state and are reapplied on
+  restore (TITLE_KEY + Page.restoreTitle), so the tab strip
+  shows the page name before its reload commits — the parity
+  the WebView backend gets for free from saved history.
+- Gecko video fullscreen reparents the shared view cleanly
+  (removeFromParent before the fullscreen container adopts it,
+  reattach on exit) — fixes the "child already has a parent"
+  crash on sites like live streams, and the hidden-tab-view
+  left behind on exit.
 
 Privacy & permissions:
 - Site-permission grants are now covered by the engine StorageArea

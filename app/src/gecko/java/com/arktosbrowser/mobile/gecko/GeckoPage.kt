@@ -396,6 +396,9 @@ class GeckoPage(
             if (url.isNotBlank()) {
                 it.putString(TabsManager.URL_KEY, url)
             }
+            if (currentTitle.isNotBlank()) {
+                it.putString(TabsManager.TITLE_KEY, currentTitle)
+            }
             if (!isShowingGeneratedPage) {
                 latestSessionState?.let { state -> it.putParcelable(STATE_KEY, state) }
             }
@@ -406,6 +409,10 @@ class GeckoPage(
         // class's loader to unparcel it. An unparcel or restore failure
         // reports false so the caller falls back to a URL load.
         state.classLoader = GeckoSession.SessionState::class.java.classLoader
+        // Persisted titles let the tab strip show the saved name
+        // before anything commits — the WebView backend gets the same
+        // result for free from its serialized history.
+        state.getString(TabsManager.TITLE_KEY)?.let { currentTitle = it }
         val sessionState = runCatching {
             androidx.core.os.BundleCompat.getParcelable(
                 state, STATE_KEY, GeckoSession.SessionState::class.java
@@ -540,6 +547,10 @@ class GeckoPage(
 
     override val title: String
         get() = currentTitle.ifEmpty { activity.getString(R.string.untitled) }
+
+    override fun restoreTitle(title: String) {
+        if (title.isNotBlank()) currentTitle = title
+    }
 
     // GeckoView has no favicon delegate — tab icons come from a fetch
     // service (ENG05 gap).

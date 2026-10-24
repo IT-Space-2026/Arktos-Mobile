@@ -230,6 +230,10 @@ class ArktosCookieView(
     override val title: String
         get() = titleInfo.getTitle() ?: ""
 
+    override fun restoreTitle(title: String) {
+        if (title.isNotBlank()) titleInfo.setTitle(title)
+    }
+
     /**
      * Get the current [SslCertificate] if there is any associated with the current page.
      */

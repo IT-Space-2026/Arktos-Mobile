@@ -140,10 +140,21 @@ internal class TabViewController(
             view.setOnCompletionListener(VideoCompletionListener())
         }
         decorView.addView(fullscreenContainerView, COVER_SCREEN_PARAMS)
+        // Gecko's fullscreen hands over the tab view itself — it is
+        // still attached to contentFrame at this point, and addView
+        // throws on an already-parented child. The detach-safe
+        // GeckoView releases its session on the way out and re-binds
+        // on attach, so the reparent keeps the video playing.
+        view.removeFromParent()
         fullscreenContainerView?.addView(customView, COVER_SCREEN_PARAMS)
         decorView.requestLayout()
         setFullscreen(true, true)
-        currentTab()?.setVisibility(INVISIBLE)
+        // Gecko's custom view IS the tab view — hiding it here would
+        // blank the fullscreen video. The WebView path hides a
+        // different widget, which stays correct.
+        if (view !== currentTabView) {
+            currentTab()?.setVisibility(INVISIBLE)
+        }
     }
 
     fun onHideCustomView() {
@@ -172,6 +183,12 @@ internal class TabViewController(
             val parent = fullscreenContainerView?.parent as ViewGroup
             parent.removeView(fullscreenContainerView)
             fullscreenContainerView?.removeAllViews()
+        }
+        // When the tab view itself went fullscreen (GeckoView), the
+        // container removal left it parentless — put it back; the
+        // WebView path keeps its widget attached so this is a no-op.
+        currentTabView?.takeIf { it.parent == null }?.let {
+            contentFrame.addView(it, 0, MATCH_PARENT)
         }
 
         fullscreenContainerView = null

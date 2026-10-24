@@ -327,6 +327,14 @@ interface Page {
     var isNewTab: Boolean
 
     val title: String
+
+    /**
+     * Reapply a persisted title without a navigation — used on tab
+     * restore so the tab strip shows the saved name until the page
+     * commits a fresh one.
+     */
+    fun restoreTitle(title: String)
+
     val favicon: Bitmap?
     val sslCertificate: SslCertificate?
     val isShown: Boolean
