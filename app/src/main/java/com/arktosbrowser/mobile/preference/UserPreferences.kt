@@ -333,6 +333,18 @@ class UserPreferences @Inject constructor(
      */
     var lastChangelogVersionCode by preferences.intPreference(LAST_CHANGELOG_VERSION, 0)
 
+    /**
+     * UPDT01 — the GitHub-release update check. When enabled the app
+     * pings the releases API at most once per day on startup.
+     */
+    var updateCheckEnabled by preferences.booleanPreference(UPDATE_CHECK, true)
+
+    /** Epoch seconds of the last update check — the once-per-day rate limit. */
+    var lastUpdateCheckAt by preferences.intPreference(LAST_UPDATE_CHECK_AT, 0)
+
+    /** Release tag already announced — a dismissed update doesn't re-nag. */
+    var dismissedUpdateTag by preferences.stringPreference(DISMISSED_UPDATE_TAG, "")
+
 
 
     /**
@@ -682,4 +694,7 @@ private const val HOMEPAGE_TYPE = "homepageType"
 private const val STACK_FROM_BOTTOM = "stackFromBottom"
 private const val BOOKMARK_SORT_DATE = "bookmarkSortByDate"
 private const val LAST_BOOKMARK_FOLDER = "lastBookmarkFolder"
+private const val UPDATE_CHECK = "updateCheck"
+private const val LAST_UPDATE_CHECK_AT = "lastUpdateCheckAt"
+private const val DISMISSED_UPDATE_TAG = "dismissedUpdateTag"
 private const val DRAWER_OFFSET = "drawerOffset"

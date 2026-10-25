@@ -18,6 +18,7 @@ import com.arktosbrowser.mobile.log.Logger
 import com.arktosbrowser.mobile.preference.UserPreferences
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.ssl.SslState
+import com.arktosbrowser.mobile.update.UpdateChecker
 import com.arktosbrowser.mobile.utils.isFileUrl
 import com.arktosbrowser.mobile.view.BundleInitializer
 import com.arktosbrowser.mobile.view.TabInitializer
@@ -41,13 +42,15 @@ class BrowserPresenter(
         private val incognitoPageFactory: IncognitoPageFactory,
         private val bookmarkPageFactory: BookmarkPageFactory,
         private val recentTabModel: RecentTabModel,
-        private val logger: Logger
+        private val logger: Logger,
+        private val updateChecker: UpdateChecker
 ) {
 
     private var currentTab: Page? = null
     private var shouldClose: Boolean = false
     private var intented: Page? = null
     private var sslStateSubscription: Disposable? = null
+    private var updateCheckDisposable: Disposable? = null
 
     init {
         tabsModel.addTabNumberChangedListener(view::updateTabNumber)
@@ -67,6 +70,7 @@ class BrowserPresenter(
                     view.updateTabNumber(tabsModel.size())
                     tabChanged(tabsModel.positionOf(it))
                     openChangelogOncePerUpgrade(intent)
+                    checkForUpdates()
                 },
                 onError = {
                     // Corrupt saved state or an initializer failure must not
@@ -111,6 +115,49 @@ class BrowserPresenter(
         }
         val hadIntentUrl = tabsModel.extractUrlFromIntent(intent) != null
         newTab(UrlInitializer(ChangelogPage.URL), !hadIntentUrl)
+    }
+
+    /**
+     * UPDT01 — the daily GitHub-release check. Announces a newer tag
+     * once in a dialog ("download" opens the release page in a tab);
+     * a dismissed tag doesn't re-nag, and incognito never checks.
+     */
+    private fun checkForUpdates() {
+        if (isIncognito || !userPreferences.updateCheckEnabled) {
+            return
+        }
+        val now = (System.currentTimeMillis() / 1000).toInt()
+        if (now - userPreferences.lastUpdateCheckAt < DAY_SECONDS) {
+            return
+        }
+        userPreferences.lastUpdateCheckAt = now
+        updateChecker.check()
+            .observeOn(mainScheduler)
+            .subscribeBy(
+                onSuccess = { info ->
+                    if (info.tag != userPreferences.dismissedUpdateTag) {
+                        showUpdateDialog(info)
+                    }
+                },
+                onError = { logger.log(TAG, "Update check failed", it) }
+            )
+            .let { updateCheckDisposable = it }
+    }
+
+    private fun showUpdateDialog(info: UpdateChecker.UpdateInfo) {
+        val activity = view as? Activity ?: return
+        if (activity.isFinishing || activity.isDestroyed) return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(activity)
+            .setTitle(activity.getString(R.string.update_available_title, info.version))
+            .setMessage(R.string.update_available_message)
+            .setPositiveButton(R.string.action_download) { _, _ ->
+                userPreferences.dismissedUpdateTag = info.tag
+                newTab(UrlInitializer(info.url), true)
+            }
+            .setNegativeButton(R.string.action_ok) { _, _ ->
+                userPreferences.dismissedUpdateTag = info.tag
+            }
+            .show()
     }
 
     /**
@@ -325,6 +372,7 @@ class BrowserPresenter(
         //onTabChanged(null)
         tabsModel.cancelPendingWork()
         sslStateSubscription?.dispose()
+        updateCheckDisposable?.dispose()
     }
 
     /**
@@ -409,6 +457,7 @@ class BrowserPresenter(
 
     companion object {
         private const val TAG = "BrowserPresenter"
+        private const val DAY_SECONDS = 24 * 60 * 60
 
         // Scheme allowlist lives in the Rust core (PORT02).
         internal fun isIntentUrlAllowed(url: String): Boolean =

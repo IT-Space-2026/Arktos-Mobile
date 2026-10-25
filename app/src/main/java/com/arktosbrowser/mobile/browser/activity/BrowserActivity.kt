@@ -221,6 +221,9 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     lateinit var homePageFactory: HomePageFactory
 
     @Inject
+    lateinit var updateChecker: com.arktosbrowser.mobile.update.UpdateChecker
+
+    @Inject
     lateinit var incognitoPageFactory: IncognitoPageFactory
 
     @Inject
@@ -369,7 +372,8 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 incognitoPageFactory,
                 bookmarkPageFactory,
                 RecentTabModel(),
-                logger
+                logger,
+                updateChecker
         )
         prefs = getSharedPreferences("com.arktosbrowser.mobile", MODE_PRIVATE)
 

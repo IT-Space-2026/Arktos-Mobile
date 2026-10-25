@@ -181,7 +181,8 @@
             <li>GeckoView pinned to the stable release channel (the unsuffixed <code>geckoview</code> artifact); the 158.0.2 bump was reverted to the verified 158.0.1 build after it regressed background-tab restore.</li>
             <li>Restore recovery uses its own abort signal instead of trusting engine callbacks — a tab whose load was killed without an onPageStop still recovers on select.</li>
             <li>Tab titles persist in saved state and are reapplied on restore, so the tab strip shows the page name before its reload commits.</li>
-            <li>Gecko video fullscreen reparents the shared view cleanly — fixes the &quot;child already has a parent&quot; crash on live streams and the hidden tab view left behind on exit.</li>
+            <li>Gecko video fullscreen follows the Fenix model — gecko renders the fullscreen element inside the existing view, so the shell hides chrome instead of reparenting; fixes the reparent crash plus whitespace/truncation.</li>
+            <li>Update check: a daily GitHub Releases lookup (opt-out in General settings; incognito never checks) announces a newer tag once via dialog — Download opens the release page.</li>
         </ul>
 
         <h3>Privacy &amp; permissions</h3>

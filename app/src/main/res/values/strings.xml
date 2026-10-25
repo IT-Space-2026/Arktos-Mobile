@@ -545,6 +545,10 @@
     <string name="experimental_settings" translatable="false">Experimental settings</string>
     <string name="experimental_settings_desc" translatable="false">Try out new features before they\'re released...</string>
     <string name="whats_new" translatable="false">Show \"What\'s New\" on homepage</string>
+    <string name="update_check" translatable="false">Check for updates</string>
+    <string name="update_check_summary" translatable="false">Check GitHub once a day for a newer release</string>
+    <string name="update_available_title" translatable="false">Arktos %1$s available</string>
+    <string name="update_available_message" translatable="false">A newer release is available on GitHub.</string>
     <string name="changelog">Changelog</string>
     <string name="changelog_summary">What\'s new in this version</string>
     <string name="image_url">Set a homepage background image</string>

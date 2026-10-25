@@ -23,11 +23,15 @@ Engine:
   restore (TITLE_KEY + Page.restoreTitle), so the tab strip
   shows the page name before its reload commits — the parity
   the WebView backend gets for free from saved history.
-- Gecko video fullscreen reparents the shared view cleanly
-  (removeFromParent before the fullscreen container adopts it,
-  reattach on exit) — fixes the "child already has a parent"
-  crash on sites like live streams, and the hidden-tab-view
-  left behind on exit.
+- Gecko video fullscreen follows the Fenix model: gecko renders
+  the fullscreen element inside the existing view, so the shell
+  hides chrome (toolbar + system bars, toolbar-offset
+  translation) instead of reparenting — fixes the "child already
+  has a parent" crash, the whitespace/truncation, and restores
+  correctly on exit.
+- Update check (UPDT01): a daily GitHub Releases lookup (opt-out
+  in General settings; incognito never checks) announces a newer
+  tag once via dialog — "Download" opens the release page.
 
 Privacy & permissions:
 - Site-permission grants are now covered by the engine StorageArea
