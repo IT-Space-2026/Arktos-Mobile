@@ -99,6 +99,8 @@ interface AppComponent {
 
     fun inject(generalSettingsFragment: GeneralSettingsFragment)
 
+    fun inject(fragment: AboutSettingsFragment)
+
     fun inject(displaySettingsFragment: DisplaySettingsFragment)
 
     fun inject(adBlockSettingsFragment: AdBlockSettingsFragment)

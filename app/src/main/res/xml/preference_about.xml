@@ -22,6 +22,9 @@
             android:key="pref_version"
             android:title="@string/version" />
         <Preference
+            android:key="pref_latest_version"
+            android:title="@string/latest_version" />
+        <Preference
             android:key="pref_webview"
             android:title="@string/webview_version" />
     </PreferenceCategory>

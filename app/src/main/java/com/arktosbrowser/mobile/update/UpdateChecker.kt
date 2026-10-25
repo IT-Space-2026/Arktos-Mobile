@@ -42,7 +42,14 @@ class UpdateChecker @Inject constructor(
      * payloads and network/HTTP failures (an update check must never
      * crash startup or nag on a hiccup).
      */
-    fun check(): Maybe<UpdateInfo> = okHttpClient
+    fun check(): Maybe<UpdateInfo> = latestRelease()
+        .filter { isNewer(it.version, BuildConfig.VERSION_NAME) }
+
+    /**
+     * UPDT02 — the newest published release regardless of the running
+     * build. The About screen shows this as "latest downloadable".
+     */
+    fun latestRelease(): Maybe<UpdateInfo> = okHttpClient
         .flatMapMaybe { client -> Maybe.fromCallable { fetchLatest(client) } }
         .subscribeOn(networkScheduler)
         .doOnError { logger.log(TAG, "Update check failed", it) }
@@ -59,14 +66,11 @@ class UpdateChecker @Inject constructor(
             val json = JSONObject(response.body?.string() ?: return null)
             val tag = json.optString("tag_name").trim()
             val version = versionOf(tag) ?: return null
-            if (isNewer(version, BuildConfig.VERSION_NAME)) {
-                return UpdateInfo(
-                    tag = tag,
-                    version = version,
-                    url = json.optString("html_url").ifBlank { RELEASE_PAGE_URL }
-                )
-            }
-            return null
+            return UpdateInfo(
+                tag = tag,
+                version = version,
+                url = json.optString("html_url").ifBlank { RELEASE_PAGE_URL }
+            )
         }
     }
 
