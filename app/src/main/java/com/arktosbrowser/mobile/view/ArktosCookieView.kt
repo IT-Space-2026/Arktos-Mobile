@@ -182,6 +182,7 @@ class ArktosCookieView(
     @Inject @field:MainScheduler internal lateinit var mainScheduler: Scheduler
     @Inject lateinit var networkConnectivityModel: NetworkConnectivityModel
     @Inject internal lateinit var textReflowJs: TextReflow
+    @Inject internal lateinit var webViewLoginBridge: WebViewLoginBridge
 
     private val arktosCookieWebClient: ArktosCookieWebClient
 
@@ -298,6 +299,10 @@ class ArktosCookieView(
                 uiController.handleNewTab(LightningDialogBuilder.NewTab.FOREGROUND, url)
             }
             arktosCookieWebClient.translateBridge.register(this)
+            if (!isIncognito) {
+                // Private pages never read or write saved logins.
+                webViewLoginBridge.register(this)
+            }
 
             setDownloadListener(LightningDownloadListener(activity))
             setOnTouchListener(TouchListener())

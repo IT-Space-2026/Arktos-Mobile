@@ -518,6 +518,11 @@
     <string name="close_app">Close browser</string>
     <string name="enter_password">Enter Password</string>
     <string name="wrong_password">Password Incorrect</string>
+    <string name="save_login_title">Save password?</string>
+    <string name="save_login_message">Save password for %1$s on %2$s?</string>
+    <string name="save_login_save">Save</string>
+    <string name="save_login_not_now">Not now</string>
+    <string name="select_login_title">Choose a saved password</string>
     <string name="block_all_sites">Block all listed sites</string>
     <string name="only_allow_sites">Only allow listed sites</string>
     <string name="parental_controls">Parental controls settings</string>

@@ -128,6 +128,13 @@ class GeckoEngine(
     internal val permissionStore = GeckoPermissionStore(application)
 
     /**
+     * The app's saved-login store — attached to the runtime in
+     * [initialize] for the normal process only. Lazy so the incognito
+     * process never opens the vault file.
+     */
+    internal val loginStore by lazy { GeckoLoginStore(application) }
+
+    /**
      * The host when the runtime exists, else null — `::isInitialized`
      * on a `lateinit` is only readable inside this class, so callers
      * use this guard.
@@ -158,6 +165,13 @@ class GeckoEngine(
             // died without a clean shutdown) so a swipe-away cannot
             // carry state into the next incognito session either.
             runtime.storageController.clearData(StorageController.ClearFlags.ALL)
+        } else {
+            // AUTOF02 — gecko holds no logins of its own: the runtime's
+            // storage delegate is the only source for autofill fetches
+            // and the only sink for confirmed save prompts. Incognito
+            // gets no delegate, so private sessions can neither read
+            // nor write the password store.
+            runtime.setAutocompleteStorageDelegate(loginStore)
         }
         userScriptHost = GeckoUserScriptHost(
             this, javascriptRepository, userScriptBootstrap, arktosStore,
@@ -385,6 +399,13 @@ class GeckoEngine(
         setGeckoPref(PREF_IMAGE_BLOCKING, if (userPreferences.blockImagesEnabled) 2 else 1)
         setGeckoPref(PREF_FORMFILL,
             userPreferences.savePasswordsEnabled && !incognitoProcess)
+        // The login manager's own save/fill pipeline backs the app's
+        // password store (AUTOF02) — the "save passwords" toggle gates
+        // save prompts, and private sessions must neither prompt nor
+        // fill.
+        setGeckoPref(PREF_REMEMBER_SIGNONS,
+            userPreferences.savePasswordsEnabled && !incognitoProcess)
+        setGeckoPref(PREF_AUTOFILL_FORMS, !incognitoProcess)
         setGeckoPref(PREF_FORCE_ZOOM, userPreferences.forceZoom)
     }
 
@@ -420,6 +441,8 @@ class GeckoEngine(
         private const val PREF_WEBRTC = "media.peerconnection.enabled"
         private const val PREF_IMAGE_BLOCKING = "permissions.default.image"
         private const val PREF_FORMFILL = "browser.formfill.enable"
+        private const val PREF_REMEMBER_SIGNONS = "signon.rememberSignons"
+        private const val PREF_AUTOFILL_FORMS = "signon.autofillForms"
         private const val PREF_FORCE_ZOOM = "browser.ui.zoom.force-user-scalable"
     }
 }

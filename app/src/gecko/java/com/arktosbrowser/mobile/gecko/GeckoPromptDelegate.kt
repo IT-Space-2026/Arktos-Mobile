@@ -3,6 +3,7 @@
 package com.arktosbrowser.mobile.gecko
 
 import android.app.Activity
+import android.net.Uri
 import android.view.LayoutInflater
 import android.widget.EditText
 import android.widget.TextView
@@ -12,12 +13,15 @@ import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
 import com.arktosbrowser.mobile.extensions.resizeAndShow
 import com.arktosbrowser.mobile.log.Logger
+import com.arktosbrowser.mobile.preference.UserPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.mozilla.geckoview.AllowOrDeny
+import org.mozilla.geckoview.Autocomplete
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.AlertPrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.AuthPrompt
+import org.mozilla.geckoview.GeckoSession.PromptDelegate.AutocompleteRequest
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.BeforeUnloadPrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.ButtonPrompt
 import org.mozilla.geckoview.GeckoSession.PromptDelegate.ChoicePrompt
@@ -44,7 +48,9 @@ import org.mozilla.geckoview.GeckoSession.PromptDelegate.TextPrompt
 class GeckoPromptDelegate(
     private val activity: Activity,
     private val uiController: UIController,
-    private val logger: Logger
+    private val logger: Logger,
+    private val userPreferences: UserPreferences,
+    private val offTheRecord: Boolean
 ) : GeckoSession.PromptDelegate {
 
     override fun onAlertPrompt(session: GeckoSession, prompt: AlertPrompt): GeckoResult<PromptResponse>? {
@@ -140,6 +146,74 @@ class GeckoPromptDelegate(
                 }
                 setNegativeButton(R.string.action_cancel) { _, _ ->
                     result.complete(prompt.dismiss())
+                }
+            }.resizeAndShow()
+        }
+        return result
+    }
+
+    /**
+     * AUTOF02 — gecko's "save this login?" request. Confirming stores
+     * the entry through the runtime's `Autocomplete.StorageDelegate`
+     * ([GeckoLoginStore]); the browser's own password store fills it
+     * again on the next visit via `onLoginSelect`/autofill.
+     */
+    override fun onLoginSave(
+        session: GeckoSession,
+        prompt: AutocompleteRequest<Autocomplete.LoginSaveOption>
+    ): GeckoResult<PromptResponse>? {
+        val option = prompt.options.firstOrNull()
+        if (offTheRecord || !userPreferences.savePasswordsEnabled || option == null) {
+            return GeckoResult.fromValue(prompt.dismiss())
+        }
+        val result = GeckoResult<PromptResponse>()
+        activity.runOnUiThread {
+            val login = option.value
+            val host = Uri.parse(login.origin).host ?: login.origin
+            MaterialAlertDialogBuilder(activity).apply {
+                setTitle(R.string.save_login_title)
+                setMessage(
+                    activity.getString(
+                        R.string.save_login_message, login.username, host
+                    )
+                )
+                setOnCancelListener { result.complete(prompt.dismiss()) }
+                setPositiveButton(R.string.save_login_save) { _, _ ->
+                    result.complete(prompt.confirm(option))
+                }
+                setNegativeButton(R.string.save_login_not_now) { _, _ ->
+                    result.complete(prompt.dismiss())
+                }
+            }.resizeAndShow()
+        }
+        return result
+    }
+
+    /**
+     * AUTOF02 — saved-login picker. A single matching entry fills
+     * immediately (that *is* autocomplete); multiple accounts get a
+     * chooser listing the stored usernames.
+     */
+    override fun onLoginSelect(
+        session: GeckoSession,
+        prompt: AutocompleteRequest<Autocomplete.LoginSelectOption>
+    ): GeckoResult<PromptResponse>? {
+        val options = prompt.options
+        if (offTheRecord || options.isEmpty()) {
+            return GeckoResult.fromValue(prompt.dismiss())
+        }
+        if (options.size == 1) {
+            return GeckoResult.fromValue(prompt.confirm(options[0]))
+        }
+        val result = GeckoResult<PromptResponse>()
+        activity.runOnUiThread {
+            val labels = options.map { it.value.username }.toTypedArray()
+            MaterialAlertDialogBuilder(activity).apply {
+                setTitle(R.string.select_login_title)
+                setOnCancelListener { result.complete(prompt.dismiss()) }
+                setItems(labels) { dialog, which ->
+                    result.complete(prompt.confirm(options[which]))
+                    dialog.dismiss()
                 }
             }.resizeAndShow()
         }

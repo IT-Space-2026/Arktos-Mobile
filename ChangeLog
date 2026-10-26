@@ -6,6 +6,30 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2 — Passwords
+
+Engine:
+- Saved-password support on both engines: submitting a login now
+  offers a "Save password?" prompt, saved credentials autofill on
+  revisit (single match fills directly, multiple accounts get a
+  chooser), and clearing form/all web data wipes the store.
+  - Gecko ("full"): GeckoView stores no logins itself, so the app
+    provides the Autocomplete.StorageDelegate + login prompt plumbing
+    (onLoginSave/onLoginSelect) this requires.
+  - WebView ("light"): importantForAutofill only talks to external
+    autofill services, so a postMessage login bridge now captures
+    submitted credentials and injects saved ones into login forms.
+  (AUTOF02)
+- Logins persist encrypted at rest (Android Keystore–wrapped AES-GCM
+  file under the app's private dir), never in private-mode sessions:
+  the incognito runtime gets no storage delegate/login bridge and
+  signon prefs are switched off there.
+- The "Save passwords" privacy toggle gates the save prompt
+  (signon.rememberSignons); the 1.1 system-autofill integration
+  stays active alongside for devices with an autofill service
+  configured.
+
+
 1.1 — Stability & maintenance release
 
 Engine:

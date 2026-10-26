@@ -144,6 +144,7 @@ class ArktosCookieWebClient(
     @Inject internal lateinit var rankListLoader: RankListLoader
     @Inject internal lateinit var siteSettings: SiteSettings
     @Inject internal lateinit var connectivityGate: ConnectivityGate
+    @Inject internal lateinit var webViewLoginBridge: WebViewLoginBridge
 
     private var currentUrl: String = ""
 
@@ -484,6 +485,10 @@ class ArktosCookieWebClient(
         }
         if (userPreferences.darkWebAddonEnabled(activity) && !WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             view.evaluateJavascript(darkMode.provideJs(activity), null)
+        }
+
+        if (!arktosCookieView.isIncognito) {
+            webViewLoginBridge.install(view)
         }
 
         if(userPreferences.cookieBlockEnabled){

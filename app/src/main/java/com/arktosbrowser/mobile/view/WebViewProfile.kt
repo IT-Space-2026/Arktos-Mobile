@@ -17,6 +17,7 @@ import com.arktosbrowser.mobile.engine.RequestPolicy
 import com.arktosbrowser.mobile.engine.SitePermissionGrant
 import com.arktosbrowser.mobile.engine.StorageArea
 import com.arktosbrowser.mobile.engine.UserScript
+import com.arktosbrowser.mobile.passwords.LoginVaults
 import com.arktosbrowser.mobile.utils.WebUtils
 import java.io.File
 
@@ -81,6 +82,12 @@ class WebViewProfile(
             val database = WebViewDatabase.getInstance(context)
             if (StorageArea.FormData in expanded) database.clearFormData()
             if (StorageArea.HttpAuth in expanded) database.clearHttpAuthUsernamePassword()
+        }
+
+        // The browser-managed login vault (WebViewLoginBridge) is
+        // form data — a FormData clear must empty it too.
+        if (StorageArea.FormData in expanded) {
+            LoginVaults.get(context).clear()
         }
 
         // Instance-level clears (disk cache, saved form data, SSL

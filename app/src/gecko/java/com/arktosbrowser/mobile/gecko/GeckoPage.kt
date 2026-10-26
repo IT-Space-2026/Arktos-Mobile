@@ -209,7 +209,9 @@ class GeckoPage(
         session.progressDelegate = GeckoProgressDelegate()
         session.contentDelegate = GeckoContentDelegate()
         session.historyDelegate = GeckoHistoryDelegate()
-        session.promptDelegate = GeckoPromptDelegate(activity, uiController, logger)
+        session.promptDelegate = GeckoPromptDelegate(
+            activity, uiController, logger, userPreferences, profile.isOffTheRecord
+        )
         session.permissionDelegate =
             GeckoPermissionDelegate(
                 activity,

@@ -146,6 +146,13 @@ SmartCookieWeb#314).
   hosts-file parsing, intent-scheme checks, tab/reader color math and
   the app-lock + parental-control passwords (Argon2id with in-place
   upgrade from legacy plaintext) run in the Rust core too
+- Built-in password manager on both engines — a "Save password?"
+  prompt on login and autofill on revisit (single match fills
+  directly, several accounts get a chooser), backed by an Android
+  Keystore–wrapped AES-GCM vault that stays local to the device;
+  gated by the Save-passwords privacy toggle and fully disabled in
+  incognito. System password managers keep working alongside via the
+  Android autofill integration
 - Browser-wide app lock — PIN, password, or biometric unlock (system
   credential fallback on API 30+) with a configurable re-lock window
   (immediately, 1/5/10 minutes, or a custom minute count) that re-arms

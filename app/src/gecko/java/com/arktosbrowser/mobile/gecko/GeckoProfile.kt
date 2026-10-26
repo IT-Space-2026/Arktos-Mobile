@@ -82,6 +82,12 @@ class GeckoProfile(
         if (StorageArea.SitePermissions in areas || StorageArea.All in areas) {
             engine.permissionStore.clear()
         }
+        // Saved logins are app-side data, not StorageController data —
+        // wiping form data or all data must take the password store
+        // with it (the WebView's form-data wipe parity).
+        if (StorageArea.FormData in areas || StorageArea.All in areas) {
+            engine.loginStore.clear()
+        }
     }
 
     override fun sitePermissionGrants(
