@@ -6,6 +6,22 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.1 — Download crash fix + crash log sharing
+
+Engine:
+- Download pipeline hardened on both engines: download callbacks
+  re-dispatch to the main thread, a destroyed host activity drops
+  the request instead of dying on a stale window token, and the
+  confirm/risk dialogs degrade gracefully when the window cannot be
+  shown — fixes the crash when tapping an asset link (e.g. a release
+  APK on github.com).
+- Settings → About → Share crash log sends the newest recorded crash
+  dump through the system share sheet (no manual file browsing).
+- Dependency bump: ctutils 0.4.3 → 0.4.6 (RUSTSEC-2026-0385).
+- Regression test for the download filename/Content-Disposition path
+  (DownloadCrashReproTest).
+
+
 1.2 — Passwords
 
 Engine:

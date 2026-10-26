@@ -4,7 +4,10 @@ package com.arktosbrowser.mobile.settings.fragment
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import java.io.File
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.MainScheduler
@@ -46,6 +49,11 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
                 onClick = ::openChangelog
         )
 
+        clickablePreference(
+                preference = SHARE_CRASH_LOG,
+                onClick = ::shareCrashLog
+        )
+
         // UPDT02 — the latest downloadable release, fetched on open;
         // tapping the row opens the release page.
         clickableDynamicPreference(
@@ -81,6 +89,48 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
         super.onDestroy()
     }
 
+    /**
+     * Shares the newest dump from the crash dirs (filesDir/crash and
+     * the external-files copy `BrowserApp` also writes). Internal-only
+     * dumps are staged into the external crash dir first — the
+     * FileProvider can't see filesDir.
+     */
+    private fun shareCrashLog() {
+        val context = requireContext()
+        val dirs = listOfNotNull(
+            File(context.filesDir, "crash"),
+            context.getExternalFilesDir(null)?.let { File(it, "crash") }
+        )
+        val newest = dirs
+            .flatMap { it.listFiles()?.toList().orEmpty() }
+            .filter { it.isFile }
+            .maxByOrNull { it.lastModified() }
+        if (newest == null) {
+            Toast.makeText(context, R.string.no_crash_log, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val shared = if (newest.absolutePath.startsWith(context.filesDir.absolutePath)) {
+            val dir = File(context.getExternalFilesDir(null), "crash").apply { mkdirs() }
+            File(dir, newest.name).also { newest.copyTo(it, overwrite = true) }
+        } else {
+            newest
+        }
+        val uri = FileProvider.getUriForFile(
+            context, "${context.packageName}.fileprovider", shared
+        )
+        startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Arktos crash log")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                },
+                null
+            )
+        )
+    }
+
     private fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
         intent.setPackage(requireContext().packageName)
@@ -106,6 +156,7 @@ class AboutSettingsFragment : AbstractSettingsFragment() {
         private const val CHANGELOG = "pref_changelog"
         private const val SETTINGS_VERSION = "pref_version"
         private const val LATEST_VERSION = "pref_latest_version"
+        private const val SHARE_CRASH_LOG = "pref_share_crash"
         private const val WEBVIEW_VERSION = "pref_webview"
     }
 }

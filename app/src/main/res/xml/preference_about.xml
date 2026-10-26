@@ -25,6 +25,10 @@
             android:key="pref_latest_version"
             android:title="@string/latest_version" />
         <Preference
+            android:key="pref_share_crash"
+            android:summary="@string/share_crash_summary"
+            android:title="@string/share_crash" />
+        <Preference
             android:key="pref_webview"
             android:title="@string/webview_version" />
     </PreferenceCategory>

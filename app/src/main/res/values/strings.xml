@@ -35,6 +35,9 @@
     <string name="apache">Apache License 2.0</string>
     <string name="version">Application version</string>
     <string name="latest_version">Latest available version</string>
+    <string name="share_crash">Share crash log</string>
+    <string name="share_crash_summary">Send the most recent crash report</string>
+    <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>
     <string name="update_unavailable">Unable to check</string>
     <string name="up_to_date">Up to date</string>
