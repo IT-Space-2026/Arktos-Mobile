@@ -6,6 +6,17 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.2 — Fullscreen crash fix
+
+Engine:
+- Gecko fullscreen (HTML5 video) no longer kills the app: entering
+  fullscreen on a session whose view can't be cleanly reparented or
+  rebound threw an IllegalStateException through GeckoView's
+  delegate; the fullscreen entry is now guarded (declines instead of
+  crashing) and the shell's fullscreen reparent only adds a detached
+  view. Confirmed by a field crash dump (1.2.1's Share crash log).
+
+
 1.2.1 — Download crash fix + crash log sharing
 
 Engine:

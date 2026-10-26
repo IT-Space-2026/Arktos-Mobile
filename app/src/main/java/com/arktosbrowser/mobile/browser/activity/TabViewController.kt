@@ -163,7 +163,17 @@ internal class TabViewController(
         }
         decorView.addView(fullscreenContainerView, COVER_SCREEN_PARAMS)
         view.removeFromParent()
-        fullscreenContainerView?.addView(customView, COVER_SCREEN_PARAMS)
+        if (view.parent == null) {
+            fullscreenContainerView?.addView(view, COVER_SCREEN_PARAMS)
+        } else {
+            // Parent is not a ViewGroup we can detach — better a
+            // degraded fullscreen than a crashed app.
+            logger.log(TAG, "custom view still attached; fullscreen skipped")
+            callback()
+            customView = null
+            customViewCallback = null
+            return
+        }
         decorView.requestLayout()
         setFullscreen(true, true)
         currentTab()?.setVisibility(INVISIBLE)

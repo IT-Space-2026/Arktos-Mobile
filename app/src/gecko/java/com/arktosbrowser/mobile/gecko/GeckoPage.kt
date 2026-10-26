@@ -1253,15 +1253,25 @@ class GeckoPage(
          * WebView supplies a dedicated custom view instead).
          */
         override fun onFullScreen(session: GeckoSession, fullScreen: Boolean) {
-            if (fullScreen) {
-                ensureView()
-                view?.let { v ->
-                    uiController.onShowCustomView(
-                        v, callback = { session.exitFullScreen() }
-                    )
+            try {
+                if (fullScreen) {
+                    ensureView()
+                    view?.let { v ->
+                        uiController.onShowCustomView(
+                            v, callback = { session.exitFullScreen() }
+                        )
+                    }
+                } else {
+                    uiController.onHideCustomView()
                 }
-            } else {
-                uiController.onHideCustomView()
+            } catch (e: Exception) {
+                // A failed reparent/display-bind must not kill the app —
+                // decline fullscreen instead (IllegalStateException seen
+                // in the field on a stale window attach).
+                logger.log(TAG, "fullscreen toggle failed", e)
+                if (fullScreen) {
+                    runCatching { session.exitFullScreen() }
+                }
             }
         }
     }
