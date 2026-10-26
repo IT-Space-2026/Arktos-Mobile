@@ -206,12 +206,22 @@ class DownloadHandler @Inject constructor(
         if (DownloadRisk.Flag.MIME_MISMATCH in risk.flags) {
             warnings += context.getString(R.string.download_warning_mismatch)
         }
-        val dialog = MaterialAlertDialogBuilder(context)
-            .setTitle(fileName)
-            .setMessage(warnings.joinToString("\n\n"))
-            .setPositiveButton(R.string.action_download) { _, _ -> onProceed() }
-            .setNegativeButton(R.string.action_cancel, null)
-            .show()
+        if (context.isFinishing || context.isDestroyed) {
+            logger.log(TAG, "DOWNLOAD: dropped $fileName — host activity gone")
+            return
+        }
+        val dialog = try {
+            MaterialAlertDialogBuilder(context)
+                .setTitle(fileName)
+                .setMessage(warnings.joinToString("\n\n"))
+                .setPositiveButton(R.string.action_download) { _, _ -> onProceed() }
+                .setNegativeButton(R.string.action_cancel, null)
+                .show()
+        } catch (e: RuntimeException) {
+            // Bad window token — the warning may not be bypassed, so drop.
+            logger.log(TAG, "DOWNLOAD: warning dialog failed for $fileName", e)
+            return
+        }
         setDialogSize(context, dialog)
         TapjackingGuard.protect(dialog, TapjackingGuard.Surface.DOWNLOAD_CONFIRM)
     }

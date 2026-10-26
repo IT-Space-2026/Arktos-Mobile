@@ -12,6 +12,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.DialogInterface
 import android.os.Build
+import android.os.Looper
 import android.text.format.Formatter
 import android.view.View
 import android.webkit.DownloadListener
@@ -50,6 +51,18 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
 
     override fun onDownloadStart(url: String, userAgent: String,
                                  contentDisposition: String, mimetype: String, contentLength: Long) {
+        // Gecko's onExternalResponse can arrive off the main thread;
+        // view/dialog work below is main-thread only.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mActivity.runOnUiThread {
+                onDownloadStart(url, userAgent, contentDisposition, mimetype, contentLength)
+            }
+            return
+        }
+        if (mActivity.isFinishing || mActivity.isDestroyed) {
+            logger?.log(TAG, "download dropped — host activity gone")
+            return
+        }
         val fileName =
             DownloadNaming.resolveFileName(url, contentDisposition, mimetype)
         val downloadSize: String = if (contentLength > 0) {
@@ -124,7 +137,8 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
             val builder = MaterialAlertDialogBuilder(mActivity) // dialog
             val message =
                 mActivity.getString(R.string.dialog_download, downloadSize)
-            val dialog: Dialog = builder.setTitle(fileName)
+            val dialog: Dialog? = try {
+                builder.setTitle(fileName)
                 .setMessage(message)
                 .setView(checkBoxView)
                 .setPositiveButton(
@@ -139,6 +153,15 @@ class LightningDownloadListener(context: Activity) : DownloadListener {
                     mActivity.resources.getString(R.string.action_cancel),
                     dialogClickListener
                 ).show()
+            } catch (e: RuntimeException) {
+                null
+            }
+            if (dialog == null) {
+                // Dead/invalid window token — skip the confirm, don't die.
+                logger?.log(TAG, "download dialog failed; enqueueing directly")
+                dialogClickListener.onClick(null, DialogInterface.BUTTON_POSITIVE)
+                return
+            }
             setDialogSize(mActivity, dialog)
             TapjackingGuard.protect(dialog, TapjackingGuard.Surface.DOWNLOAD_CONFIRM)
             logger!!.log(TAG, "Downloading: $fileName")
