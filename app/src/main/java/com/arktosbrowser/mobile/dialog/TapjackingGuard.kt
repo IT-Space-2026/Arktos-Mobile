@@ -62,7 +62,12 @@ object TapjackingGuard {
         val window = dialog.window ?: return
         window.decorView.filterTouchesWhenObscured = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            window.setHideOverlayWindows(true)
+            try {
+                window.setHideOverlayWindows(true)
+            } catch (e: SecurityException) {
+                // HIDE_OVERLAY_WINDOWS is an appops-gated special
+                // permission — OEMs that refuse it must not crash.
+            }
         }
     }
 }

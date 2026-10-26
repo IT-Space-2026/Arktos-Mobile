@@ -6,6 +6,14 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.3 — Download dialog crash fix
+
+Engine:
+- TapjackingGuard no longer crashes on OEMs that deny
+  HIDE_OVERLAY_WINDOWS (SecurityException on download dialogs,
+  both engines; confirmed by a field dump via Share crash log).
+
+
 1.2.2 — Fullscreen crash fix
 
 Engine:
