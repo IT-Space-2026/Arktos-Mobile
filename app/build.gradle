@@ -217,7 +217,7 @@ dependencies {
     // PORT01); readability4j is no longer needed.
 
     // webview tools
-    implementation 'androidx.webkit:webkit:1.17.1'
+    implementation 'androidx.webkit:webkit:1.18.0'
 
     // ENG03 — GeckoView backend, gecko engine flavor only.
     // The unsuffixed `geckoview` artifact is the STABLE channel
