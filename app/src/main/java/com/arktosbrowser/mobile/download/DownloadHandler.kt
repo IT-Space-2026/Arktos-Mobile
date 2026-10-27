@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
+import android.webkit.MimeTypeMap
 import com.arktosbrowser.mobile.engine.Engines
 import android.widget.Toast
 import com.arktosbrowser.mobile.BuildConfig
@@ -237,12 +238,21 @@ class DownloadHandler @Inject constructor(
         referer: String?,
         probe: DownloadHttpProbe.Result?
     ) {
+        // The system download notification's Open action resolves by
+        // request MIME — a generic/blank type (octet-stream on github
+        // assets) leaves the tap dead. Fall back to the file
+        // extension so .apk taps reach the installer.
+        val requestMime = effectiveMime
+            .takeUnless { it.isBlank() || it == "application/octet-stream" }
+            ?: MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
+            ?: effectiveMime.ifBlank { "*/*" }
         val request = DownloadManager.Request(Uri.parse(url))
             .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             .setAllowedOverRoaming(false)
             .setTitle(fileName)
             .setDescription(contentSize)
-            .setMimeType(effectiveMime)
+            .setMimeType(requestMime)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
 

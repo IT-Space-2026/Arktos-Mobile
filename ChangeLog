@@ -30,7 +30,10 @@ UI:
 - Downloads: the post-completion integrity retry deleted the
   finished file BEFORE re-enqueueing — a failed re-queue (expired
   signed URL) left no file and a dead notification. The partial is
-  now only dropped once a retry is actually in flight.
+  now only dropped once a retry is actually in flight. The download
+  request's MIME also falls back to the file extension when the
+  server reports octet-stream, so the finished-download notification
+  actually opens the file (installer for APKs).
 
 
 1.2.3 — Download dialog crash fix
