@@ -109,8 +109,11 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
             val newId = downloadManager.enqueue(request)
             // Only now drop the partial — deleting it before enqueue meant a
             // failed re-queue (e.g. an expired signed URL) left the user with
-            // no file at all and a dead completion notification.
+            // no file at all and a dead completion notification. The old
+            // record goes too, or the Downloads screen shows the "slice"
+            // alongside the retry.
             localPath?.let { File(it).delete() }
+            downloadManager.remove(downloadId)
             metaStore.save(newId, meta.retried())
             logger.log(TAG, "Re-enqueued truncated download of ${meta.url}")
         } catch (e: Exception) {
