@@ -179,7 +179,8 @@
         <ul>
             <li>Menu → Downloads opens the downloads page in a new tab instead of reloading the current one.</li>
             <li>About → Latest available version reads the releases list and picks the highest published semver — GitHub's /releases/latest pointer can lag (showed "1.2.0" while 1.2.4 was out).</li>
-            <li>Downloads page: entries were never recorded when the download-meta persist threw ahead of the list write — the list is now populated; each item gets a Retry row and there's a Clear downloads list action plus an empty state.</li>
+            <li>Downloads page: entries were never recorded when the download-meta persist threw ahead of the list write — the list is now populated; each item gets a Retry row and there's a Clear downloads list action plus an empty state; a failing store read degrades to the empty state instead of a blank tab.</li>
+            <li>Gecko autofill: browser.formfill.enable was tied to the Save-passwords toggle, killing field detection for Android autofill services (Bitwarden); it now stays enabled outside incognito.</li>
         </ul>
     </div>
 

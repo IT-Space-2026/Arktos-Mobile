@@ -31,6 +31,7 @@ class DownloadPageFactory @Inject constructor(
 
     override fun buildPage(): Single<String> = manager
         .getAllDownloads()
+        .onErrorReturnItem(emptyList())
         .map { list ->
             parse(listPageReader.provideHtml(application)) andBuild {
                 title { application.getString(R.string.action_downloads) }

@@ -397,8 +397,10 @@ class GeckoEngine(
         setGeckoPref(PREF_WEBRTC, userPreferences.webRtcEnabled)
         // permissions.default.image: 1 = allow all, 2 = block all.
         setGeckoPref(PREF_IMAGE_BLOCKING, if (userPreferences.blockImagesEnabled) 2 else 1)
-        setGeckoPref(PREF_FORMFILL,
-            userPreferences.savePasswordsEnabled && !incognitoProcess)
+        // browser.formfill.enable drives form-field detection — the
+        // Android autofill service (Bitwarden & co) needs it on to see
+        // any fields; the save-passwords toggle must only gate signon.
+        setGeckoPref(PREF_FORMFILL, !incognitoProcess)
         // The login manager's own save/fill pipeline backs the app's
         // password store (AUTOF02) — the "save passwords" toggle gates
         // save prompts, and private sessions must neither prompt nor

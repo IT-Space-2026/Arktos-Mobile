@@ -20,7 +20,12 @@ UI:
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a
   Clear downloads list action at the top; an empty list shows a
-  proper empty state instead of a blank page.
+  proper empty state instead of a blank page. A failing store read
+  also degrades to the empty state instead of a blank tab.
+- Gecko autofill: browser.formfill.enable was tied to the Save-
+  passwords toggle, killing field detection for Android autofill
+  services (Bitwarden). It now stays enabled outside incognito —
+  the toggle only gates the signon save/fill pipeline.
 
 
 1.2.3 — Download dialog crash fix
