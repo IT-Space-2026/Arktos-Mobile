@@ -92,10 +92,6 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
             return
         }
 
-        // The partial file left by the truncated run would collide with the
-        // destination of the retry.
-        localPath?.let { File(it).delete() }
-
         try {
             val request = DownloadManager.Request(Uri.parse(meta.url))
                 .setAllowedNetworkTypes(
@@ -111,6 +107,10 @@ class DownloadCompleteReceiver : BroadcastReceiver() {
                 ?.let { request.addRequestHeader("Cookie", it) }
 
             val newId = downloadManager.enqueue(request)
+            // Only now drop the partial — deleting it before enqueue meant a
+            // failed re-queue (e.g. an expired signed URL) left the user with
+            // no file at all and a dead completion notification.
+            localPath?.let { File(it).delete() }
             metaStore.save(newId, meta.retried())
             logger.log(TAG, "Re-enqueued truncated download of ${meta.url}")
         } catch (e: Exception) {

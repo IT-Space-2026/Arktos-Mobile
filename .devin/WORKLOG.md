@@ -91,3 +91,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend): UpdateChecker fetchLatest now reads /releases list + picks highest published semver — GitHub /releases/latest lagged on v1.2 (showed "1.2.0")
 - 2026-10-27 1.2.4(amend2): downloads list — meta-save guarded so entries always record; per-item Retry row; Clear downloads list (arktos://downloads/clear intercepted in both engines); empty state
 - 2026-10-27 1.2.4(amend3): buildPage degrades store-read errors to empty state (was blank tab); gecko PREF_FORMFILL always on outside incognito — Save-passwords toggle only gates signon (fixes Bitwarden detection)
+- 2026-10-27 1.2.4(amend4): retry-delete reordered (partial only dropped after successful re-enqueue — expired signed URLs no longer leave a dead file); gecko adds extensions.formautofill.heuristics.enabled for Android-autofill field detection

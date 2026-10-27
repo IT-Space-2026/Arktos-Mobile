@@ -22,10 +22,15 @@ UI:
   Clear downloads list action at the top; an empty list shows a
   proper empty state instead of a blank page. A failing store read
   also degrades to the empty state instead of a blank tab.
-- Gecko autofill: browser.formfill.enable was tied to the Save-
-  passwords toggle, killing field detection for Android autofill
-  services (Bitwarden). It now stays enabled outside incognito —
-  the toggle only gates the signon save/fill pipeline.
+- Gecko autofill: browser.formfill.enable and
+  extensions.formautofill.heuristics.enabled stay enabled outside
+  incognito — the Save-passwords toggle only gates the signon
+  save/fill pipeline; the first was killing field detection for
+  Android autofill services (Bitwarden).
+- Downloads: the post-completion integrity retry deleted the
+  finished file BEFORE re-enqueueing — a failed re-queue (expired
+  signed URL) left no file and a dead notification. The partial is
+  now only dropped once a retry is actually in flight.
 
 
 1.2.3 — Download dialog crash fix

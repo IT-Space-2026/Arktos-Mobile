@@ -401,6 +401,7 @@ class GeckoEngine(
         // Android autofill service (Bitwarden & co) needs it on to see
         // any fields; the save-passwords toggle must only gate signon.
         setGeckoPref(PREF_FORMFILL, !incognitoProcess)
+        setGeckoPref("extensions.formautofill.heuristics.enabled", !incognitoProcess)
         // The login manager's own save/fill pipeline backs the app's
         // password store (AUTOF02) — the "save passwords" toggle gates
         // save prompts, and private sessions must neither prompt nor
