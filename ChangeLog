@@ -43,6 +43,9 @@ UI:
   URL, so recovery reloads the real page. A generated-page load can
   also arrive before the session opens (silent drop → untitled empty
   tab) — loads now open the session first.
+- Settings: pad the fragment container by the navigation-bar inset —
+  the last rows of Settings screens (Customization, General, …) sat
+  under the system nav bar in edge-to-edge mode.
 
 
 1.2.3 — Download dialog crash fix

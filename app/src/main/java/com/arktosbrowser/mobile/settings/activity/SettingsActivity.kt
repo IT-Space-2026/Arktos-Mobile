@@ -51,6 +51,19 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
+        // Edge-to-edge: the last rows of every settings screen sat
+        // under the system nav bar. Shrink the fragment container by
+        // the nav-bar inset so the whole list stays reachable.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
+            findViewById(R.id.container)
+        ) { v, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+            )
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, bars.bottom)
+            insets
+        }
+
         val toolbar: Toolbar = findViewById(R.id.toolbar)
 
         try {
