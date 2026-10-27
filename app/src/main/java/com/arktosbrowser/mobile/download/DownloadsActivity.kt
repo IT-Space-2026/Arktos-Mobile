@@ -54,12 +54,24 @@ class DownloadsActivity : AppCompatActivity() {
 
         emptyView = TextView(this).apply {
             text = getString(R.string.downloads_empty)
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            setPadding(0, 200, 0, 0)
+            textSize = 20f
+            gravity = android.view.Gravity.CENTER
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
         }
         (findViewById<ViewGroup>(android.R.id.content) as? ViewGroup)?.addView(emptyView)
         recycler = findViewById(R.id.downloads)
         recycler.layoutManager = LinearLayoutManager(this)
+        recycler.clipToPadding = false
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(recycler) { v, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+            )
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, bars.bottom)
+            insets
+        }
         reload()
     }
 
