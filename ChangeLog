@@ -40,7 +40,9 @@ UI:
   and commit about:blank, which overwrote the tracked URL — the
   first tab then reloaded the blank and lost its title. Blank
   commits before any real document no longer clobber the tracked
-  URL, so recovery reloads the real page.
+  URL, so recovery reloads the real page. A generated-page load can
+  also arrive before the session opens (silent drop → untitled empty
+  tab) — loads now open the session first.
 
 
 1.2.3 — Download dialog crash fix

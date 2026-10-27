@@ -246,6 +246,10 @@ class GeckoPage(
     // ---- load / navigation ---------------------------------------------
 
     override fun load(url: String, headers: Map<String, String>) {
+        // A generated-page initializer can deliver the load before
+        // acquireView opens the session — loading a closed session is
+        // a silent drop (the "untitled, empty" downloads tab).
+        if (!session.isOpen) session.open(engine.runtime)
         // arktos:// chrome pages and bundled file:// generated pages are
         // served as data loads *here*, before they ever reach a session
         // navigation — serving them from inside onLoadRequest (nested

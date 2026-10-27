@@ -182,7 +182,7 @@
             <li>Downloads page: entries were never recorded when the download-meta persist threw ahead of the list write — the list is now populated; each item gets a Retry row and there's a Clear downloads list action plus an empty state; a failing store read degrades to the empty state instead of a blank tab.</li>
             <li>Gecko autofill: browser.formfill.enable and extensions.formautofill.heuristics.enabled stay enabled outside incognito, and the GeckoView is now marked importantForAutofill — geckoview-158's setAutofillEnabled never did that, so Android's autofill framework skipped the view entirely (Bitwarden saw no fields, no context-menu entry).</li>
             <li>Downloads: the post-completion integrity retry deleted the finished file before re-enqueueing — a failed re-queue left no file and a dead notification; the partial is now only dropped once a retry is in flight. The download request's MIME also falls back to the file extension when the server reports octet-stream, so the finished-download notification opens the file.</li>
-            <li>Gecko restore: an upgrade could "reproduce" an empty SessionState and commit about:blank, overwriting the tracked URL — the first tab then reloaded the blank and lost its title; blank commits before any real document no longer clobber the tracked URL.</li>
+            <li>Gecko restore: an upgrade could "reproduce" an empty SessionState and commit about:blank, overwriting the tracked URL — the first tab then reloaded the blank and lost its title; blank commits before any real document no longer clobber the tracked URL. A generated-page load can also arrive before the session opens (silent drop → untitled empty tab) — loads now open the session first.</li>
         </ul>
     </div>
 

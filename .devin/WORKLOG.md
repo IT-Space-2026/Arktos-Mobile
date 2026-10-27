@@ -95,3 +95,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend5): download request MIME falls back to file extension on blank/octet-stream — notification Open reaches the installer
 - 2026-10-27 1.2.4(amend6): onLocationChange no longer lets an about:blank commit clobber tracked URL before a real doc — fixes first-tab-empty after upgrade restore
 - 2026-10-27 1.2.4(amend7): gv.importantForAutofill = YES outside incognito — geckoview-158 setAutofillEnabled doesn't mark the view, AUTO resolved to not-autofillable -> Bitwarden blind
+- 2026-10-27 1.2.4(amend8): GeckoPage.load opens a closed session first — generated-page initializer could deliver load before acquireView → silent drop → untitled empty downloads tab
