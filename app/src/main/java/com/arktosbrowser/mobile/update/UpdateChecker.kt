@@ -13,7 +13,6 @@ import io.reactivex.rxjava3.core.Scheduler
 import io.reactivex.rxjava3.core.Single
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -63,21 +62,33 @@ class UpdateChecker @Inject constructor(
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return null
-            val json = JSONObject(response.body?.string() ?: return null)
-            val tag = json.optString("tag_name").trim()
-            val version = versionOf(tag) ?: return null
-            return UpdateInfo(
-                tag = tag,
-                version = version,
-                url = json.optString("html_url").ifBlank { RELEASE_PAGE_URL }
-            )
+            // Read the list, not /releases/latest — GitHub's "latest"
+            // pointer can lag behind new tags and resolve to an older
+            // release; the highest published semver is authoritative.
+            val arr = org.json.JSONArray(response.body?.string() ?: return null)
+            var best: UpdateInfo? = null
+            for (i in 0 until arr.length()) {
+                val rel = arr.optJSONObject(i) ?: continue
+                if (rel.optBoolean("draft") || rel.optBoolean("prerelease")) continue
+                val tag = rel.optString("tag_name").trim()
+                val version = versionOf(tag) ?: continue
+                val current = best
+                if (current == null || isNewer(version, current.version)) {
+                    best = UpdateInfo(
+                        tag = tag,
+                        version = version,
+                        url = rel.optString("html_url").ifBlank { RELEASE_PAGE_URL }
+                    )
+                }
+            }
+            return best
         }
     }
 
     companion object {
         private const val TAG = "UpdateChecker"
         private const val RELEASE_API_URL =
-            "https://api.github.com/repos/IT-Space-2026/Arktos-Mobile/releases/latest"
+            "https://api.github.com/repos/IT-Space-2026/Arktos-Mobile/releases?per_page=20"
         private const val RELEASE_PAGE_URL =
             "https://github.com/IT-Space-2026/Arktos-Mobile/releases/latest"
 
