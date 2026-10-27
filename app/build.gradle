@@ -162,7 +162,7 @@ dependencies {
     testImplementation 'net.java.dev.jna:jna:5.19.1'
 
     // support libraries
-    implementation "androidx.palette:palette-ktx:1.0.0"
+    implementation "androidx.palette:palette-ktx:1.1.0"
     implementation "androidx.annotation:annotation:1.11.0"
     implementation "androidx.appcompat:appcompat:1.8.0"
     implementation 'com.google.android.material:material:1.14.0'
