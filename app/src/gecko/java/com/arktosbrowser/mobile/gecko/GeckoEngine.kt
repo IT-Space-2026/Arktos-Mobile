@@ -281,8 +281,16 @@ class GeckoEngine(
             // every setSession); private-mode pages must neither
             // offer fills nor hand session commits to the system
             // autofill service, so the flag follows the bound
-            // profile's privacy on every swap.
+            // profile's privacy on every swap. geckoview-158's
+            // setAutofillEnabled does NOT mark the view important —
+            // AUTO resolves to "not autofillable" on a custom view,
+            // which left Bitwarden blind (no fill, no context menu).
             gv.autofillEnabled = !page.isOffTheRecord
+            gv.importantForAutofill = if (page.isOffTheRecord) {
+                android.view.View.IMPORTANT_FOR_AUTOFILL_NO
+            } else {
+                android.view.View.IMPORTANT_FOR_AUTOFILL_YES
+            }
             page.session.setFocused(true)
             boundPage = page
         }

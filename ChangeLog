@@ -25,8 +25,10 @@ UI:
 - Gecko autofill: browser.formfill.enable and
   extensions.formautofill.heuristics.enabled stay enabled outside
   incognito — the Save-passwords toggle only gates the signon
-  save/fill pipeline; the first was killing field detection for
-  Android autofill services (Bitwarden).
+  save/fill pipeline. The GeckoView itself is now also marked
+  importantForAutofill — geckoview-158's setAutofillEnabled never
+  did that, so Android's autofill framework skipped the view
+  entirely (Bitwarden saw no fields, no context-menu entry).
 - Downloads: the post-completion integrity retry deleted the
   finished file BEFORE re-enqueueing — a failed re-queue (expired
   signed URL) left no file and a dead notification. The partial is
