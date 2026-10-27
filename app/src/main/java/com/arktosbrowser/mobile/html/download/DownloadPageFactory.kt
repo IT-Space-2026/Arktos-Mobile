@@ -7,6 +7,7 @@ import com.arktosbrowser.mobile.constant.FILE
 import com.arktosbrowser.mobile.database.downloads.DownloadEntry
 import com.arktosbrowser.mobile.database.downloads.DownloadsRepository
 import com.arktosbrowser.mobile.html.HtmlPageFactory
+import com.arktosbrowser.mobile.download.DownloadsPageActions
 import com.arktosbrowser.mobile.html.ListPageReader
 import com.arktosbrowser.mobile.html.jsoup.*
 import com.arktosbrowser.mobile.preference.UserPreferences
@@ -36,10 +37,29 @@ class DownloadPageFactory @Inject constructor(
                 body {
                     val repeatableElement = id("repeated").removeElement()
                     id("content") {
+                        if (list.isEmpty()) {
+                            appendChild(repeatableElement.clone {
+                                id("title") { text(application.getString(R.string.downloads_empty)) }
+                                id("url") { text("") }
+                            })
+                        } else {
+                            appendChild(repeatableElement.clone {
+                                tag("a") { attr("href", DownloadsPageActions.CLEAR_URL) }
+                                id("title") { text(application.getString(R.string.downloads_clear_all)) }
+                                id("url") { text("") }
+                            })
+                        }
                         list.forEach {
                             appendChild(repeatableElement.clone {
                                 tag("a") { attr("href", createFileUrl(it.title)) }
                                 id("title") { text(createFileTitle(it)) }
+                                id("url") { text(it.url) }
+                            })
+                            // Retry row — taps navigate to the source URL
+                            // and the download listener re-offers it.
+                            appendChild(repeatableElement.clone {
+                                tag("a") { attr("href", it.url) }
+                                id("title") { text(application.getString(R.string.downloads_retry)) }
                                 id("url") { text(it.url) }
                             })
                         }

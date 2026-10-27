@@ -266,20 +266,25 @@ class DownloadHandler @Inject constructor(
             return
         }
 
-        downloadMetaStore.save(
-            downloadId,
-            DownloadIntegrity.Meta(
-                url = url,
-                fileName = fileName,
-                mimeType = effectiveMime,
-                userAgent = userAgent,
-                expectedBytes = probe?.contentLength ?: -1L
+        // Meta persistence must not starve the list entry — a meta
+        // failure left the Downloads page permanently empty while the
+        // files themselves downloaded fine.
+        runCatching {
+            downloadMetaStore.save(
+                downloadId,
+                DownloadIntegrity.Meta(
+                    url = url,
+                    fileName = fileName,
+                    mimeType = effectiveMime,
+                    userAgent = userAgent,
+                    expectedBytes = probe?.contentLength ?: -1L
+                )
             )
-        )
+        }.onFailure { logger.log(TAG, "DOWNLOAD: meta save failed for $url", it) }
         downloadsRepository
             .addDownloadIfNotExists(DownloadEntry(url, fileName, contentSize))
             .subscribeOn(databaseScheduler)
-            .subscribe()
+            .subscribe({}, { logger.log(TAG, "DOWNLOAD: list add failed for $url", it) })
     }
 
     companion object {

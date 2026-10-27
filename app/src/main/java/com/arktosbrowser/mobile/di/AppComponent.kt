@@ -163,6 +163,8 @@ interface AppComponent {
 
     fun javaScriptRepository(): JavaScriptRepository
 
+    fun downloadsRepository(): com.arktosbrowser.mobile.database.downloads.DownloadsRepository
+
     fun userScriptBootstrap(): UserScriptBootstrap
 
     fun arktosStore(): ArktosStore

@@ -18,6 +18,7 @@ import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.controller.UIController
+import com.arktosbrowser.mobile.download.DownloadsPageActions
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder
 import com.arktosbrowser.mobile.dialog.LightningDialogBuilder.NewTab
 import com.arktosbrowser.mobile.html.ChangelogPage
@@ -879,6 +880,11 @@ class GeckoPage(
             // seconds-long changelog freeze). load() pre-intercepts
             // these URLs, so this is only the in-page-link backstop.
             if (request.uri.startsWith("arktos://")) {
+                if (request.uri == DownloadsPageActions.CLEAR_URL) {
+                    DownloadsPageActions.clearAll(activity) {
+                        activity.window.decorView.post { loadDownloadsPage() }
+                    }
+                }
                 if (ArktosCore.isChangelogUrl(request.uri)) {
                     activity.window.decorView.post {
                         serveBundledAsset("changelog.html", ChangelogPage.URL, applyTheme = true)

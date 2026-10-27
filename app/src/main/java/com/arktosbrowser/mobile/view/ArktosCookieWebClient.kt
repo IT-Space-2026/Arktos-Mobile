@@ -28,6 +28,7 @@ import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.BlocklistLoader
 import com.arktosbrowser.mobile.adblock.RankListLoader
+import com.arktosbrowser.mobile.download.DownloadsPageActions
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
 import com.arktosbrowser.mobile.browser.SiteSettings
 import com.arktosbrowser.mobile.constant.FILE
@@ -957,6 +958,11 @@ class ArktosCookieWebClient(
                     ?.let(cleartextAllowedHosts::add)
                 view.loadUrl(proceedTarget)
             }
+            return true
+        }
+
+        if (url == DownloadsPageActions.CLEAR_URL) {
+            DownloadsPageActions.clearAll(activity) { arktosCookieView.loadDownloadsPage() }
             return true
         }
 

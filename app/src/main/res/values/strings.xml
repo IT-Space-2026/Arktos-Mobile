@@ -36,6 +36,9 @@
     <string name="version">Application version</string>
     <string name="latest_version">Latest available version</string>
     <string name="share_crash">Share crash log</string>
+    <string name="downloads_empty">No downloads yet</string>
+    <string name="downloads_clear_all">Clear downloads list</string>
+    <string name="downloads_retry">Retry download</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

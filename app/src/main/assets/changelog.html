@@ -179,6 +179,7 @@
         <ul>
             <li>Menu → Downloads opens the downloads page in a new tab instead of reloading the current one.</li>
             <li>About → Latest available version reads the releases list and picks the highest published semver — GitHub's /releases/latest pointer can lag (showed "1.2.0" while 1.2.4 was out).</li>
+            <li>Downloads page: entries were never recorded when the download-meta persist threw ahead of the list write — the list is now populated; each item gets a Retry row and there's a Clear downloads list action plus an empty state.</li>
         </ul>
     </div>
 
