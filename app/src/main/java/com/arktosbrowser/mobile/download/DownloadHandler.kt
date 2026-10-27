@@ -10,8 +10,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
-import android.webkit.MimeTypeMap
 import com.arktosbrowser.mobile.engine.Engines
+import java.net.URLConnection
 import android.widget.Toast
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.MainActivity
@@ -244,8 +244,7 @@ class DownloadHandler @Inject constructor(
         // extension so .apk taps reach the installer.
         val requestMime = effectiveMime
             .takeUnless { it.isBlank() || it == "application/octet-stream" }
-            ?: MimeTypeMap.getSingleton()
-                .getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
+            ?: URLConnection.guessContentTypeFromName(fileName)
             ?: effectiveMime.ifBlank { "*/*" }
         val request = DownloadManager.Request(Uri.parse(url))
             .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
