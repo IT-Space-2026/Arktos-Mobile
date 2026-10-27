@@ -243,7 +243,9 @@ class DownloadHandler @Inject constructor(
         // assets) leaves the tap dead. Fall back to the file
         // extension so .apk taps reach the installer.
         val requestMime = effectiveMime
-            .takeUnless { it.isBlank() || it == "application/octet-stream" }
+            .takeUnless {
+                it.isBlank() || it.contains("octet-stream", ignoreCase = true)
+            }
             ?: URLConnection.guessContentTypeFromName(fileName)
             ?: effectiveMime.ifBlank { "*/*" }
         val request = DownloadManager.Request(Uri.parse(url))

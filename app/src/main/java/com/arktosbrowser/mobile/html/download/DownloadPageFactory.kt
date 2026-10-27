@@ -77,6 +77,20 @@ class DownloadPageFactory @Inject constructor(
             FileWriter(page, false).use { it.write(content) }
         }
         .map { (page, _) -> "$FILE$page" }
+        // The initializer subscribes on the single-threaded disk
+        // scheduler — if that thread is wedged upstream, nothing emits
+        // and the tab stays untitled+blank forever. This timeout runs
+        // on its own scheduler, so it fires regardless, and the
+        // fallback writes a minimal page so something always renders.
+        .timeout(5, java.util.concurrent.TimeUnit.SECONDS,
+            io.reactivex.rxjava3.schedulers.Schedulers.computation())
+        .onErrorReturn {
+            val page = createDownloadsPageFile()
+            FileWriter(page, false).use {
+                it.write("<!DOCTYPE html><html><head><title>Downloads</title></head><body><p>No downloads yet</p></body></html>")
+            }
+            "$FILE$page"
+        }
 
 
     private fun createDownloadsPageFile(): File = File(application.filesDir, FILENAME)

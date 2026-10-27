@@ -98,3 +98,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend8): GeckoPage.load opens a closed session first — generated-page initializer could deliver load before acquireView → silent drop → untitled empty downloads tab
 - 2026-10-27 1.2.4(amend9): SettingsActivity pads container by navBar inset — last settings rows sat under system nav bar (edge-to-edge)
 - 2026-10-27 1.2.4(amend10): buildPage getAllDownloads gets 3s timeout — single-threaded diskScheduler wedged by a blocked store call left tab blank forever
+- 2026-10-27 1.2.4(amend11): outer 5s timeout on computation scheduler + written fallback page — covers wedged diskScheduler (tab stayed untitled+blank); request MIME fallback broadened to any *octet-stream*
