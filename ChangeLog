@@ -34,6 +34,11 @@ UI:
   request's MIME also falls back to the file extension when the
   server reports octet-stream, so the finished-download notification
   actually opens the file (installer for APKs).
+- Gecko restore: an upgrade could "reproduce" an empty SessionState
+  and commit about:blank, which overwrote the tracked URL — the
+  first tab then reloaded the blank and lost its title. Blank
+  commits before any real document no longer clobber the tracked
+  URL, so recovery reloads the real page.
 
 
 1.2.3 — Download dialog crash fix

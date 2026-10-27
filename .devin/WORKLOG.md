@@ -93,3 +93,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend3): buildPage degrades store-read errors to empty state (was blank tab); gecko PREF_FORMFILL always on outside incognito — Save-passwords toggle only gates signon (fixes Bitwarden detection)
 - 2026-10-27 1.2.4(amend4): retry-delete reordered (partial only dropped after successful re-enqueue — expired signed URLs no longer leave a dead file); gecko adds extensions.formautofill.heuristics.enabled for Android-autofill field detection
 - 2026-10-27 1.2.4(amend5): download request MIME falls back to file extension on blank/octet-stream — notification Open reaches the installer
+- 2026-10-27 1.2.4(amend6): onLocationChange no longer lets an about:blank commit clobber tracked URL before a real doc — fixes first-tab-empty after upgrade restore

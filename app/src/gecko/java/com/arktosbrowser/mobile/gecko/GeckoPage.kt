@@ -831,7 +831,12 @@ class GeckoPage(
             hasUserGesture: Boolean
         ) {
             if (url == null) return
-            committedUrl = url
+            // A blank commit before any real document means an aborted
+            // or empty restore (upgrade-restore can "reproduce" an
+            // empty SessionState and commit about:blank) — keep the
+            // tracked URL or reloadIfStale would re-load the blank.
+            val emptyRestoreCommit = url == "about:blank" && !hasCommittedDoc
+            if (!emptyRestoreCommit) committedUrl = url
             if (url.isNotBlank() && url != "about:blank") {
                 // A real document committed — whatever the earlier
                 // abort left behind, the tab is healthy again.
@@ -841,7 +846,7 @@ class GeckoPage(
             if (url.isGeneratedPageUrl()) {
                 // Generated commit — keep reporting the original URL
                 // (upstream #281); the real address stays in currentUrl.
-            } else {
+            } else if (!emptyRestoreCommit) {
                 generatedPageOriginalUrl = null
                 currentUrl = url
                 navigationPolicy.onNavigationCommitted(url, false)
