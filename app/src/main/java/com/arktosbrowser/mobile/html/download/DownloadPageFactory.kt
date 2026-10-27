@@ -31,6 +31,10 @@ class DownloadPageFactory @Inject constructor(
 
     override fun buildPage(): Single<String> = manager
         .getAllDownloads()
+        // The disk scheduler is a single thread — a wedged store call
+        // would leave the tab untitled+blank forever; fall back to the
+        // empty state on timeout or error.
+        .timeout(3, java.util.concurrent.TimeUnit.SECONDS)
         .onErrorReturnItem(emptyList())
         .map { list ->
             parse(listPageReader.provideHtml(application)) andBuild {

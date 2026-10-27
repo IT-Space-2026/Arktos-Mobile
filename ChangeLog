@@ -42,7 +42,9 @@ UI:
   commits before any real document no longer clobber the tracked
   URL, so recovery reloads the real page. A generated-page load can
   also arrive before the session opens (silent drop → untitled empty
-  tab) — loads now open the session first.
+  tab) — loads now open the session first. The list read also has a
+  3s timeout — a wedged store call left the tab blank forever
+  instead of degrading to the empty state.
 - Settings: pad the fragment container by the navigation-bar inset —
   the last rows of Settings screens (Customization, General, …) sat
   under the system nav bar in edge-to-edge mode.

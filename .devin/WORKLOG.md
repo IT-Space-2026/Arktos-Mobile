@@ -97,3 +97,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend7): gv.importantForAutofill = YES outside incognito — geckoview-158 setAutofillEnabled doesn't mark the view, AUTO resolved to not-autofillable -> Bitwarden blind
 - 2026-10-27 1.2.4(amend8): GeckoPage.load opens a closed session first — generated-page initializer could deliver load before acquireView → silent drop → untitled empty downloads tab
 - 2026-10-27 1.2.4(amend9): SettingsActivity pads container by navBar inset — last settings rows sat under system nav bar (edge-to-edge)
+- 2026-10-27 1.2.4(amend10): buildPage getAllDownloads gets 3s timeout — single-threaded diskScheduler wedged by a blocked store call left tab blank forever
