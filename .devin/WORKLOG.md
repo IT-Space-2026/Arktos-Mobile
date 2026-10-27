@@ -99,3 +99,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend9): SettingsActivity pads container by navBar inset — last settings rows sat under system nav bar (edge-to-edge)
 - 2026-10-27 1.2.4(amend10): buildPage getAllDownloads gets 3s timeout — single-threaded diskScheduler wedged by a blocked store call left tab blank forever
 - 2026-10-27 1.2.4(amend11): outer 5s timeout on computation scheduler + written fallback page — covers wedged diskScheduler (tab stayed untitled+blank); request MIME fallback broadened to any *octet-stream*
+- 2026-10-27 1.2.4(amend12): native DownloadsActivity (system DownloadManager query — bypasses wedged store read) replaces generated HTML page; Open/Retry/Clear; REQUEST_INSTALL_PACKAGES for APK open
