@@ -199,7 +199,7 @@ dependencies {
     // proxy support — I2P Android binding is vendored (i2p/ + aidl/);
     // upstream net.i2p.android:helper stopped releasing in 2017.
 
-    implementation 'com.squareup.okhttp3:okhttp:5.5.0'
+    implementation 'com.squareup.okhttp3:okhttp:5.5.1'
     implementation 'com.squareup.okio:okio:3.18.2'
 
     // rx
