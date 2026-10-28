@@ -61,6 +61,12 @@
     <string name="downloads_group_last7">Last 7 days</string>
     <string name="downloads_group_last30">Last 30 days</string>
     <string name="downloads_group_older">Older</string>
+    <string name="history_recently_closed_tabs">Recently closed tabs (%1$d)</string>
+    <string name="history_time_range_title">Time range to delete</string>
+    <string name="history_time_range_msg">Removes history (including history synced from other devices)</string>
+    <string name="history_last_hour">Last hour</string>
+    <string name="history_today_yesterday">Today and yesterday</string>
+    <string name="history_everything">Everything</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

@@ -135,17 +135,41 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
             .subscribe { dataChanged() }
     }
 
-    /** Toolbar trash — Iceraven's clear-all, with a confirm. */
+    /** Iceraven's time-range delete dialog. */
     private fun deleteAll() {
+        val ranges = arrayOf(
+            getString(R.string.history_last_hour),
+            getString(R.string.history_today_yesterday),
+            getString(R.string.history_everything)
+        )
+        var chosen = 0
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.action_history)
-            .setMessage(R.string.downloads_clear_all)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                historyRepository.deleteHistory()
-                    .subscribe { dataChanged() }
-            }
+            .setTitle(R.string.history_time_range_title)
+            .setMessage(R.string.history_time_range_msg)
+            .setSingleChoiceItems(ranges, 0) { _, which -> chosen = which }
+            .setPositiveButton(R.string.downloads_delete) { _, _ -> deleteRange(chosen) }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /** 0 = last hour, 1 = today + yesterday, 2 = everything. */
+    private fun deleteRange(which: Int) {
+        if (which == 2) {
+            historyRepository.deleteHistory().subscribe { dataChanged() }
+            return
+        }
+        val cutoff = System.currentTimeMillis() - when (which) {
+            0 -> 3600_000L
+            else -> 48 * 3600_000L
+        }
+        val doomed = historyList.filter { it.lastTimeVisited >= cutoff }
+        var pending = doomed.size
+        if (pending == 0) { dataChanged(); return }
+        doomed.forEach { e ->
+            historyRepository.deleteHistoryEntry(e.url).subscribe {
+                if (--pending == 0) dataChanged()
+            }
+        }
     }
 
     fun dataChanged() {
@@ -163,6 +187,9 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
     sealed interface Item {
         data class Header(val title: String) : Item
         data class Entry(val entry: HistoryEntry) : Item
+        /** Iceraven's "Recently closed tabs / N tabs" section header. */
+        data class RecentlyClosed(val count: Int) : Item
+        data class ClosedEntry(val closed: RecentlyClosedTabs.Closed) : Item
     }
 
     class CustomAdapter(
@@ -178,6 +205,12 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         private fun grouped(entries: List<HistoryEntry>): List<Item> {
             val fmt = java.text.SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
             val out = mutableListOf<Item>()
+            // Iceraven's "Recently closed tabs" section on top.
+            val closed = RecentlyClosedTabs.all(context)
+            if (closed.isNotEmpty()) {
+                out += Item.RecentlyClosed(closed.size)
+                closed.forEach { out += Item.ClosedEntry(it) }
+            }
             var current: String? = null
             for (e in entries) {
                 val label = fmt.format(Date(e.lastTimeVisited))
@@ -223,8 +256,11 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         }
 
         /** Null for header rows — callers must skip clicks on them. */
-        fun getItem(position: Int): HistoryEntry? =
-            (items[position] as? Item.Entry)?.entry
+        fun getItem(position: Int): HistoryEntry? = when (val i = items[position]) {
+            is Item.Entry -> i.entry
+            is Item.ClosedEntry -> HistoryEntry(i.closed.title, i.closed.url, i.closed.time)
+            else -> null
+        }
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val icon: TextView = view.findViewById(R.id.historyIcon)
@@ -236,42 +272,46 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
         class HeaderVH(view: View) : RecyclerView.ViewHolder(view)
 
-        override fun getItemViewType(position: Int) =
-            if (items[position] is Item.Header) 1 else 0
+        override fun getItemViewType(position: Int) = when (items[position]) {
+            is Item.Header -> 1
+            is Item.RecentlyClosed -> 2
+            else -> 0
+        }
 
         override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int) =
-            if (viewType == 1) HeaderVH(
-                TextView(context).apply {
-                    val pad = (resources.displayMetrics.density * 14).toInt()
-                    setPadding(pad, pad, pad, pad / 2)
-                    textSize = 14f
-                    setTypeface(typeface, android.graphics.Typeface.BOLD)
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
+            when (viewType) {
+                1 -> HeaderVH(
+                    TextView(context).apply {
+                        val pad = (resources.displayMetrics.density * 14).toInt()
+                        setPadding(pad, pad, pad, pad / 2)
+                        textSize = 14f
+                        setTypeface(typeface, android.graphics.Typeface.BOLD)
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    }
+                )
+                2 -> HeaderVH(
+                    TextView(context).apply {
+                        val pad = (resources.displayMetrics.density * 14).toInt()
+                        setPadding(pad, pad, pad, pad / 2)
+                        textSize = 15f
+                        setTypeface(typeface, android.graphics.Typeface.BOLD)
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
+                    }
+                )
+                else -> {
+                    oldList = dataSet.toMutableList()
+                    ViewHolder(LayoutInflater.from(viewGroup.context)
+                        .inflate(R.layout.history_row, viewGroup, false))
                 }
-            ) else {
-                oldList = dataSet.toMutableList()
-                ViewHolder(LayoutInflater.from(viewGroup.context)
-                    .inflate(R.layout.history_row, viewGroup, false))
             }
 
-        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            val item = items[position]
-            if (holder is HeaderVH) {
-                (holder.itemView as TextView).text = (item as Item.Header).title
-                return
-            }
-            val e = (item as Item.Entry).entry
-            holder as ViewHolder
-            holder.textView.text = e.title
-            // Iceraven-style subtitle — host + visit time.
-            val host = runCatching { Uri.parse(e.url).host.orEmpty() }.getOrDefault(e.url)
-            holder.historyUrl.text = e.url
-            holder.historyDate.text = getTime(e.lastTimeVisited)
-            // Letter tile — colored rounded square with the host's
-            // first letter, Iceraven's no-favicon fallback.
+        private fun bindTile(holder: ViewHolder, host: String) {
             holder.icon.text = host.take(1).uppercase()
             val hue = (host.hashCode() and 0x7FFFFFFF) % 360
             val color = android.graphics.Color.HSVToColor(
@@ -282,9 +322,47 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
                 cornerRadius = holder.icon.resources.displayMetrics.density * 8
                 setColor(color)
             }
-            holder.delete.setOnClickListener {
-                (context as? HistoryActivity)?.deleteEntry(e)
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val item = items[position]
+            if (holder is HeaderVH) {
+                (holder.itemView as TextView).text = when (item) {
+                    is Item.Header -> item.title
+                    is Item.RecentlyClosed -> context.getString(
+                        R.string.history_recently_closed_tabs, item.count
+                    )
+                    else -> ""
+                }
+                return
             }
+            holder as ViewHolder
+            when (item) {
+                is Item.Entry -> {
+                    val entry = item.entry
+                    bindRow(holder, entry.title, entry.url, entry.lastTimeVisited)
+                    holder.delete.visibility = android.view.View.VISIBLE
+                    holder.delete.setOnClickListener {
+                        (context as? HistoryActivity)?.deleteEntry(entry)
+                    }
+                }
+                is Item.ClosedEntry -> {
+                    val c = item.closed
+                    bindRow(holder, c.title, c.url, c.time)
+                    // Reopenable rows — no delete like Iceraven's
+                    // recently-closed section.
+                    holder.delete.visibility = android.view.View.GONE
+                }
+                else -> Unit
+            }
+        }
+
+        private fun bindRow(holder: ViewHolder, title: String, url: String, time: Long) {
+            holder.textView.text = title
+            val host = runCatching { Uri.parse(url).host.orEmpty() }.getOrDefault(url)
+            holder.historyUrl.text = url
+            holder.historyDate.text = getTime(time)
+            bindTile(holder, host)
         }
 
         override fun getItemCount() = items.size

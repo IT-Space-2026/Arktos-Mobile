@@ -68,6 +68,11 @@ UI:
   subtitles stay on one line now (the host no longer wraps
   mid-bullet). Toolbar pads moved to the parent layout — padding
   inside a fixed-height toolbar clipped the title.
+  Recently closed tabs now appear at the top (recorded on tab
+  delete), the toolbar trash opens a 'Time range to delete'
+  dialog (last hour / today+yesterday / everything), and the
+  dialog text is history-specific now — it no longer says
+  'Clear downloads list'.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

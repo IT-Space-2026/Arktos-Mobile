@@ -113,3 +113,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 1.2.4(amend23): drawer fitsSystemWindows removed (tab-drawer top band) + settings toolbar gets status-bar pad on API>=35 (clipped title)
 - 2026-10-28 1.2.4(amend24): History Iceraven-style — date buckets, host+time subtitle, header-safe clicks; status-bar pad on Downloads/DownloadSettings/History toolbars (API>=35)
 - 2026-10-28 1.2.4(amend25): History v2 — per-day headers, letter tiles, single-line rows, per-row ✕ + toolbar clear-all; toolbar pads moved to parents (fixed clipped title); downloads subtitle single-line
+- 2026-10-28 1.2.4(amend26): History — RecentlyClosedTabs store + section, time-range delete dialog, history-specific dialog text
