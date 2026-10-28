@@ -21,6 +21,13 @@ default = []
 # Off by default so Android builds don't pull clap/camino into the
 # dependency graph; enabled only when running the bindgen binary.
 cli = ["uniffi/cli"]
+# synctor pulls the embedded Arti tree (MSYNC03) — the tor transport
+# backend answers typed-unavailable without it; "mem" stays for tests.
+synctor = ["dep:arti-client", "dep:tor-hsservice",
+           "dep:tor-hscrypto", "dep:tor-llcrypto", "dep:tor-keymgr", "dep:tor-cell",
+           "dep:tor-proto", "dep:tor-config", "dep:tor-config-path",
+           "dep:tor-rtcompat",
+           "dep:tokio", "dep:futures", "dep:safelog", "dep:rustls"]
 
 [dependencies]
 uniffi = "=0.32.2"
@@ -37,7 +44,7 @@ getrandom = "=0.2.15"
 sha2 = "=0.10.8"
 hmac = "=0.12.1"
 x25519-dalek = { version = "=2.0.1", features = ["static_secrets"] }
-rusqlite = { version = "=0.41.0", features = ["bundled-sqlcipher-vendored-openssl"] }
+rusqlite = { version = "=0.40.2", features = ["bundled-sqlcipher-vendored-openssl"] }
 # STORE01 — Netscape bookmark importer. Tokenizer-only crate; the
 # importer builds its own tiny DT/DL state machine on top.
 html5gum = "=0.8.4"
@@ -60,3 +67,29 @@ argon2 = "=0.6.0"
 # SEC12 — UTS-46 IDNA processing for the URL-bar punycode display
 # (idn.rs): `domain_to_ascii` maps a Unicode host to its A-label form.
 idna = "=1.1.0"
+
+# MSYNC03 — Arti transport, exact-pinned like the desktop (SEC21):
+# arti-client + the tor-* crates behind the synctor feature so the
+# lean build skips the Tor tree; tokio drives the runtime.
+arti-client = { version = "=0.47.0", default-features = false,
+    optional = true,
+    features = ["tokio", "rustls", "keymgr",
+                "onion-service-client", "onion-service-service",
+                "restricted-discovery", "experimental-api"] }
+tor-hsservice = { version = "=0.47.0", optional = true,
+    features = ["restricted-discovery", "experimental-api"] }
+tor-hscrypto = { version = "=0.47.0", optional = true }
+tor-llcrypto = { version = "=0.47.0", optional = true }
+tor-keymgr = { version = "=0.47.0", optional = true, features = ["keymgr"] }
+tor-cell = { version = "=0.47.0", optional = true }
+tor-config = { version = "=0.47.0", optional = true }
+tor-config-path = { version = "=0.47.0", optional = true }
+tor-proto = { version = "=0.47.0", optional = true }
+tor-rtcompat = { version = "=0.47.0", optional = true,
+    features = ["tokio", "rustls"] }
+tokio = { version = "=1.54.1", optional = true,
+    features = ["rt-multi-thread", "sync", "time", "macros"] }
+futures = { version = "=0.3.34", optional = true }
+safelog = { version = "=0.10.0", optional = true }
+rustls = { version = "=0.23.46", default-features = false, optional = true,
+           features = ["ring", "logging", "std", "tls12"] }

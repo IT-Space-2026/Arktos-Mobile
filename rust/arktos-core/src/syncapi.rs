@@ -2,7 +2,7 @@
 //! Functions take/return plain types + JSON strings so Kotlin can
 //! drive the engine without sharing Rust value types.
 
-use crate::error::{RcResult, RcStatus};
+use crate::error::Fail;
 use std::path::Path;
 use std::sync::Mutex;
 use std::sync::OnceLock;
@@ -29,7 +29,7 @@ fn engine(data_root: &str) -> &'static Mutex<SyncEngine> {
     unsafe { &*(std::sync::Arc::into_raw(arc) as *const Mutex<SyncEngine>) }
 }
 
-fn fail_json(e: &crate::error::Fail) -> String {
+fn fail_json(e: &Fail) -> String {
     format!(r#"{{"error":"{}","status":{:?}}}"#, e.msg.replace('"', "'"), e.status)
 }
 
@@ -81,6 +81,39 @@ pub fn sync_members(data_root: String) -> String {
 #[uniffi::export]
 pub fn sync_transport_start(data_root: String, backend: String, name: String) -> bool {
     crate::synctransport::start(Path::new(&data_root), &backend, &name).is_ok()
+}
+
+/// Drive a pair session's handshake; returns the session's status JSON.
+#[uniffi::export]
+pub fn sync_pair_poll(data_root: String, pair_id: u64) -> String {
+    match crate::syncpair::poll(Path::new(&data_root), pair_id) {
+        Ok(v) => v.to_string(),
+        Err(e) => fail_json(&e),
+    }
+}
+
+/// Confirm or reject a fingerprint check for a pair session.
+#[uniffi::export]
+pub fn sync_pair_confirm(data_root: String, pair_id: u64, ok: bool) -> String {
+    match crate::syncpair::confirm(Path::new(&data_root), pair_id, ok) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => fail_json(&e),
+    }
+}
+
+/// Cancel a pair session.
+#[uniffi::export]
+pub fn sync_pair_cancel(data_root: String, pair_id: u64) -> String {
+    match crate::syncpair::cancel(Path::new(&data_root), pair_id) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => fail_json(&e),
+    }
+}
+
+/// List live pair sessions as a JSON array.
+#[uniffi::export]
+pub fn sync_pair_list(data_root: String) -> String {
+    serde_json::Value::Array(crate::syncpair::list(Path::new(&data_root))).to_string()
 }
 
 /// Whether a transport is already running for this root.
