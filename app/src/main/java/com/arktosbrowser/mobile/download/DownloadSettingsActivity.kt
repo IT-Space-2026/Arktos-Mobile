@@ -136,7 +136,8 @@ class DownloadSettingsActivity : AppCompatActivity() {
         )
         toolbar.setNavigationOnClickListener { finish() }
         if (android.os.Build.VERSION.SDK_INT >= 35) {
-            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+            val padTarget = (toolbar.parent as? android.view.View) ?: toolbar
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(padTarget) { v, insets ->
                 val bars = insets.getInsets(
                     androidx.core.view.WindowInsetsCompat.Type.statusBars()
                 )

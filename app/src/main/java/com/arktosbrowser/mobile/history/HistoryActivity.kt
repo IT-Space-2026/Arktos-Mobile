@@ -66,9 +66,11 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         if (supportActionBar != null) supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
         // API-35 edge-to-edge slides the toolbar under the
-        // transparent status bar — pad it like the other screens.
+        // transparent status bar — pad its parent like the other
+        // screens; padding inside the toolbar clips the title.
         if (android.os.Build.VERSION.SDK_INT >= 35) {
-            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+            val padTarget = (toolbar.parent as? android.view.View) ?: toolbar
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(padTarget) { v, insets ->
                 val bars = insets.getInsets(
                     androidx.core.view.WindowInsetsCompat.Type.statusBars()
                 )
@@ -121,9 +123,29 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            else -> finish()
+            DELETE_ALL_ID -> { deleteAll(); return true }
+            android.R.id.home -> { finish(); return true }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    /** Per-row ✕ — Iceraven's row-level delete. */
+    fun deleteEntry(entry: HistoryEntry) {
+        historyRepository.deleteHistoryEntry(entry.url)
+            .subscribe { dataChanged() }
+    }
+
+    /** Toolbar trash — Iceraven's clear-all, with a confirm. */
+    private fun deleteAll() {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_history)
+            .setMessage(R.string.downloads_clear_all)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                historyRepository.deleteHistory()
+                    .subscribe { dataChanged() }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     fun dataChanged() {
@@ -152,26 +174,13 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         var filtered: List<HistoryEntry> = dataSet
         var oldList: MutableList<HistoryEntry> = dataSet.toMutableList()
 
-        /** Iceraven-style date buckets, newest first. */
+        /** Iceraven-style per-day date headers, newest first. */
         private fun grouped(entries: List<HistoryEntry>): List<Item> {
-            val day = 24L * 3600 * 1000
-            val todayStart = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-            val buckets = listOf(
-                context.getString(R.string.downloads_group_today) to todayStart,
-                context.getString(R.string.downloads_group_yesterday) to todayStart - day,
-                context.getString(R.string.downloads_group_last7) to todayStart - 7 * day,
-                context.getString(R.string.downloads_group_last30) to todayStart - 30 * day
-            )
+            val fmt = java.text.SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
             val out = mutableListOf<Item>()
             var current: String? = null
             for (e in entries) {
-                val label = (buckets.firstOrNull { e.lastTimeVisited >= it.second }
-                    ?: (context.getString(R.string.downloads_group_older) to 0L)).first
+                val label = fmt.format(Date(e.lastTimeVisited))
                 if (label != current) {
                     current = label
                     out += Item.Header(label)
@@ -218,9 +227,11 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
             (items[position] as? Item.Entry)?.entry
 
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val icon: TextView = view.findViewById(R.id.historyIcon)
             val textView: TextView = view.findViewById(R.id.historyTitle)
             val historyUrl: TextView = view.findViewById(R.id.historyUrl)
             val historyDate: TextView = view.findViewById(R.id.historyTime)
+            val delete: android.widget.ImageButton = view.findViewById(R.id.historyDelete)
         }
 
         class HeaderVH(view: View) : RecyclerView.ViewHolder(view)
@@ -255,10 +266,25 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
             val e = (item as Item.Entry).entry
             holder as ViewHolder
             holder.textView.text = e.title
-            // Iceraven-style subtitle — host • visit time.
+            // Iceraven-style subtitle — host + visit time.
             val host = runCatching { Uri.parse(e.url).host.orEmpty() }.getOrDefault(e.url)
-            holder.historyUrl.text = host
+            holder.historyUrl.text = e.url
             holder.historyDate.text = getTime(e.lastTimeVisited)
+            // Letter tile — colored rounded square with the host's
+            // first letter, Iceraven's no-favicon fallback.
+            holder.icon.text = host.take(1).uppercase()
+            val hue = (host.hashCode() and 0x7FFFFFFF) % 360
+            val color = android.graphics.Color.HSVToColor(
+                floatArrayOf(hue.toFloat(), 0.55f, 0.55f)
+            )
+            holder.icon.background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = holder.icon.resources.displayMetrics.density * 8
+                setColor(color)
+            }
+            holder.delete.setOnClickListener {
+                (context as? HistoryActivity)?.deleteEntry(e)
+            }
         }
 
         override fun getItemCount() = items.size
@@ -280,7 +306,16 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         val searchView: SearchView = searchItem.getActionView() as SearchView
         searchView.setOnQueryTextListener(this)
 
+        // Iceraven's trash icon — clear all history.
+        menu.add(0, DELETE_ALL_ID, 0, R.string.downloads_clear_all)
+            .setIcon(android.R.drawable.ic_menu_delete)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+
         return super.onCreateOptionsMenu(menu)
+    }
+
+    private companion object {
+        const val DELETE_ALL_ID = 42
     }
 
     override fun onQueryTextChange(query: String?): Boolean {

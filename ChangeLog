@@ -62,6 +62,12 @@ UI:
   Older), a host + visit-time subtitle, and the same toolbar
   status-bar pad on Android 15+ — the Downloads and Download
   Settings toolbars get the pad too.
+  History reworked again per Iceraven: per-day date headers,
+  a letter tile per host, single-line title and URL, a per-row
+  delete button, and a toolbar trash icon for clear-all. Row
+  subtitles stay on one line now (the host no longer wraps
+  mid-bullet). Toolbar pads moved to the parent layout — padding
+  inside a fixed-height toolbar clipped the title.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

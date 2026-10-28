@@ -64,11 +64,14 @@ class SettingsActivity : AppCompatActivity() {
             insets
         }
         // API-35 edge-to-edge also slides the toolbar under the
-        // transparent status bar — pad it by the bar inset so the
-        // Settings title isn't clipped by the icons.
+        // transparent status bar — pad its parent (AppBarLayout)
+        // by the bar inset; padding inside the fixed-height toolbar
+        // clips the title instead of moving it.
         if (android.os.Build.VERSION.SDK_INT >= 35) {
+            val padTarget = findViewById<android.view.View>(R.id.toolbar)
+                .parent as android.view.View
             androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
-                findViewById(R.id.toolbar)
+                padTarget
             ) { v, insets ->
                 val bars = insets.getInsets(
                     androidx.core.view.WindowInsetsCompat.Type.statusBars()

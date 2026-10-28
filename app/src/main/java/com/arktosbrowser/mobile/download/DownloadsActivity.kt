@@ -264,7 +264,10 @@ class DownloadsActivity : AppCompatActivity() {
 
     private fun padToolbarForStatusBar(toolbar: android.view.View) {
         if (android.os.Build.VERSION.SDK_INT < 35) return
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+        // Pad the toolbar's parent — padding inside a fixed-height
+        // toolbar clips the title instead of moving it.
+        val target = (toolbar.parent as? android.view.View) ?: toolbar
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(target) { v, insets ->
             val bars = insets.getInsets(
                 androidx.core.view.WindowInsetsCompat.Type.statusBars()
             )
