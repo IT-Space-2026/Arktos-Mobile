@@ -9,21 +9,30 @@
 //! from Gradle build to Kotlin call.
 
 mod blocklist;
+mod bookmarkhtml;
 mod bookmarks;
 mod download;
 mod error;
+mod facade;
+mod history;
+mod settings;
 mod mw;
 mod notify;
 mod store;
 mod sync;
 mod syncapi;
 mod syncpair;
+mod syncbookmarks;
+mod synchistory;
+mod syncsettings;
+mod synctabs;
 mod synctransport;
 mod noisexx;
 mod idn;
 mod misc;
 mod netscape;
 mod pages;
+mod parsers;
 mod password;
 mod ranklist;
 mod readability;

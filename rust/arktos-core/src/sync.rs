@@ -265,7 +265,7 @@ impl WireOp {
 /// profile scope, `body` the CRDT payload.  Must be idempotent:
 /// dedup means an op applies at most once per device, but a retry
 /// after a mid-apply crash can re-deliver it.
-pub type Applier = Arc<dyn Fn(&str, &Value) -> RcResult<()> + Send + Sync>;
+pub type Applier = Arc<dyn Fn(&WireOp) -> RcResult<()> + Send + Sync>;
 
 static APPLIERS: RwLock<BTreeMap<String, Applier>> = RwLock::new(BTreeMap::new());
 
@@ -826,7 +826,7 @@ impl SyncEngine {
         fresh.sort_by(|a, b| a.order_key().cmp(&b.order_key()));
         for op in fresh {
             match applier_for(&op.store) {
-                Some(f) => match f(&op.scope, &op.body) {
+                Some(f) => match f(&op) {
                     Ok(()) => {
                         self.mark_applied(&op.op_id)?;
                         report.applied += 1;
@@ -860,7 +860,7 @@ impl SyncEngine {
         let mut report = ImportReport::default();
         for op in pending {
             match applier_for(&op.store) {
-                Some(f) => match f(&op.scope, &op.body) {
+                Some(f) => match f(&op) {
                     Ok(()) => {
                         self.mark_applied(&op.op_id)?;
                         report.applied += 1;
@@ -1273,8 +1273,8 @@ mod tests {
         let seen2 = seen.clone();
         register_applier(
             "settings",
-            Arc::new(move |_scope, body| {
-                seen2.lock().unwrap().push(body.clone());
+            Arc::new(move |op: &WireOp| {
+                seen2.lock().unwrap().push(op.body.clone());
                 Ok(())
             }),
         );
@@ -1339,8 +1339,8 @@ mod tests {
         let order2 = order.clone();
         register_applier(
             "settings",
-            Arc::new(move |_s, b| {
-                order2.lock().unwrap().push(b["n"].as_i64().unwrap());
+            Arc::new(move |op: &WireOp| {
+                order2.lock().unwrap().push(op.body["n"].as_i64().unwrap());
                 Ok(())
             }),
         );
@@ -1417,7 +1417,7 @@ mod tests {
         let hits2 = hits.clone();
         register_applier(
             "history",
-            Arc::new(move |_s, _b| {
+            Arc::new(move |_op: &WireOp| {
                 *hits2.lock().unwrap() += 1;
                 Ok(())
             }),
@@ -1439,7 +1439,7 @@ mod tests {
 
         register_applier(
             "tabs",
-            Arc::new(|_s, _b| fail(RcStatus::Io, "adapter exploded")),
+            Arc::new(|_op: &WireOp| fail(RcStatus::Io, "adapter exploded")),
         );
         let peer = SyncEngine::open(&tmpdir("eP")).unwrap();
         peer.member_add(&a.public_key(), "", "").unwrap();

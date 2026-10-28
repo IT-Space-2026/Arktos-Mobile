@@ -51,6 +51,7 @@ html5gum = "=0.8.4"
 # PORT01 — legacy bookmark importer (JSON-lines) + DDG/Baidu/Naver
 # suggestion responses.
 serde_json = "=1.0.154"
+quick-xml = { version = "=0.42.0", features = ["encoding"] }
 # PORT01 — download filename/MIME core: extension↔type mapping for
 # URLUtil.guessFileName / FetchUrlMimeType parity.
 mime_guess = "=2.0.5"
