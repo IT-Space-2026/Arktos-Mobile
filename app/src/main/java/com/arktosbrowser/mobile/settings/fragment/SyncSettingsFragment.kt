@@ -64,6 +64,81 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 showInvite(payload)
                 true
             }
+
+        findPreference<androidx.preference.Preference>("pref_sync_join")
+            ?.setOnPreferenceClickListener {
+                showJoinEntry()
+                true
+            }
+    }
+
+    /** Join lane — paste the peer's manual code (or scanned QR text). */
+    private fun showJoinEntry() {
+        val input = android.widget.EditText(requireContext()).apply {
+            hint = getString(R.string.sync_join_hint)
+        }
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.sync_join_button)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val text = input.text.toString().trim()
+                if (text.isNotEmpty()) {
+                    val resp = ArktosCore.syncJoinBegin(dataRoot, text)
+                    startPairPolling(resp)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /**
+     * Drive a pair session's handshake — poll its status JSON;
+     * when the fingerprint lands, show the confirm dialog.
+     */
+    private fun startPairPolling(joinResp: String) {
+        val id = try { JSONObject(joinResp).optLong("session", -1) } catch (e: Exception) { -1L }
+        val uid = id.toULong()
+        if (id < 0) {
+            Toast.makeText(requireContext(), joinResp, Toast.LENGTH_LONG).show()
+            return
+        }
+        pollPair(uid)
+    }
+
+    private fun pollPair(pairId: ULong, attempts: Int = 0) {
+        if (attempts > 30) return // give up after ~90s
+        handler.postDelayed({
+            try {
+                val st = JSONObject(ArktosCore.syncPairPoll(dataRoot, pairId))
+                val phase = st.optString("phase", "")
+                val fp = st.optString("fingerprint", st.optString("fp", ""))
+                if (fp.isNotEmpty()) {
+                    showFingerprintConfirm(pairId, fp)
+                } else if (phase == "done" || phase == "failed" || phase == "cancelled") {
+                    Toast.makeText(requireContext(), "Pairing $phase", Toast.LENGTH_LONG).show()
+                } else {
+                    pollPair(pairId, attempts + 1)
+                }
+            } catch (e: Exception) {
+                pollPair(pairId, attempts + 1)
+            }
+        }, if (attempts == 0) 0 else 3000)
+    }
+
+    /** The fingerprint check — the human-verification lane of the handshake. */
+    private fun showFingerprintConfirm(pairId: ULong, fingerprint: String) {
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.sync_fingerprint_title)
+            .setMessage(fingerprint)
+            .setPositiveButton(R.string.sync_fingerprint_confirm) { _, _ ->
+                ArktosCore.syncPairConfirm(dataRoot, pairId, true)
+                findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
+                    membersSummary()
+            }
+            .setNegativeButton(R.string.sync_fingerprint_reject) { _, _ ->
+                ArktosCore.syncPairConfirm(dataRoot, pairId, false)
+            }
+            .show()
     }
 
     private fun membersSummary(): String {

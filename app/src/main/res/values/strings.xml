@@ -81,6 +81,11 @@
     <string name="sync_paired_devices">Paired devices</string>
     <string name="sync_no_devices">No paired devices yet</string>
     <string name="sync_pair_button">Pair a device</string>
+    <string name="sync_join_button">Join a device</string>
+    <string name="sync_join_hint">Scan the peer&#8217;s QR or paste the manual code</string>
+    <string name="sync_fingerprint_title">Confirm device fingerprint</string>
+    <string name="sync_fingerprint_confirm">Confirm</string>
+    <string name="sync_fingerprint_reject">Not a match</string>
     <string name="sync_coming_soon">Pairing and store sync are staged milestones — this screen is the foundation.</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>

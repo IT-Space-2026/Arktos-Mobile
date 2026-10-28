@@ -484,6 +484,18 @@ object ArktosCore {
 
     fun syncMemberRemove(dataRoot: String, deviceId: String): Boolean =
         com.arktosbrowser.mobile.uniffi.syncMemberRemove(dataRoot, deviceId)
+
+    fun syncPairPoll(dataRoot: String, pairId: ULong): String =
+        com.arktosbrowser.mobile.uniffi.syncPairPoll(dataRoot, pairId)
+
+    fun syncPairConfirm(dataRoot: String, pairId: ULong, ok: Boolean): String =
+        com.arktosbrowser.mobile.uniffi.syncPairConfirm(dataRoot, pairId, ok)
+
+    fun syncPairCancel(dataRoot: String, pairId: ULong): String =
+        com.arktosbrowser.mobile.uniffi.syncPairCancel(dataRoot, pairId)
+
+    fun syncPairList(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPairList(dataRoot)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {
