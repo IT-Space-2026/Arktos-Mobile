@@ -6,6 +6,15 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.5 — GeckoView 159
+
+- GeckoView engine bumped to 159.0.20261022150525 (was
+  158.0.20261019185856) — the latest published build on
+  maven.mozilla.org; the new concurrent-futures transitive dep is
+  pinned in the dependency-verification metadata.
+- New-folder dialog polished: the name field sits in a padded
+  container instead of hugging the dialog edge.
+
 1.2.4 — Downloads page fix
 
 UI:

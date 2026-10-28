@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion project.minSdkVersion
         targetSdkVersion project.targetSdkVersion
-        versionName "1.2.4"
-        versionCode 165
+        versionName "1.2.5"
+        versionCode 166
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -226,7 +226,7 @@ dependencies {
     // CVE fixes. 158.0.2 (20261021001945) regressed restored
     // background tabs (loads abort without recovery), so the pin
     // stays on 158.0.1 until a newer stable verifies clean.
-    geckoImplementation 'org.mozilla.geckoview:geckoview:158.0.20261019185856'
+    geckoImplementation 'org.mozilla.geckoview:geckoview:159.0.20261022150525'
 
     // lifecycleScope for coroutine-backed background work (MOD02)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'

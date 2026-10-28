@@ -118,3 +118,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 1.2.4(amend28): ReadingActivity null-proxy openConnection crash; bookmark drawer gets add-folder + sort (newest/oldest/A-Z/Z-A) header buttons
 - 2026-10-28 1.2.4(amend29): real bookmark_folder table + add_folder in Rust store (uniffi-exported); drawer folder button uses it — no more placeholder entry
 - 2026-10-28 1.2.4(amend30): new-folder dialog padded; Iceraven references scrubbed from ChangeLog/changelog.html/release notes
+- 2026-10-28 1.2.5: geckoview 158.0.20261019185856 → 159.0.20261022150525; versionCode 166; verification-metadata updated (geckoview 159 + concurrent-futures 1.0.0)
