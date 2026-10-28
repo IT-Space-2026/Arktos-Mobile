@@ -11,6 +11,14 @@
 mod blocklist;
 mod bookmarks;
 mod download;
+mod error;
+mod mw;
+mod notify;
+mod store;
+mod sync;
+mod syncpair;
+mod synctransport;
+mod noisexx;
 mod idn;
 mod misc;
 mod netscape;
