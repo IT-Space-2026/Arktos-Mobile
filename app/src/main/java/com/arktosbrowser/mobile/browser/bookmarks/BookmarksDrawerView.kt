@@ -26,6 +26,7 @@ import com.arktosbrowser.mobile.browser.TabsManager
 import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.Bookmark
 import com.arktosbrowser.mobile.database.bookmark.BookmarkRepository
+import com.arktosbrowser.mobile.database.asFolder
 import com.arktosbrowser.mobile.di.DatabaseScheduler
 import com.arktosbrowser.mobile.di.MainScheduler
 import com.arktosbrowser.mobile.di.NetworkScheduler
@@ -125,6 +126,8 @@ class BookmarksDrawerView @JvmOverloads constructor(
             }
         }
         addBookmarkView?.setOnClickListener { uiController.bookmarkButtonClicked() }
+        findViewById<View>(R.id.action_add_folder)?.setOnClickListener { showNewFolderDialog() }
+        findViewById<View>(R.id.action_sort_bookmarks)?.setOnClickListener { showSortMenu(it) }
         findViewById<View>(R.id.action_reading).setOnClickListener {
             getTabsManager().currentTab?.url?.let {
                 ReadingActivity.launch(context, it, false)
@@ -219,8 +222,58 @@ class BookmarksDrawerView @JvmOverloads constructor(
             }
     }
 
+    // 0 newest (list order), 1 oldest, 2 A-Z, 3 Z-A — folders stay first.
+    private var sortMode = 0
+
+    private fun showSortMenu(anchor: View) {
+        val labels = arrayOf(
+            context.getString(R.string.bookmark_sort_newest),
+            context.getString(R.string.bookmark_sort_oldest),
+            context.getString(R.string.bookmark_sort_az),
+            context.getString(R.string.bookmark_sort_za)
+        )
+        android.widget.PopupMenu(context, anchor).apply {
+            labels.forEachIndexed { i, l -> menu.add(0, i, i, l) }
+            setOnMenuItemClickListener {
+                sortMode = it.itemId
+                setBookmarksShown(uiModel.currentFolder, false)
+                true
+            }
+            show()
+        }
+    }
+
+    private fun showNewFolderDialog() {
+        val input = android.widget.EditText(context)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle(R.string.bookmark_new_folder)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    // Folders are derived from entries' folder field
+                    // — a placeholder entry materializes it; the user
+                    // deletes it once real bookmarks land there.
+                    bookmarkModel.addBookmarkList(
+                        listOf(Bookmark.Entry("arktos://folder/${'$'}name", name, 0, name.asFolder()))
+                    ).subscribe { setBookmarksShown(uiModel.currentFolder, false) }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun setBookmarkDataSet(items: List<Bookmark>, animate: Boolean) {
-        bookmarkAdapter?.updateItems(items.map { BookmarksViewModel(it) })
+        val folders = items.filterIsInstance<Bookmark.Folder>()
+        val entries = items.filterIsInstance<Bookmark.Entry>()
+        val sortedEntries = when (sortMode) {
+            1 -> entries.reversed()
+            2 -> entries.sortedBy { it.title.lowercase() }
+            3 -> entries.sortedByDescending { it.title.lowercase() }
+            else -> entries
+        }
+        val sorted = folders + sortedEntries
+        bookmarkAdapter?.updateItems(sorted.map { BookmarksViewModel(it) })
         val resource = if (uiModel.isCurrentFolderRoot()) {
             R.drawable.ic_action_star
         } else {

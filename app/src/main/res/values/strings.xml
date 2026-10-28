@@ -67,6 +67,12 @@
     <string name="history_last_hour">Last hour</string>
     <string name="history_today_yesterday">Today and yesterday</string>
     <string name="history_everything">Everything</string>
+    <string name="bookmark_sort">Sort bookmarks</string>
+    <string name="bookmark_new_folder">New folder</string>
+    <string name="bookmark_sort_newest">Newest first</string>
+    <string name="bookmark_sort_oldest">Oldest first</string>
+    <string name="bookmark_sort_az">A to Z</string>
+    <string name="bookmark_sort_za">Z to A</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

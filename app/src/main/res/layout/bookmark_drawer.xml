@@ -41,6 +41,27 @@
             android:layout_toEndOf="@id/bookmark_back_button"
             android:textStyle="bold"/>
 
+        <ImageView
+            android:id="@+id/action_sort_bookmarks"
+            android:layout_width="@dimen/material_grid_small_icon"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="42dp"
+            android:background="?attr/actionBarItemBackground"
+            android:contentDescription="@string/bookmark_sort"
+            android:scaleType="center"
+            app:srcCompat="@drawable/ic_baseline_more_vert" />
+
+        <ImageView
+            android:id="@+id/action_add_folder"
+            android:layout_width="@dimen/material_grid_small_icon"
+            android:layout_height="match_parent"
+            android:layout_alignParentEnd="true"
+            android:background="?attr/actionBarItemBackground"
+            android:contentDescription="@string/bookmark_new_folder"
+            android:scaleType="center"
+            app:srcCompat="@android:drawable/ic_menu_add" />
+
     </RelativeLayout>
 
     <androidx.recyclerview.widget.RecyclerView

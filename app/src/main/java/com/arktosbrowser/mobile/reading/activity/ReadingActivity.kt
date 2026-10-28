@@ -147,7 +147,8 @@ class ReadingActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     // proxying.
                     val proxy = ProxyUtils.connectionProxy(userPreferences)
                     val pageUrl = URL(url)
-                    val htmlData = pageUrl.openConnection(proxy).inputStream
+                    val htmlData = (if (proxy != null) pageUrl.openConnection(proxy)
+                        else pageUrl.openConnection()).inputStream
                         .bufferedReader()
                         .use { it.readText() }
                     // PORT01 — extraction lives in the Rust core
