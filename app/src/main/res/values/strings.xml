@@ -73,6 +73,15 @@
     <string name="bookmark_sort_oldest">Oldest first</string>
     <string name="bookmark_sort_az">A to Z</string>
     <string name="bookmark_sort_za">Z to A</string>
+    <string name="settings_synchronization">Synchronization</string>
+    <string name="settings_synchronization_explain">Device pairing, shared stores and sync status</string>
+    <string name="sync_status_title">Sync status</string>
+    <string name="sync_status_not_connected">Not connected — pair a device to start syncing</string>
+    <string name="sync_this_device">This device</string>
+    <string name="sync_paired_devices">Paired devices</string>
+    <string name="sync_no_devices">No paired devices yet</string>
+    <string name="sync_pair_button">Pair a device</string>
+    <string name="sync_coming_soon">Pairing and store sync are staged milestones — this screen is the foundation.</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

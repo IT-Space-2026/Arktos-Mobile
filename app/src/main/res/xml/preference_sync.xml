@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <androidx.preference.PreferenceCategory android:title="@string/sync_status_title">
+        <androidx.preference.Preference
+            android:key="pref_sync_status"
+            android:title="@string/sync_status_not_connected" />
+        <androidx.preference.Preference
+            android:title="@string/sync_this_device"
+            android:key="pref_sync_device_name" />
+        <androidx.preference.Preference
+            android:summary="@string/sync_coming_soon"
+            android:key="pref_sync_note" />
+    </androidx.preference.PreferenceCategory>
+
+    <androidx.preference.PreferenceCategory android:title="@string/sync_paired_devices">
+        <androidx.preference.Preference
+            android:summary="@string/sync_no_devices"
+            android:key="pref_sync_device_list" />
+        <androidx.preference.Preference
+            android:title="@string/sync_pair_button"
+            android:key="pref_sync_pair" />
+    </androidx.preference.PreferenceCategory>
+
+</androidx.preference.PreferenceScreen>

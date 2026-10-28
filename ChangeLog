@@ -6,6 +6,14 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.6 — Sync foundation (MSYNC01)
+
+- Settings gets a Synchronization section (blue sync icon) with
+  device identity, a sync-status row and the paired-device list —
+  the shell the pairing/transport/store-sync milestones build on
+- The pair action is a staged milestone: the screen says so
+  honestly rather than faking a connection
+
 1.2.5 — GeckoView 159
 
 - GeckoView engine bumped to 159.0.20261022150525 (was

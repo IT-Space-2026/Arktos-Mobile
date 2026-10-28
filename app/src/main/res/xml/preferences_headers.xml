@@ -34,6 +34,13 @@
         android:singleLineTitle="false"
         android:summary="@string/settings_advanced_explain" />
     <androidx.preference.Preference
+        android:fragment="com.arktosbrowser.mobile.settings.fragment.SyncSettingsFragment"
+        android:icon="@drawable/ic_settings_sync_layers"
+        android:title="@string/settings_synchronization"
+        android:singleLineTitle="false"
+        android:summary="@string/settings_synchronization_explain"
+        android:tint="#0078d4"/>
+    <androidx.preference.Preference
         android:fragment="com.arktosbrowser.mobile.settings.fragment.AdBlockSettingsFragment"
         android:icon="@drawable/ic_settings_block_layers"
         android:singleLineTitle="false"

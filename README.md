@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.6 — Sync foundation
+
+Settings gains a Synchronization section (device identity, sync status, paired-device list) — the shell the pairing/transport/store milestones build on.
+
 ## Support
 
 Need help? Open an [issue](https://github.com/IT-Space-2026/Arktos-Mobile/issues) or start a [discussion](https://github.com/IT-Space-2026/Arktos-Mobile/discussions).
