@@ -244,10 +244,21 @@ class BookmarksDrawerView @JvmOverloads constructor(
     }
 
     private fun showNewFolderDialog() {
-        val input = android.widget.EditText(context)
+        val pad = (resources.displayMetrics.density * 20).toInt()
+        val input = android.widget.EditText(context).apply {
+            hint = context.getString(R.string.bookmark_new_folder)
+            setSingleLine()
+        }
+        // The bare EditText hugs the dialog's left edge — wrap it in
+        // a padded container so the text starts inset like the other
+        // input dialogs.
+        val container = android.widget.FrameLayout(context).apply {
+            setPadding(pad, pad / 4, pad, 0)
+            addView(input)
+        }
         com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle(R.string.bookmark_new_folder)
-            .setView(input)
+            .setView(container)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {

@@ -21,15 +21,15 @@ UI:
   Retry per item, Clear all; works even when the store read is down.
   The integrity retry also removes the stale record, so one file no
   longer shows as several partial rows. Rows follow the
-  Iceraven UX — icon, full file name, a size + source-domain
+  browser UX — icon, full file name, a size + source-domain
   subtitle, and a per-row overflow menu (Open / Retry / Share file /
   Share URL / Rename / Delete).
-- Downloads: a gear icon opens an Iceraven-style Download
+- Downloads: a gear icon opens an browser-style Download
   Settings page — default-location display, a delete policy
   (delete from device / remove from history / ask each time), and
   a 'Manage downloads with another app' toggle that routes the
   Downloads menu to the system download-manager UI.
-- Downloads list is grouped into Iceraven date buckets (Today /
+- Downloads list is grouped into date buckets (Today /
   Yesterday / Last 7 days / Last 30 days / Older) and each row
   shows the download time in the subtitle.
 - Gecko restore: a reopened-but-empty session never painted, so
@@ -57,12 +57,12 @@ UI:
   fitsSystemWindows went too (same double-consumption at the tab
   drawer's top). Settings pads its toolbar by the bar inset on
   API 35+, fixing the clipped title.
-- History screen restyled to match Downloads/Iceraven: date
+- History screen restyled to match Downloads: date
   buckets (Today / Yesterday / Last 7 days / Last 30 days /
   Older), a host + visit-time subtitle, and the same toolbar
   status-bar pad on Android 15+ — the Downloads and Download
   Settings toolbars get the pad too.
-  History reworked again per Iceraven: per-day date headers,
+  History reworked again : per-day date headers,
   a letter tile per host, single-line title and URL, a per-row
   delete button, and a toolbar trash icon for clear-all. Row
   subtitles stay on one line now (the host no longer wraps
@@ -78,10 +78,12 @@ UI:
   drawer's new-folder button calls it directly instead of the
   placeholder-entry workaround. Rename/delete and the folder list
   keep unioning derived names, so old folders still work.
+- New-folder dialog polish: the name field now sits in a padded
+  container instead of hugging the dialog's left edge.
 - System-bar insets finished: the browser root now also pads by
   the nav-bar inset on Android 15+, so the bottom home/add-tab/
   back row is no longer under the virtual buttons.
-- History: time-range dialog rebuilt to match Iceraven (subtitle
+- History: time-range dialog rebuilt to match the reference layout (subtitle
   + padded radio rows); history entries open a new tab via the
   shared intent path.
 - Downloads page: entries were never recorded when the download-meta
