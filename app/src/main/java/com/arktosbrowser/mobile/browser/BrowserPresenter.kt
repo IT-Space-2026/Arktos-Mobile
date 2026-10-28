@@ -43,7 +43,9 @@ class BrowserPresenter(
         private val bookmarkPageFactory: BookmarkPageFactory,
         private val recentTabModel: RecentTabModel,
         private val logger: Logger,
-        private val updateChecker: UpdateChecker
+        private val updateChecker: UpdateChecker,
+        private val syncRepo: com.arktosbrowser.mobile.sync.SyncRepository,
+        private val application: android.app.Application
 ) {
 
     private var currentTab: Page? = null
@@ -399,6 +401,7 @@ class BrowserPresenter(
 
         logger.log(TAG, "tabChanged: $position")
         onTabChanged(tabsModel.switchToTab(position))
+        publishTabs()
     }
 
     /**
@@ -409,6 +412,21 @@ class BrowserPresenter(
      * @param show whether or not to switch to this tab after opening it.
      * @return true if we successfully created the tab.
      */
+    /** MSYNC06 — snapshot the open tabs into the "tabs" sync store. */
+    private fun publishTabs() {
+        runCatching {
+            if (isIncognito) return@runCatching
+            val tabs = org.json.JSONArray()
+            tabsModel.allTabs.forEach { t ->
+                tabs.put(org.json.JSONObject()
+                    .put("url", t.url)
+                    .put("title", t.title))
+            }
+            syncRepo.append(application.filesDir.absolutePath, "tabs",
+                """{"open_tabs":$tabs}""")
+        }
+    }
+
     fun newTab(tabInitializer: TabInitializer, show: Boolean): Boolean {
 
 
