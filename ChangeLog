@@ -73,6 +73,11 @@ UI:
   dialog (last hour / today+yesterday / everything), and the
   dialog text is history-specific now — it no longer says
   'Clear downloads list'.
+  Bookmark folders are now real entities: a new bookmark_folder
+  table in the Rust store supports standalone/empty folders — the
+  drawer's new-folder button calls it directly instead of the
+  placeholder-entry workaround. Rename/delete and the folder list
+  keep unioning derived names, so old folders still work.
 - System-bar insets finished: the browser root now also pads by
   the nav-bar inset on Android 15+, so the bottom home/add-tab/
   back row is no longer under the virtual buttons.

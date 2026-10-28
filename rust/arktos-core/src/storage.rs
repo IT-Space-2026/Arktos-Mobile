@@ -246,6 +246,10 @@ impl ArktosStore {
             );
             CREATE INDEX IF NOT EXISTS bookmark_url_idx ON bookmark(url);
             CREATE INDEX IF NOT EXISTS bookmark_folder_idx ON bookmark(folder);
+            CREATE TABLE IF NOT EXISTS bookmark_folder(
+                name TEXT PRIMARY KEY,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE IF NOT EXISTS history(
                 id INTEGER PRIMARY KEY,
                 url TEXT NOT NULL,
@@ -428,18 +432,45 @@ impl ArktosStore {
         Ok(())
     }
 
-    /// Move every bookmark in `old_name` to `new_name`.
+    /// Create a standalone (possibly empty) folder — Iceraven-style
+    /// "New folder" without needing a bookmark inside it first.
+    pub fn add_folder(&self, name: String) -> StoreResult<()> {
+        let conn = self.db()?;
+        conn.execute(
+            "INSERT OR IGNORE INTO bookmark_folder(name, created_at) VALUES (?1, ?2)",
+            params![
+                name,
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0)
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Move every bookmark in `old_name` to `new_name` and rename
+    /// the standalone-folder row if one exists.
     pub fn rename_folder(&self, old_name: String, new_name: String) -> StoreResult<()> {
         let conn = self.db()?;
         conn.execute(
             "UPDATE bookmark SET folder = ?2 WHERE folder = ?1",
             params![old_name, new_name],
         )?;
+        conn.execute(
+            "UPDATE bookmark_folder SET name = ?2 WHERE name = ?1",
+            params![old_name, new_name],
+        )?;
         Ok(())
     }
 
-    /// Delete a folder — its bookmarks move to root ("").
+    /// Delete a folder — its bookmarks move to root ("") and any
+    /// standalone row goes away.
     pub fn delete_folder(&self, name: String) -> StoreResult<()> {
+        self.db()?.execute(
+            "DELETE FROM bookmark_folder WHERE name = ?1",
+            params![name],
+        )?;
         self.rename_folder(name, String::new())
     }
 
@@ -509,7 +540,9 @@ impl ArktosStore {
     pub fn folder_names(&self) -> StoreResult<Vec<String>> {
         let conn = self.db()?;
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT folder FROM bookmark WHERE folder != '' ORDER BY folder ASC",
+            "SELECT name FROM bookmark_folder
+             UNION SELECT DISTINCT folder FROM bookmark WHERE folder != ''
+             ORDER BY 1 ASC",
         )?;
         let rows = stmt.query_map([], |r| r.get(0))?;
         rows.collect::<Result<Vec<String>, _>>().map_err(Into::into)

@@ -68,6 +68,14 @@ interface BookmarkRepository {
     fun renameFolder(oldName: String, newName: String): Completable
 
     /**
+     * Creates a standalone (possibly empty) bookmark folder.
+     *
+     * @param name the folder name.
+     * @return an observable that emits a completion event when the folder exists.
+     */
+    fun addFolder(name: String): Completable
+
+    /**
      * Deletes a folder from the database, all bookmarks in that folder will be moved to the root
      * level.
      *

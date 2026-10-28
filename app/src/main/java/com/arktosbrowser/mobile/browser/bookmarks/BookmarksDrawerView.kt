@@ -251,12 +251,8 @@ class BookmarksDrawerView @JvmOverloads constructor(
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
-                    // Folders are derived from entries' folder field
-                    // — a placeholder entry materializes it; the user
-                    // deletes it once real bookmarks land there.
-                    bookmarkModel.addBookmarkList(
-                        listOf(Bookmark.Entry("arktos://folder/${'$'}name", name, 0, name.asFolder()))
-                    ).subscribe { setBookmarksShown(uiModel.currentFolder, false) }
+                    bookmarkModel.addFolder(name)
+                        .subscribe { setBookmarksShown(uiModel.currentFolder, false) }
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)

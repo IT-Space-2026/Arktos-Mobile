@@ -61,6 +61,10 @@ class RustBookmarkRepository @Inject constructor(
             store.renameFolder(oldName, newName)
         }
 
+    override fun addFolder(name: String): Completable = Completable.fromAction {
+        store.addFolder(name)
+    }
+
     override fun deleteFolder(folderToDelete: String): Completable = Completable.fromAction {
         store.deleteFolder(folderToDelete)
     }
