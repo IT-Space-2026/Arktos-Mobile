@@ -166,12 +166,16 @@ class DownloadsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(h: VH, pos: Int) {
             val r = rows[pos]
-            h.name.text = r.title.ifBlank { r.uri.substringAfterLast('/') }
+            h.name.text = r.title.ifBlank {
+                r.uri.substringBefore('?').substringAfterLast('/')
+            }
             h.icon.setImageResource(
                 if (r.status == DownloadManager.STATUS_SUCCESSFUL)
                     R.drawable.ic_file_download_black else android.R.drawable.stat_sys_download
             )
-            h.speed.text = r.uri.substringAfterLast('.').take(4).uppercase()
+            // Extension from the saved file name, not the URL — signed
+            // URLs carry query params with dots and showed "PACK".
+            h.speed.text = r.title.substringAfterLast('.', "").uppercase()
             h.download.text = if (r.total > 0)
                 "${r.bytes / 1024} / ${r.total / 1024} KB" else "${r.bytes / 1024} KB"
             h.status.text = when (r.status) {
