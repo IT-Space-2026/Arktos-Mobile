@@ -103,3 +103,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend13): retry removes the stale DownloadManager record — one download no longer shows as multiple partial rows ("slices")
 - 2026-10-27 1.2.4(amend14): DownloadsActivity — bigger centered empty-state text + navBar inset padding on list (last row sat under system buttons)
 - 2026-10-27 1.2.4(amend15): DownloadsActivity extension badge reads the file name not the URL (signed URLs' query dots showed "PACK")
+- 2026-10-27 1.2.4(amend16): Iceraven-style DownloadsActivity — full name, size+host subtitle, row overflow menu (Open/Retry/Share/Rename/Delete)

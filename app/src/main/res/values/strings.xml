@@ -40,6 +40,10 @@
     <string name="downloads_clear_all">Clear downloads list</string>
     <string name="downloads_retry">Retry download</string>
     <string name="downloads_open">Open</string>
+    <string name="downloads_share_file">Share file</string>
+    <string name="downloads_share_url">Share URL</string>
+    <string name="downloads_rename">Rename file</string>
+    <string name="downloads_delete">Delete</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

@@ -20,7 +20,10 @@ UI:
   app store) replaces the generated HTML page — real entries, Open /
   Retry per item, Clear all; works even when the store read is down.
   The integrity retry also removes the stale record, so one file no
-  longer shows as several partial rows.
+  longer shows as several partial rows. Rows follow the
+  Iceraven UX — icon, full file name, a size + source-domain
+  subtitle, and a per-row overflow menu (Open / Retry / Share file /
+  Share URL / Rename / Delete).
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

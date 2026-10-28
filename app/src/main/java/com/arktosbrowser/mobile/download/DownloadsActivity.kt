@@ -6,16 +6,21 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageView
-import android.widget.ProgressBar
+import android.widget.ImageButton
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.io.File
@@ -24,9 +29,10 @@ import java.net.URLConnection
 /**
  * Native downloads screen — queries the system DownloadManager
  * directly, so it lists real downloads even when the app's store
- * read is unavailable. Tap a row to open the file (installer for
- * APKs); Retry re-enqueues the source URL; the toolbar action clears
- * the whole list.
+ * read is unavailable. Rows show icon, full file name and a
+ * size + source-domain subtitle (Iceraven-style); the row overflow
+ * menu offers Open / Retry / Share file / Share URL / Rename /
+ * Delete; the toolbar action clears the whole list.
  */
 class DownloadsActivity : AppCompatActivity() {
 
@@ -109,20 +115,18 @@ class DownloadsActivity : AppCompatActivity() {
         reload()
     }
 
+    private fun fileOf(row: Row): File? =
+        row.localUri?.let { Uri.parse(it).path }?.let(::File)?.takeIf { it.exists() }
+
+    private fun mimeOf(name: String) =
+        URLConnection.guessContentTypeFromName(name) ?: "*/*"
+
     private fun open(row: Row) {
-        val local = row.localUri ?: return
-        val file = File(Uri.parse(local).path ?: return)
-        if (!file.exists()) {
-            // File gone (or a retry moved it) — fall back to retry.
-            retry(row); return
-        }
-        val mime = URLConnection.guessContentTypeFromName(file.name) ?: "*/*"
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            this, "${packageName}.fileprovider", file
-        )
+        val file = fileOf(row) ?: run { retry(row); return }
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
         startActivity(
             Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, mime)
+                setDataAndType(uri, mimeOf(file.name))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         )
@@ -137,10 +141,84 @@ class DownloadsActivity : AppCompatActivity() {
                     Environment.DIRECTORY_DOWNLOADS, row.title
                 )
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            URLConnection.guessContentTypeFromName(row.title)?.let(req::setMimeType)
+            mimeOf(row.title).takeIf { it != "*/*" }?.let(req::setMimeType)
             dm.enqueue(req)
             dm.remove(row.id)
             reload()
+        }
+    }
+
+    private fun shareFile(row: Row) {
+        val file = fileOf(row) ?: return
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+        startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = mimeOf(file.name)
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }, null
+            )
+        )
+    }
+
+    private fun shareUrl(row: Row) {
+        startActivity(
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, row.uri)
+                }, null
+            )
+        )
+    }
+
+    private fun rename(row: Row) {
+        val file = fileOf(row) ?: return
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            setText(file.name)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.downloads_rename)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty() && name != file.name) {
+                    runCatching { file.renameTo(File(file.parent, name)) }
+                }
+                reload()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun delete(row: Row) {
+        runCatching { getSystemService(DownloadManager::class.java)?.remove(row.id) }
+        fileOf(row)?.delete()
+        Completable.fromAction {
+            injector.downloadsRepository().deleteDownload(row.uri).blockingGet()
+        }.subscribeOn(Schedulers.io()).subscribe { }
+        reload()
+    }
+
+    private fun showRowMenu(anchor: View, row: Row) {
+        val ok = row.status == DownloadManager.STATUS_SUCCESSFUL
+        PopupMenu(this, anchor).apply {
+            if (ok) menu.add(0, 0, 0, R.string.downloads_open)
+            menu.add(0, 1, 1, R.string.downloads_retry)
+            if (ok) menu.add(0, 2, 2, R.string.downloads_share_file)
+            menu.add(0, 3, 3, R.string.downloads_share_url)
+            if (ok) menu.add(0, 4, 4, R.string.downloads_rename)
+            menu.add(0, 5, 5, R.string.downloads_delete)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    0 -> open(row); 1 -> retry(row); 2 -> shareFile(row)
+                    3 -> shareUrl(row); 4 -> rename(row); 5 -> delete(row)
+                }
+                true
+            }
+            show()
         }
     }
 
@@ -151,11 +229,9 @@ class DownloadsActivity : AppCompatActivity() {
     private inner class Adapter : RecyclerView.Adapter<Adapter.VH>() {
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
             val icon: ImageView = v.findViewById(R.id.dl_icon)
-            val progress: ProgressBar = v.findViewById(R.id.dl_progress)
             val name: TextView = v.findViewById(R.id.dl_name)
-            val speed: TextView = v.findViewById(R.id.dl_speed)
-            val download: TextView = v.findViewById(R.id.dl_download)
-            val status: TextView = v.findViewById(R.id.dl_status)
+            val subtitle: TextView = v.findViewById(R.id.dl_subtitle)
+            val menu: ImageButton = v.findViewById(R.id.dl_menu)
         }
 
         override fun onCreateViewHolder(p: ViewGroup, t: Int) = VH(
@@ -173,23 +249,16 @@ class DownloadsActivity : AppCompatActivity() {
                 if (r.status == DownloadManager.STATUS_SUCCESSFUL)
                     R.drawable.ic_file_download_black else android.R.drawable.stat_sys_download
             )
-            // Extension from the saved file name, not the URL — signed
-            // URLs carry query params with dots and showed "PACK".
-            h.speed.text = r.title.substringAfterLast('.', "").uppercase()
-            h.download.text = if (r.total > 0)
-                "${r.bytes / 1024} / ${r.total / 1024} KB" else "${r.bytes / 1024} KB"
-            h.status.text = when (r.status) {
-                DownloadManager.STATUS_SUCCESSFUL -> getString(R.string.downloads_open)
-                DownloadManager.STATUS_RUNNING -> getString(R.string.download_pending)
-                else -> getString(R.string.download_pending)
-            }
-            h.progress.visibility =
-                if (r.status == DownloadManager.STATUS_RUNNING) View.VISIBLE else View.GONE
-            if (r.total > 0) h.progress.progress = (r.bytes * 100 / r.total).toInt()
+            // "103 MB • release-assets.github.com" — Iceraven-style
+            // subtitle: size + source host.
+            val size = (if (r.total > 0) r.total else r.bytes) / (1024f * 1024f)
+            val host = runCatching { Uri.parse(r.uri).host.orEmpty() }.getOrDefault("")
+            h.subtitle.text = "%.1f MB • %s".format(size, host)
             h.itemView.setOnClickListener {
                 if (r.status == DownloadManager.STATUS_SUCCESSFUL) open(r) else retry(r)
             }
-            h.itemView.setOnLongClickListener { retry(r); true }
+            h.menu.setOnClickListener { showRowMenu(it, r) }
+            h.itemView.setOnLongClickListener { showRowMenu(it, r); true }
         }
     }
 }
