@@ -2,31 +2,36 @@
 //! Functions take/return plain types + JSON strings so Kotlin can
 //! drive the engine without sharing Rust value types.
 
-use crate::error::Fail;
+use crate::error::{Fail, RcResult};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::sync::OnceLock;
 
 use crate::sync::SyncEngine;
 
-fn engine(data_root: &str) -> &'static Mutex<SyncEngine> {
+/// Open-or-get the per-root engine. Failures surface as a typed
+/// error JSON to the caller — a sync-engine fault must never abort
+/// the browser process (a panic here is an instant native crash).
+fn try_engine(data_root: &str) -> RcResult<&'static Mutex<SyncEngine>> {
     static ENGINES: OnceLock<Mutex<std::collections::HashMap<String, std::sync::Arc<Mutex<SyncEngine>>>>> = OnceLock::new();
     // Single-engine-per-root is enough for the mobile flow — one
     // SyncEngine opened on the app's filesDir drives all sync state.
     // Leak a per-root engine for a stable reference.
     let m = ENGINES.get_or_init(|| Mutex::new(std::collections::HashMap::new()));
-    let mut map = m.lock().unwrap();
-    let arc = map.entry(data_root.to_string())
-        .or_insert_with(|| {
-            std::sync::Arc::new(Mutex::new(
-                SyncEngine::open(data_root).expect("SyncEngine::open")
-            ))
-        })
-        .clone();
+    let mut map = m.lock().unwrap_or_else(|e| e.into_inner());
+    // The map holds the Arc for process lifetime — as_ptr borrows it
+    // without consuming, so every caller gets a stable &Mutex.
+    if let Some(e) = map.get(data_root) {
+        let p = std::sync::Arc::as_ptr(e);
+        drop(map);
+        return Ok(unsafe { &*p });
+    }
+    let eng = SyncEngine::open(data_root)?;
+    let arc = std::sync::Arc::new(Mutex::new(eng));
+    let p = std::sync::Arc::as_ptr(&arc);
+    map.insert(data_root.to_string(), arc);
     drop(map);
-    // SAFETY: leak the Arc to give a stable &Mutex — engines live for
-    // process lifetime anyway.
-    unsafe { &*(std::sync::Arc::into_raw(arc) as *const Mutex<SyncEngine>) }
+    Ok(unsafe { &*p })
 }
 
 fn fail_json(e: &Fail) -> String {
@@ -63,7 +68,10 @@ pub fn sync_fingerprint(hash_b64: String) -> String {
 /// The paired-member list for the Synchronization screen.
 #[uniffi::export]
 pub fn sync_members(data_root: String) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.members_list() {
         Ok(members) => {
             let arr: Vec<serde_json::Value> = members.iter().map(|m| serde_json::json!({
@@ -131,7 +139,10 @@ pub fn sync_transport_running(data_root: String) -> bool {
 /// applied. Pull-based so the mobile owns scheduling/batching.
 #[uniffi::export]
 pub fn sync_pending_apply(data_root: String, store_name: String) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.pending_apply(&store_name) {
         Ok(ops) => serde_json::Value::Array(ops.iter().map(|o| o.to_json()).collect()).to_string(),
         Err(e) => fail_json(&e),
@@ -142,7 +153,10 @@ pub fn sync_pending_apply(data_root: String, store_name: String) -> String {
 /// landed in its store, clearing it from pending_apply.
 #[uniffi::export]
 pub fn sync_mark_applied(data_root: String, op_id: String) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.mark_applied(&op_id) {
         Ok(()) => r#"{"ok":true}"#.to_string(),
         Err(e) => fail_json(&e),
@@ -157,7 +171,10 @@ pub fn sync_append(data_root: String, store_name: String, scope: String, body_js
         Ok(v) => v,
         Err(e) => return format!(r#"{{"error":"bad body: {e}"}}"#),
     };
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.append(&store_name, &scope, &body) {
         Ok(op) => op.to_json().to_string(),
         Err(e) => fail_json(&e),
@@ -168,7 +185,10 @@ pub fn sync_append(data_root: String, store_name: String, scope: String, body_js
 /// JSON array — the transport shipper tails this.
 #[uniffi::export]
 pub fn sync_export(data_root: String, store_name: Option<String>, since_seq: i64) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.export(store_name.as_deref(), since_seq) {
         Ok(ops) => serde_json::Value::Array(ops.iter().map(|o| o.to_json()).collect()).to_string(),
         Err(e) => fail_json(&e),
@@ -183,7 +203,10 @@ pub fn sync_import(data_root: String, ops_json: String) -> String {
         Ok(v) => v,
         Err(e) => return format!(r#"{{"error":"bad ops: {e}"}}"#),
     };
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.import(&docs) {
         Ok(r) => format!(r#"{{"accepted":{},"applied":{},"deferred":{},"duplicates":{},"rejected":{},"apply_errors":{}}}"#,
                 r.accepted, r.applied, r.deferred, r.duplicates, r.rejected.len(), r.apply_errors.len()),
@@ -194,7 +217,10 @@ pub fn sync_import(data_root: String, ops_json: String) -> String {
 /// Drain ops accepted for a store before its applier registered.
 #[uniffi::export]
 pub fn sync_drain_pending(data_root: String, store_name: String) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.drain_pending(&store_name) {
         Ok(r) => format!(r#"{{"accepted":{},"applied":{},"deferred":{},"duplicates":{},"rejected":{},"apply_errors":{}}}"#,
                 r.accepted, r.applied, r.deferred, r.duplicates, r.rejected.len(), r.apply_errors.len()),
@@ -205,7 +231,10 @@ pub fn sync_drain_pending(data_root: String, store_name: String) -> String {
 /// Sync engine stats (op counts, members, lamport clock).
 #[uniffi::export]
 pub fn sync_stats(data_root: String) -> String {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
     match eng.stats() {
         Ok(v) => v.to_string(),
         Err(e) => fail_json(&e),
@@ -218,7 +247,10 @@ pub fn sync_member_add(data_root: String, pubkey_b64: String, onion: String, sco
     let pk = crate::mw::b64_decode(&pubkey_b64).and_then(|b| <[u8;32]>::try_from(b).ok());
     match pk {
         Some(pk) => {
-            let eng = engine(&data_root).lock().unwrap();
+            let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
             match eng.member_add(&pk, &onion, &scope) {
                 Ok(id) => format!(r#"{{"device_id":"{id}"}}"#),
                 Err(e) => fail_json(&e),
@@ -231,6 +263,9 @@ pub fn sync_member_add(data_root: String, pubkey_b64: String, onion: String, sco
 /// Remove a paired member — stops ops from/to that device.
 #[uniffi::export]
 pub fn sync_member_remove(data_root: String, device_id: String) -> bool {
-    let eng = engine(&data_root).lock().unwrap();
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(_) => return false,
+    };
     eng.member_remove(&device_id).unwrap_or(false)
 }
