@@ -86,6 +86,9 @@
     <string name="sync_fingerprint_title">Confirm device fingerprint</string>
     <string name="sync_fingerprint_confirm">Confirm</string>
     <string name="sync_fingerprint_reject">Not a match</string>
+    <string name="sync_device_fingerprint">Fingerprint</string>
+    <string name="sync_unpair">Unpair device</string>
+    <string name="sync_unpaired">Device unpaired</string>
     <string name="sync_coming_soon">Pairing and store sync are staged milestones — this screen is the foundation.</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>

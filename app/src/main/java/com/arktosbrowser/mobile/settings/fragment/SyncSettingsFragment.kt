@@ -56,6 +56,12 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
             membersSummary()
 
+        findPreference<androidx.preference.Preference>("pref_sync_device_list")
+            ?.setOnPreferenceClickListener {
+                showDeviceManager()
+                true
+            }
+
         listOf("bookmarks", "history").forEach { drainStore(it) }
 
         findPreference<androidx.preference.Preference>("pref_sync_pair")
@@ -138,6 +144,48 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             .setNegativeButton(R.string.sync_fingerprint_reject) { _, _ ->
                 ArktosCore.syncPairConfirm(dataRoot, pairId, false)
             }
+            .show()
+    }
+
+    /**
+     * MSYNC08 — device management: list each paired device with its
+     * fingerprint and an unpair action backed by syncMemberRemove.
+     */
+    private fun showDeviceManager() {
+        val devices = try {
+            val arr = org.json.JSONArray(ArktosCore.syncMembers(dataRoot))
+            (0 until arr.length()).map { arr.getJSONObject(it) }
+        } catch (e: Exception) { emptyList() }
+        if (devices.isEmpty()) {
+            Toast.makeText(requireContext(), getString(R.string.sync_no_devices), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val names = devices.map { it.optString("id", "?") }.toTypedArray()
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.sync_paired_devices)
+            .setItems(names) { _, which ->
+                val dev = devices[which]
+                showDeviceDetail(dev)
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun showDeviceDetail(dev: JSONObject) {
+        val id = dev.optString("id", "?")
+        val fp = try {
+            JSONObject(ArktosCore.syncFingerprint(dev.optString("pubkey", ""))).toString()
+        } catch (e: Exception) { dev.optString("pubkey", "") }
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(id)
+            .setMessage("${getString(R.string.sync_device_fingerprint)}:\n$fp")
+            .setPositiveButton(R.string.sync_unpair) { _, _ ->
+                ArktosCore.syncMemberRemove(dataRoot, id)
+                Toast.makeText(requireContext(), getString(R.string.sync_unpaired), Toast.LENGTH_SHORT).show()
+                findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
+                    membersSummary()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
