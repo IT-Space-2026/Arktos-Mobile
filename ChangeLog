@@ -6,6 +6,19 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.7 — Mobile sync core (MSYNC02)
+
+- The desktop sync engine is ported into arktos-core: the op-log
+  CRDT layer, the Noise XX handshake, the pairing state machine
+  and the transport abstraction — behind thin compat shims so the
+  mobile crate builds lean
+- UniFFI surface + Kotlin facade: the Synchronization screen's
+  pair action now creates a real invite payload (the QR/manual
+  text a peer scans); the paired list and status read the engine
+- tor_llcrypto's curve25519 swapped for x25519-dalek so the
+  mobile skips the Arti dep tree; the tor transport stays gated
+  for MSYNC03
+
 1.2.6 — Sync foundation (MSYNC01)
 
 - Settings gets a Synchronization section (blue sync icon) with

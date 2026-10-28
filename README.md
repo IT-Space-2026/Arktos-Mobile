@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.7 — Mobile sync core
+
+The desktop sync engine is ported into arktos-core (op-log CRDT, Noise XX handshake, pairing state machine, transport abstraction) with a UniFFI surface the Synchronization screen drives — the pair action creates a real invite payload.
+
 ## 1.2.6 — Sync foundation
 
 Settings gains a Synchronization section (device identity, sync status, paired-device list) — the shell the pairing/transport/store milestones build on.
