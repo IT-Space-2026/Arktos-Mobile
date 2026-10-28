@@ -163,6 +163,7 @@ dependencies {
 
     // support libraries
     implementation "androidx.palette:palette-ktx:1.1.0"
+    implementation "com.google.zxing:core:3.5.3"
     implementation "androidx.annotation:annotation:1.11.0"
     implementation "androidx.appcompat:appcompat:1.8.0"
     implementation 'com.google.android.material:material:1.14.0'
@@ -356,6 +357,10 @@ tasks.register('generateUniffiBindings', Exec) {
                     '-o', outDir, 'build', '--locked']
         if (type == 'Release') {
             args += '--release'
+            // MSYNC03 — the tor transport backend lives behind the
+            // synctor feature; only the shipped artifact pulls the
+            // Arti tree, keeping dev/debug builds lean.
+            args += ['--features', 'synctor']
         }
         commandLine args
 
