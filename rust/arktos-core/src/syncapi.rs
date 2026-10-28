@@ -269,3 +269,17 @@ pub fn sync_member_remove(data_root: String, device_id: String) -> bool {
     };
     eng.member_remove(&device_id).unwrap_or(false)
 }
+
+/// One-shot sync bring-up: installs the shared ArktosStore into the
+/// store shims and registers every adapter's apply lane against
+/// `data_root`'s engine.  Kotlin calls this once at app start on
+/// the gecko flavor.
+#[uniffi::export]
+pub fn sync_install(data_root: String, store: Arc<crate::storage::ArktosStore>) -> String {
+    crate::history::install_shared_store(store);
+    crate::syncbookmarks::install(&data_root);
+    crate::synchistory::install(&data_root);
+    crate::syncsettings::install(&data_root);
+    crate::synctabs::install(&data_root);
+    r#"{"ok":true}"#.to_string()
+}
