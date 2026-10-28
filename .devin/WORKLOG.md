@@ -104,3 +104,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-27 1.2.4(amend14): DownloadsActivity — bigger centered empty-state text + navBar inset padding on list (last row sat under system buttons)
 - 2026-10-27 1.2.4(amend15): DownloadsActivity extension badge reads the file name not the URL (signed URLs' query dots showed "PACK")
 - 2026-10-27 1.2.4(amend16): Iceraven-style DownloadsActivity — full name, size+host subtitle, row overflow menu (Open/Retry/Share/Rename/Delete)
+- 2026-10-28 1.2.4(amend17): Download Settings page — gear icon -> DownloadSettingsActivity (location row, delete policy radios, external-manager toggle); delete honors policy incl. ask-dialog; PopUpClass routes to system DM UI when external manager on

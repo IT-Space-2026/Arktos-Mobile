@@ -35,6 +35,8 @@ import com.arktosbrowser.mobile.controller.UIController
 import com.arktosbrowser.mobile.database.Bookmark
 import com.arktosbrowser.mobile.database.HistoryEntry
 import com.arktosbrowser.mobile.download.DownloadsActivity
+import com.arktosbrowser.mobile.download.DownloadSettings
+import com.arktosbrowser.mobile.download.DownloadSettingsActivity
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.dialog.BrowserDialog
 import com.arktosbrowser.mobile.dialog.DialogItem
@@ -251,7 +253,11 @@ class PopUpClass {
                 "share" -> IntentUtils(activity).shareUrl(currentUrl, currentView?.title) // 2 - Share
                 "print" -> currentView?.createWebPagePrint() // 3 - Print
                 "history" -> view.context.startActivity(Intent(view.context, HistoryActivity::class.java)) // 4 - History
-                "downloads" -> view.context.startActivity(Intent(view.context, DownloadsActivity::class.java)) // 5 - Download
+                "downloads" -> view.context.startActivity(
+                    if (DownloadSettings.externalManager(view.context))
+                        DownloadSettingsActivity.externalIntent()
+                    else Intent(view.context, DownloadsActivity::class.java)
+                ) // 5 - Download
                 "find_in_page" -> activity.findInPage() // 6 - Find in Page
                 "copy_link" -> {
                     if (currentUrl != null && !currentUrl.isSpecialUrl()) { // 7 - Copy link

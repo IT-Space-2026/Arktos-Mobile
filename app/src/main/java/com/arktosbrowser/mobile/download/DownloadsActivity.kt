@@ -53,9 +53,21 @@ class DownloadsActivity : AppCompatActivity() {
         toolbar.title = getString(R.string.action_downloads)
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         toolbar.setNavigationOnClickListener { finish() }
-        toolbar.menu.add(0, CLEAR_ITEM_ID, 0, R.string.downloads_clear_all)
+        // Gear -> Iceraven-style Download Settings; Clear stays in the overflow.
+        toolbar.menu.add(0, SETTINGS_ITEM_ID, 0, R.string.download_settings_title)
+            .setIcon(android.R.drawable.ic_menu_preferences)
+            .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+        toolbar.menu.add(0, CLEAR_ITEM_ID, 1, R.string.downloads_clear_all)
         toolbar.setOnMenuItemClickListener { item ->
-            if (item.itemId == CLEAR_ITEM_ID) { clearAll(); true } else false
+            when (item.itemId) {
+                SETTINGS_ITEM_ID -> {
+                    startActivity(
+                        Intent(this, DownloadSettingsActivity::class.java)
+                    ); true
+                }
+                CLEAR_ITEM_ID -> { clearAll(); true }
+                else -> false
+            }
         }
 
         emptyView = TextView(this).apply {
@@ -193,13 +205,32 @@ class DownloadsActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun delete(row: Row) {
+    private fun delete(row: Row, removeFile: Boolean = true) {
         runCatching { getSystemService(DownloadManager::class.java)?.remove(row.id) }
-        fileOf(row)?.delete()
+        if (removeFile) fileOf(row)?.delete()
         Completable.fromAction {
             injector.downloadsRepository().deleteDownload(row.uri).blockingGet()
         }.subscribeOn(Schedulers.io()).subscribe { }
         reload()
+    }
+
+    /** Honors the Download-Settings delete policy before deleting. */
+    private fun deleteWithPolicy(row: Row) {
+        when (DownloadSettings.deletePolicy(this)) {
+            DownloadSettings.POLICY_DEVICE -> delete(row, removeFile = true)
+            DownloadSettings.POLICY_HISTORY -> delete(row, removeFile = false)
+            else -> MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.download_settings_delete_confirm, row.title))
+                .setMessage(R.string.download_settings_delete_confirm_msg)
+                .setPositiveButton(R.string.download_settings_delete_device) { _, _ ->
+                    delete(row, removeFile = true)
+                }
+                .setNegativeButton(R.string.download_settings_delete_history) { _, _ ->
+                    delete(row, removeFile = false)
+                }
+                .setNeutralButton(android.R.string.cancel, null)
+                .show()
+        }
     }
 
     private fun showRowMenu(anchor: View, row: Row) {
@@ -214,7 +245,7 @@ class DownloadsActivity : AppCompatActivity() {
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     0 -> open(row); 1 -> retry(row); 2 -> shareFile(row)
-                    3 -> shareUrl(row); 4 -> rename(row); 5 -> delete(row)
+                    3 -> shareUrl(row); 4 -> rename(row); 5 -> deleteWithPolicy(row)
                 }
                 true
             }
@@ -224,6 +255,7 @@ class DownloadsActivity : AppCompatActivity() {
 
     private companion object {
         const val CLEAR_ITEM_ID = 1
+        const val SETTINGS_ITEM_ID = 2
     }
 
     private inner class Adapter : RecyclerView.Adapter<Adapter.VH>() {

@@ -24,6 +24,11 @@ UI:
   Iceraven UX — icon, full file name, a size + source-domain
   subtitle, and a per-row overflow menu (Open / Retry / Share file /
   Share URL / Rename / Delete).
+- Downloads: a gear icon opens an Iceraven-style Download
+  Settings page — default-location display, a delete policy
+  (delete from device / remove from history / ask each time), and
+  a 'Manage downloads with another app' toggle that routes the
+  Downloads menu to the system download-manager UI.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a
