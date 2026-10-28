@@ -12,6 +12,13 @@ When you add an entry here, mirror it in the HTML page.
   158.0.20261019185856) — the latest published build on
   maven.mozilla.org; the new concurrent-futures transitive dep is
   pinned in the dependency-verification metadata.
+  Dependabot bumps landed: okhttp 5.5.1, palette-ktx 1.1.0,
+  webkit 1.18.0, gradle wrapper 9.8.2 (published sha256), and
+  rusqlite 0.41.0 + Cargo.lock.
+- About → Latest available version: the update check shares the
+  suggestions client's disk cache, so a stale releases list could
+  linger — the request now forces a fresh fetch.
+- Gradle-10 deprecation warnings cleared from the build scripts.
 - New-folder dialog polished: the name field sits in a padded
   container instead of hugging the dialog edge.
 

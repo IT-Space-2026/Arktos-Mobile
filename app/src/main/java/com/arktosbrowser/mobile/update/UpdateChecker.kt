@@ -58,6 +58,10 @@ class UpdateChecker @Inject constructor(
         val request = Request.Builder()
             .url(RELEASE_API_URL)
             .header("Accept", "application/vnd.github+json")
+            // Bypass the shared client's disk cache (and any upstream
+            // proxy cache) — a stale releases list made About show an
+            // old "latest" version long after a newer tag shipped.
+            .header("Cache-Control", "no-cache")
             .get()
             .build()
         client.newCall(request).execute().use { response ->
