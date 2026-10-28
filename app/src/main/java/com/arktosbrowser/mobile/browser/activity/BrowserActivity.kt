@@ -335,11 +335,15 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         // scrimmed. Pad the root by the status-bar inset so the bar
         // floats over the window background like stock Android; the
         // pad drops to zero whenever the bar is hidden (fullscreen
-        // video / "hide status bar" toggle).
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
-            insets
+        // video / "hide status bar" toggle). Below 35 the decor
+        // already reserves the bar area — padding again would
+        // produce an empty band.
+        if (Build.VERSION.SDK_INT >= 35) {
+            ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+                val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+                v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+                insets
+            }
         }
         // Icon legibility over that background — dark icons on a
         // light window background, light icons on a dark one.
