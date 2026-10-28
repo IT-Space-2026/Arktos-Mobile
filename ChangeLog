@@ -73,6 +73,12 @@ UI:
   dialog (last hour / today+yesterday / everything), and the
   dialog text is history-specific now — it no longer says
   'Clear downloads list'.
+- System-bar insets finished: the browser root now also pads by
+  the nav-bar inset on Android 15+, so the bottom home/add-tab/
+  back row is no longer under the virtual buttons.
+- History: time-range dialog rebuilt to match Iceraven (subtitle
+  + padded radio rows); history entries open a new tab via the
+  shared intent path.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

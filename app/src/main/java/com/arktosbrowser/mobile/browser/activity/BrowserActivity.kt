@@ -340,8 +340,11 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         // produce an empty band.
         if (Build.VERSION.SDK_INT >= 35) {
             ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
-                val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-                v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+                val top = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+                val bottom = insets.getInsets(
+                    WindowInsetsCompat.Type.navigationBars()
+                )
+                v.setPadding(v.paddingLeft, top.top, v.paddingRight, bottom.bottom)
                 insets
             }
         }

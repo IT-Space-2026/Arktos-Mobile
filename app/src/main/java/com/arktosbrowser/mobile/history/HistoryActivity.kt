@@ -137,17 +137,34 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
 
     /** Iceraven's time-range delete dialog. */
     private fun deleteAll() {
-        val ranges = arrayOf(
-            getString(R.string.history_last_hour),
-            getString(R.string.history_today_yesterday),
-            getString(R.string.history_everything)
-        )
-        var chosen = 0
+        val pad = (resources.displayMetrics.density * 20).toInt()
+        val group = android.widget.RadioGroup(this).apply {
+            val sub = TextView(context).apply {
+                text = getString(R.string.history_time_range_msg)
+                textSize = 13f
+                setPadding(pad, pad / 4, pad, pad / 2)
+            }
+            addView(sub)
+            listOf(
+                R.string.history_last_hour,
+                R.string.history_today_yesterday,
+                R.string.history_everything
+            ).forEachIndexed { i, res ->
+                addView(android.widget.RadioButton(context).apply {
+                    id = i
+                    text = getString(res)
+                    textSize = 16f
+                    setPadding(pad, pad / 3, pad, pad / 3)
+                    isChecked = i == 0
+                })
+            }
+        }
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.history_time_range_title)
-            .setMessage(R.string.history_time_range_msg)
-            .setSingleChoiceItems(ranges, 0) { _, which -> chosen = which }
-            .setPositiveButton(R.string.downloads_delete) { _, _ -> deleteRange(chosen) }
+            .setView(group)
+            .setPositiveButton(R.string.downloads_delete) { _, _ ->
+                deleteRange(group.checkedRadioButtonId.coerceAtLeast(0))
+            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
@@ -258,7 +275,7 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         /** Null for header rows — callers must skip clicks on them. */
         fun getItem(position: Int): HistoryEntry? = when (val i = items[position]) {
             is Item.Entry -> i.entry
-            is Item.ClosedEntry -> HistoryEntry(i.closed.title, i.closed.url, i.closed.time)
+            is Item.ClosedEntry -> HistoryEntry(i.closed.url, i.closed.title, i.closed.time)
             else -> null
         }
 
