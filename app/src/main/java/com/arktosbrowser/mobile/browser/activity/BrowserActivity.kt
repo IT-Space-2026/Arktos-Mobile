@@ -50,6 +50,7 @@ import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.core.view.GravityCompat
+import androidx.core.view.ViewCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -328,6 +329,30 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // API-35 edge-to-edge draws the page under the transparent
+        // status bar — icons sit on web content only faintly
+        // scrimmed. Pad the root by the status-bar inset so the bar
+        // floats over the window background like stock Android; the
+        // pad drops to zero whenever the bar is hidden (fullscreen
+        // video / "hide status bar" toggle).
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+            insets
+        }
+        // Icon legibility over that background — dark icons on a
+        // light window background, light icons on a dark one.
+        val tv = android.util.TypedValue()
+        theme.resolveAttribute(android.R.attr.colorBackground, tv, true)
+        val bg = if (tv.resourceId != 0) {
+            androidx.core.content.ContextCompat.getColor(this, tv.resourceId)
+        } else tv.data
+        val lum = (0.299 * android.graphics.Color.red(bg) +
+            0.587 * android.graphics.Color.green(bg) +
+            0.114 * android.graphics.Color.blue(bg)) / 255.0
+        WindowCompat.getInsetsController(window, binding.root)
+            .isAppearanceLightStatusBars = lum > 0.5
 
         onBackPressedDispatcher.addCallback(this, backPressCallback)
 

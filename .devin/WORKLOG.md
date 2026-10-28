@@ -107,3 +107,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 1.2.4(amend17): Download Settings page — gear icon -> DownloadSettingsActivity (location row, delete policy radios, external-manager toggle); delete honors policy incl. ask-dialog; PopUpClass routes to system DM UI when external manager on
 - 2026-10-28 1.2.4(amend18): download date buckets + per-row time; gecko post-bind reloadIfStale() kick heals the dark-page-on-reopen (empty restored session never painted behind the cover)
 - 2026-10-28 1.2.4(amend19): status-bar latch — onHideCustomView restores flags BEFORE the early-return path so an aborted fullscreen can't leave the bar hidden
+- 2026-10-28 1.2.4(amend20): status-bar readability — root pads by status-bar inset (API-35 enforced edge-to-edge made icons float faintly over content) + icon appearance follows theme luminance

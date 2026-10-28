@@ -42,6 +42,12 @@ UI:
   hidden until the next focus event re-applied the latched flags —
   the restore now runs before the early exit. (The 'Hide status
   bar while browsing' toggle already exists under Customize.)
+- Status bar readability (Android 15): enforced edge-to-edge
+  drew the page under the transparent bar so icons floated over
+  content only faintly scrimmed — the root view now pads by the
+  status-bar inset and icon contrast follows the theme, so the
+  bar reads like stock. Drops to zero in video fullscreen and
+  when 'Hide status bar' is on.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a
