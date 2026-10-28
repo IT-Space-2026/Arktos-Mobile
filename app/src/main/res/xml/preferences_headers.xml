@@ -34,6 +34,7 @@
         android:singleLineTitle="false"
         android:summary="@string/settings_advanced_explain" />
     <androidx.preference.Preference
+        android:key="pref_settings_sync"
         android:fragment="com.arktosbrowser.mobile.settings.fragment.SyncSettingsFragment"
         android:icon="@drawable/ic_settings_sync_layers"
         android:title="@string/settings_synchronization"

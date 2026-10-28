@@ -71,7 +71,6 @@ interface AppComponent {
     fun inject(activity: ThemableBrowserActivity)
 
     fun inject(advancedSettingsFragment: AdvancedSettingsFragment)
-    fun inject(syncSettingsFragment: SyncSettingsFragment)
 
     fun inject(app: BrowserApp)
 
@@ -81,8 +80,6 @@ interface AppComponent {
 
     fun inject(activity: SettingsActivity)
 
-    /** MSYNC07 — the sync adapter the WorkManager worker drives. */
-    fun syncRepository(): com.arktosbrowser.mobile.sync.SyncRepository
 
 
     fun inject(listener: LightningDownloadListener)

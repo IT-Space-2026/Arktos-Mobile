@@ -60,7 +60,11 @@ class BrowserApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        com.arktosbrowser.mobile.sync.SyncWorker.schedule(this)
+        runCatching {
+            Class.forName("com.arktosbrowser.mobile.sync.SyncWorker")
+                .getMethod("schedule", android.content.Context::class.java)
+                .invoke(null, this)
+        }
         OkHttp.initialize(this)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()

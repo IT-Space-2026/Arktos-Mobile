@@ -43,9 +43,7 @@ class BrowserPresenter(
         private val bookmarkPageFactory: BookmarkPageFactory,
         private val recentTabModel: RecentTabModel,
         private val logger: Logger,
-        private val updateChecker: UpdateChecker,
-        private val syncRepo: com.arktosbrowser.mobile.sync.SyncRepository,
-        private val application: android.app.Application
+        private val updateChecker: UpdateChecker
 ) {
 
     private var currentTab: Page? = null
@@ -422,7 +420,8 @@ class BrowserPresenter(
                     .put("url", t.url)
                     .put("title", t.title))
             }
-            syncRepo.append(application.filesDir.absolutePath, "tabs",
+            val root = (view as? android.app.Activity)?.filesDir?.absolutePath ?: return@runCatching
+            com.arktosbrowser.mobile.sync.SyncBridge.append(root, "tabs",
                 """{"open_tabs":$tabs}""")
         }
     }

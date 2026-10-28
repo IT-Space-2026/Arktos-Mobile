@@ -263,8 +263,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
 
     @Inject
     lateinit var bookmarksDialogBuilder: LightningDialogBuilder
-    @Inject
-    lateinit var syncRepo: com.arktosbrowser.mobile.sync.SyncRepository
+
 
     // Image
     var webPageBitmap: Bitmap? = null
@@ -407,9 +406,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
                 bookmarkPageFactory,
                 RecentTabModel(),
                 logger,
-                updateChecker,
-                syncRepo,
-                application
+                updateChecker
         )
         prefs = getSharedPreferences("com.arktosbrowser.mobile", MODE_PRIVATE)
 

@@ -26,7 +26,7 @@ class SyncWorker(
     override suspend fun doWork(): Result {
         return try {
             val root = applicationContext.filesDir.absolutePath
-            val repo = applicationContext.injector.syncRepository()
+            val repo = SyncRepository(applicationContext.injector.arktosStore())
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
             Result.success()
         } catch (e: Exception) {

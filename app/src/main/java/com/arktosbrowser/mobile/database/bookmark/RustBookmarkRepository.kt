@@ -24,15 +24,14 @@ import javax.inject.Singleton
 @Singleton
 class RustBookmarkRepository @Inject constructor(
     private val application: Application,
-    private val store: ArktosStore,
-    private val sync: com.arktosbrowser.mobile.sync.SyncRepository
+    private val store: ArktosStore
 ) : BookmarkRepository {
 
     private val dataRoot = application.filesDir.absolutePath
 
-    /** Append a bookmark op to the sync log — best-effort. */
+    /** Append a bookmark op to the sync log — no-op on Light. */
     private fun syncAppend(bodyJson: String) {
-        runCatching { sync.append(dataRoot, "bookmarks", bodyJson) }
+        com.arktosbrowser.mobile.sync.SyncBridge.append(dataRoot, "bookmarks", bodyJson)
     }
 
     private val defaultBookmarkTitle: String = application.getString(R.string.untitled)

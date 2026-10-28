@@ -31,7 +31,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     private val dataRoot get() = requireContext().filesDir.absolutePath
     private val handler = Handler(Looper.getMainLooper())
 
-    @javax.inject.Inject lateinit var syncRepo: SyncRepository
+    private lateinit var syncRepo: SyncRepository
 
     private fun drainStore(storeName: String) {
         if (::syncRepo.isInitialized) runCatching { syncRepo.drainPending(dataRoot, storeName) }
@@ -39,7 +39,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preference_sync, rootKey)
-        injector.inject(this)
+        syncRepo = com.arktosbrowser.mobile.sync.SyncRepository(injector.arktosStore())
 
         findPreference<androidx.preference.Preference>("pref_sync_device_name")?.summary =
             android.os.Build.MODEL

@@ -16,14 +16,13 @@ import javax.inject.Singleton
 @Singleton
 class RustHistoryRepository @Inject constructor(
     application: android.app.Application,
-    private val store: ArktosStore,
-    private val sync: com.arktosbrowser.mobile.sync.SyncRepository
+    private val store: ArktosStore
 ) : HistoryRepository {
 
     private val dataRoot = application.filesDir.absolutePath
 
     private fun syncAppend(bodyJson: String) {
-        runCatching { sync.append(dataRoot, "history", bodyJson) }
+        com.arktosbrowser.mobile.sync.SyncBridge.append(dataRoot, "history", bodyJson)
     }
 
     override fun deleteHistory(): Completable = Completable.fromAction {
