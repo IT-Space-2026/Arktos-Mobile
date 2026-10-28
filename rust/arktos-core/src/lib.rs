@@ -16,6 +16,7 @@ mod mw;
 mod notify;
 mod store;
 mod sync;
+mod syncapi;
 mod syncpair;
 mod synctransport;
 mod noisexx;

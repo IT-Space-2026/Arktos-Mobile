@@ -438,6 +438,25 @@ object ArktosCore {
      * for malformed or empty payloads and non-BCP-47 targets.
      */
     fun translateParseRequest(body: String): TranslateRequest? = uniffiTranslateParseRequest(body)
+
+    // MSYNC02 — synchronization engine facade.
+    fun syncInviteBegin(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncInviteBegin(dataRoot, scope)
+
+    fun syncJoinBegin(dataRoot: String, payloadText: String): String =
+        com.arktosbrowser.mobile.uniffi.syncJoinBegin(dataRoot, payloadText)
+
+    fun syncFingerprint(hashB64: String): String =
+        com.arktosbrowser.mobile.uniffi.syncFingerprint(hashB64)
+
+    fun syncMembers(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncMembers(dataRoot)
+
+    fun syncTransportStart(dataRoot: String, backend: String, name: String): Boolean =
+        com.arktosbrowser.mobile.uniffi.syncTransportStart(dataRoot, backend, name)
+
+    fun syncTransportRunning(dataRoot: String): Boolean =
+        com.arktosbrowser.mobile.uniffi.syncTransportRunning(dataRoot)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {
