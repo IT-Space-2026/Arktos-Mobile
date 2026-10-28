@@ -34,7 +34,8 @@ class ManifestSecurityTest {
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "com.android.launcher.permission.INSTALL_SHORTCUT"
+        "com.android.launcher.permission.INSTALL_SHORTCUT",
+        "android.permission.REQUEST_INSTALL_PACKAGES"
     )
 
     private val componentTags = listOf(

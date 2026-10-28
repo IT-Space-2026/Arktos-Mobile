@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace 'com.arktosbrowser.mobile'
+    namespace = 'com.arktosbrowser.mobile'
     compileSdk {
         version = release(37) {
             minorApiLevel = 2
@@ -14,38 +14,38 @@ android {
     }
     // Pinned so every build host uses identical aapt2/d8/clang binaries
     // (SEC16 — reproducible builds). Bump deliberately.
-    buildToolsVersion project.buildToolsVersion
-    ndkVersion '28.2.13676358'
+    buildToolsVersion = rootProject.buildToolsVersion
+    ndkVersion = '28.2.13676358'
 
     lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     defaultConfig {
-        minSdkVersion project.minSdkVersion
-        targetSdkVersion project.targetSdkVersion
-        versionName "1.2.5"
-        versionCode 166
+        minSdkVersion = rootProject.minSdkVersion
+        targetSdkVersion = rootProject.targetSdkVersion
+        versionName = "1.2.5"
+        versionCode = 166
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     buildTypes {
         debug {
-            multiDexEnabled true
+            multiDexEnabled = true
             minifyEnabled false
-            shrinkResources false
+            shrinkResources = false
             proguardFiles 'proguard-project.txt'
-            testCoverageEnabled true
+            testCoverageEnabled = true
         }
 
         release {
-            multiDexEnabled false
+            multiDexEnabled = false
             minifyEnabled true
-            shrinkResources true
+            shrinkResources = true
             proguardFiles 'proguard-project.txt'
-            testCoverageEnabled false
+            testCoverageEnabled = false
         }
     }
 
@@ -71,19 +71,19 @@ android {
         // "Arktos Mobile beta".
         scMain {
             dimension "capabilities"
-            applicationId "com.arktosbrowser.mobile"
+            applicationId = "com.arktosbrowser.mobile"
             manifestPlaceholders.appNameSuffix = ""
         }
         stable {
             dimension "capabilities"
-            applicationId "com.arktosbrowser.mobile"
+            applicationId = "com.arktosbrowser.mobile"
             manifestPlaceholders.appNameSuffix = ""
         }
         beta {
             dimension 'capabilities'
-            applicationId 'com.arktosbrowser.mobile.beta'
-            versionCode 16
-            versionName "1.0-beta1"
+            applicationId = 'com.arktosbrowser.mobile.beta'
+            versionCode = 16
+            versionName = "1.0-beta1"
             manifestPlaceholders.appNameSuffix = " beta"
         }
 
@@ -123,7 +123,7 @@ android {
     }
 
     lintOptions {
-        abortOnError true
+        abortOnError = true
     }
 
     packagingOptions {
@@ -208,7 +208,7 @@ dependencies {
     implementation 'io.reactivex.rxjava3:rxkotlin:3.0.1'
 
     // kotlin
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlinVersion}"
 
     // color picker
     implementation 'com.github.QuadFlask:colorpicker:0.0.15'
@@ -352,7 +352,7 @@ tasks.register('generateUniffiBindings', Exec) {
         // dependency resolution to the committed Cargo.lock (SEC16).
         def args = ['cargo', 'ndk',
                     '-t', 'arm64-v8a', '-t', 'armeabi-v7a', '-t', 'x86_64',
-                    '--platform', project.minSdkVersion.toString(),
+                    '--platform', rootProject.minSdkVersion.toString(),
                     '-o', outDir, 'build', '--locked']
         if (type == 'Release') {
             args += '--release'
