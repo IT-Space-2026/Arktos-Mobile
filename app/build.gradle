@@ -162,7 +162,7 @@ dependencies {
     testImplementation 'net.java.dev.jna:jna:5.19.1'
 
     // support libraries
-    implementation "androidx.palette:palette-ktx:1.0.0"
+    implementation "androidx.palette:palette-ktx:1.1.0"
     implementation "androidx.annotation:annotation:1.11.0"
     implementation "androidx.appcompat:appcompat:1.8.0"
     implementation 'com.google.android.material:material:1.14.0'
@@ -199,7 +199,7 @@ dependencies {
     // proxy support — I2P Android binding is vendored (i2p/ + aidl/);
     // upstream net.i2p.android:helper stopped releasing in 2017.
 
-    implementation 'com.squareup.okhttp3:okhttp:5.5.0'
+    implementation 'com.squareup.okhttp3:okhttp:5.5.1'
     implementation 'com.squareup.okio:okio:3.18.2'
 
     // rx
@@ -217,7 +217,7 @@ dependencies {
     // PORT01); readability4j is no longer needed.
 
     // webview tools
-    implementation 'androidx.webkit:webkit:1.17.1'
+    implementation 'androidx.webkit:webkit:1.18.0'
 
     // ENG03 — GeckoView backend, gecko engine flavor only.
     // The unsuffixed `geckoview` artifact is the STABLE channel
