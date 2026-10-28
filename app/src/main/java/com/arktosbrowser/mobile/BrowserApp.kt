@@ -60,6 +60,7 @@ class BrowserApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.arktosbrowser.mobile.sync.SyncWorker.schedule(this)
         OkHttp.initialize(this)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()
