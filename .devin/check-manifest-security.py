@@ -46,6 +46,9 @@ PERMISSION_ALLOWLIST = {
     "android.permission.CAMERA",
     "android.permission.MODIFY_AUDIO_SETTINGS",
     "com.android.launcher.permission.INSTALL_SHORTCUT",
+    # Needed so the Downloads screen can hand a finished APK to the
+    # package installer (notification tap → install prompt).
+    "android.permission.REQUEST_INSTALL_PACKAGES",
 }
 
 
