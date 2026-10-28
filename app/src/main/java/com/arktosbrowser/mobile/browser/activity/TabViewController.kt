@@ -180,6 +180,12 @@ internal class TabViewController(
     }
 
     fun onHideCustomView() {
+        // Restore chrome FIRST — a fullscreen that left the fields
+        // latched (aborted/abnormal exit, or the declined-fullscreen
+        // guard clearing the callback early) must not survive this
+        // early return: onWindowFocusChanged replays the latched
+        // flags and the status bar stays hidden for good.
+        setFullscreen(hideStatusBar(), false)
         val currentTab = currentTab()
         if (customView == null || customViewCallback == null || currentTab == null) {
             if (customViewCallback != null) {
@@ -200,7 +206,6 @@ internal class TabViewController(
             logger.log(TAG, "WebView is not allowed to keep the screen on")
         }
 
-        setFullscreen(hideStatusBar(), false)
         // The chrome-hide path (GeckoView fullscreen) suppressed the
         // toolbar — bring it back at its home offset; the WebView
         // path never hid it. A scroll-hide animation that ran while

@@ -37,6 +37,11 @@ UI:
   forced a rebind — the stale-load recovery now runs after each
   session bind and reloads the tracked URL when the restore
   produced no document.
+- Status bar: an aborted/abnormal video-fullscreen exit returned
+  before restoring the window flags, so the status bar stayed
+  hidden until the next focus event re-applied the latched flags —
+  the restore now runs before the early exit. (The 'Hide status
+  bar while browsing' toggle already exists under Customize.)
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a
