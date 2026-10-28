@@ -15,20 +15,31 @@ import javax.inject.Singleton
  */
 @Singleton
 class RustHistoryRepository @Inject constructor(
-    private val store: ArktosStore
+    application: android.app.Application,
+    private val store: ArktosStore,
+    private val sync: com.arktosbrowser.mobile.sync.SyncRepository
 ) : HistoryRepository {
+
+    private val dataRoot = application.filesDir.absolutePath
+
+    private fun syncAppend(bodyJson: String) {
+        runCatching { sync.append(dataRoot, "history", bodyJson) }
+    }
 
     override fun deleteHistory(): Completable = Completable.fromAction {
         store.deleteHistory()
     }
+        .doOnComplete { syncAppend("""{"clear":{}}""") }
 
     override fun deleteHistoryEntry(url: String): Completable = Completable.fromAction {
         store.deleteHistoryEntry(url)
     }
+        .doOnComplete { syncAppend("""{"remove":{"url":"$url"}}""") }
 
     override fun visitHistoryEntry(url: String, title: String?): Completable =
         Completable.fromAction {
             store.visitHistoryEntry(url, title)
+            syncAppend("""{"visit":{"url":"$url","title":"${title ?: ""}"}}""")
         }
 
     override fun findHistoryEntriesContaining(query: String): Single<List<HistoryEntry>> =

@@ -11,7 +11,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import com.arktosbrowser.mobile.R
+import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.rust.ArktosCore
+import com.arktosbrowser.mobile.sync.SyncRepository
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
@@ -29,18 +31,32 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     private val dataRoot get() = requireContext().filesDir.absolutePath
     private val handler = Handler(Looper.getMainLooper())
 
+    @javax.inject.Inject lateinit var syncRepo: SyncRepository
+
+    private fun drainStore(storeName: String) {
+        if (::syncRepo.isInitialized) runCatching { syncRepo.drainPending(dataRoot, storeName) }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preference_sync, rootKey)
+        injector.inject(this)
 
         findPreference<androidx.preference.Preference>("pref_sync_device_name")?.summary =
             android.os.Build.MODEL
 
-        findPreference<androidx.preference.Preference>("pref_sync_status")?.title =
-            if (ArktosCore.syncTransportRunning(dataRoot)) "Sync running"
-            else getString(R.string.sync_status_not_connected)
+        val status = try {
+            val st = JSONObject(ArktosCore.syncStats(dataRoot))
+            "Ops: ${st.optLong("ops", 0)} · Members: ${st.optLong("members", 0)}" +
+                if (ArktosCore.syncTransportRunning(dataRoot)) " · Transport up" else " · Transport down"
+        } catch (e: Exception) {
+            getString(R.string.sync_status_not_connected)
+        }
+        findPreference<androidx.preference.Preference>("pref_sync_status")?.title = status
 
         findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
             membersSummary()
+
+        listOf("bookmarks", "history").forEach { drainStore(it) }
 
         findPreference<androidx.preference.Preference>("pref_sync_pair")
             ?.setOnPreferenceClickListener {

@@ -23,9 +23,17 @@ import javax.inject.Singleton
  */
 @Singleton
 class RustBookmarkRepository @Inject constructor(
-    application: Application,
-    private val store: ArktosStore
+    private val application: Application,
+    private val store: ArktosStore,
+    private val sync: com.arktosbrowser.mobile.sync.SyncRepository
 ) : BookmarkRepository {
+
+    private val dataRoot = application.filesDir.absolutePath
+
+    /** Append a bookmark op to the sync log — best-effort. */
+    private fun syncAppend(bodyJson: String) {
+        runCatching { sync.append(dataRoot, "bookmarks", bodyJson) }
+    }
 
     private val defaultBookmarkTitle: String = application.getString(R.string.untitled)
 
@@ -46,6 +54,12 @@ class RustBookmarkRepository @Inject constructor(
         Single.fromCallable {
             store.addBookmarkIfNotExists(entry.toStoreBookmark(defaultBookmarkTitle))
         }
+        .doOnSuccess { added ->
+            if (added) {
+                val e = entry.toStoreBookmark(defaultBookmarkTitle)
+                syncAppend("""{"add":{"url":"${e.url}","title":"${e.title}","folder":"${e.folder}","position":${e.position}}}""")
+            }
+        }
 
     override fun addBookmarkList(bookmarkItems: List<Bookmark.Entry>): Completable =
         Completable.fromAction {
@@ -55,19 +69,23 @@ class RustBookmarkRepository @Inject constructor(
     override fun deleteBookmark(entry: Bookmark.Entry): Single<Boolean> = Single.fromCallable {
         store.deleteBookmark(entry.url)
     }
+        .doOnSuccess { removed -> if (removed) syncAppend("""{"remove":{"url":"${entry.url}"}}""") }
 
     override fun renameFolder(oldName: String, newName: String): Completable =
         Completable.fromAction {
             store.renameFolder(oldName, newName)
         }
+        .doOnComplete { syncAppend("""{"folder":{"rename":["$oldName","$newName"]}}""") }
 
     override fun addFolder(name: String): Completable = Completable.fromAction {
         store.addFolder(name)
     }
+        .doOnComplete { syncAppend("""{"folder":{"add":"$name"}}""") }
 
     override fun deleteFolder(folderToDelete: String): Completable = Completable.fromAction {
         store.deleteFolder(folderToDelete)
     }
+        .doOnComplete { syncAppend("""{"folder":{"remove":"$folderToDelete"}}""") }
 
     override fun deleteAllBookmarks(): Completable = Completable.fromAction {
         store.deleteAllBookmarks()
@@ -76,6 +94,10 @@ class RustBookmarkRepository @Inject constructor(
     override fun editBookmark(oldBookmark: Bookmark.Entry, newBookmark: Bookmark.Entry): Completable =
         Completable.fromAction {
             store.editBookmark(oldBookmark.url, newBookmark.toStoreBookmark(defaultBookmarkTitle))
+        }
+        .doOnComplete {
+            val e = newBookmark.toStoreBookmark(defaultBookmarkTitle)
+            syncAppend("""{"edit":{"old_url":"${oldBookmark.url}","url":"${e.url}","title":"${e.title}","folder":"${e.folder}","position":${e.position}}}""")
         }
 
     override fun getAllBookmarksSorted(): Single<List<Bookmark.Entry>> = Single.fromCallable {

@@ -457,6 +457,33 @@ object ArktosCore {
 
     fun syncTransportRunning(dataRoot: String): Boolean =
         com.arktosbrowser.mobile.uniffi.syncTransportRunning(dataRoot)
+
+    fun syncAppend(dataRoot: String, storeName: String, scope: String, bodyJson: String): String =
+        com.arktosbrowser.mobile.uniffi.syncAppend(dataRoot, storeName, scope, bodyJson)
+
+    fun syncExport(dataRoot: String, storeName: String?, sinceSeq: Long): String =
+        com.arktosbrowser.mobile.uniffi.syncExport(dataRoot, storeName, sinceSeq)
+
+    fun syncImport(dataRoot: String, opsJson: String): String =
+        com.arktosbrowser.mobile.uniffi.syncImport(dataRoot, opsJson)
+
+    fun syncPendingApply(dataRoot: String, storeName: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPendingApply(dataRoot, storeName)
+
+    fun syncMarkApplied(dataRoot: String, opId: String): String =
+        com.arktosbrowser.mobile.uniffi.syncMarkApplied(dataRoot, opId)
+
+    fun syncDrainPending(dataRoot: String, storeName: String): String =
+        com.arktosbrowser.mobile.uniffi.syncDrainPending(dataRoot, storeName)
+
+    fun syncStats(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncStats(dataRoot)
+
+    fun syncMemberAdd(dataRoot: String, pubkeyB64: String, onion: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncMemberAdd(dataRoot, pubkeyB64, onion, scope)
+
+    fun syncMemberRemove(dataRoot: String, deviceId: String): Boolean =
+        com.arktosbrowser.mobile.uniffi.syncMemberRemove(dataRoot, deviceId)
 }
 
 private fun SiteBlockChoice.toSiteBlockMode(): SiteBlockMode = when (this) {

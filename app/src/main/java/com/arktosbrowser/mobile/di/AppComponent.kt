@@ -71,6 +71,7 @@ interface AppComponent {
     fun inject(activity: ThemableBrowserActivity)
 
     fun inject(advancedSettingsFragment: AdvancedSettingsFragment)
+    fun inject(syncSettingsFragment: SyncSettingsFragment)
 
     fun inject(app: BrowserApp)
 

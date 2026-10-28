@@ -842,7 +842,7 @@ impl SyncEngine {
         Ok(report)
     }
 
-    fn mark_applied(&self, op_id: &str) -> RcResult<()> {
+    pub fn mark_applied(&self, op_id: &str) -> RcResult<()> {
         let st = self.state.lock().unwrap_or_else(|e| e.into_inner());
         st.conn
             .execute(
