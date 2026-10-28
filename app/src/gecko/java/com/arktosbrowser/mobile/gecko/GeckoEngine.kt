@@ -293,6 +293,13 @@ class GeckoEngine(
             }
             page.session.setFocused(true)
             boundPage = page
+            // A reopened-but-empty session never paints, so the
+            // cold-start cover would hold as a dark screen until a
+            // tab switch forced a rebind. Kick the stale-load
+            // recovery once the surface is up — it no-ops when the
+            // session is healthy and reloads the tracked URL when
+            // the restore produced no document.
+            gv.postDelayed({ page.reloadIfStale() }, 400)
         }
         page.view = gv
         return gv

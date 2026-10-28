@@ -29,6 +29,14 @@ UI:
   (delete from device / remove from history / ask each time), and
   a 'Manage downloads with another app' toggle that routes the
   Downloads menu to the system download-manager UI.
+- Downloads list is grouped into Iceraven date buckets (Today /
+  Yesterday / Last 7 days / Last 30 days / Older) and each row
+  shows the download time in the subtitle.
+- Gecko restore: a reopened-but-empty session never painted, so
+  the cold-start cover held as a dark page until a tab switch
+  forced a rebind — the stale-load recovery now runs after each
+  session bind and reloads the tracked URL when the restore
+  produced no document.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

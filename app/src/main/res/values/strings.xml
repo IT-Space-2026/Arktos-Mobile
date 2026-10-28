@@ -56,6 +56,11 @@
     <string name="download_settings_external">Manage downloads with another app</string>
     <string name="download_settings_delete_confirm">Remove %s</string>
     <string name="download_settings_delete_confirm_msg">Delete the file from your device, or only remove it from the download history?</string>
+    <string name="downloads_group_today">Today</string>
+    <string name="downloads_group_yesterday">Yesterday</string>
+    <string name="downloads_group_last7">Last 7 days</string>
+    <string name="downloads_group_last30">Last 30 days</string>
+    <string name="downloads_group_older">Older</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>

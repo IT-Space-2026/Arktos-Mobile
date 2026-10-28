@@ -38,7 +38,8 @@ class DownloadsActivity : AppCompatActivity() {
 
     private data class Row(
         val id: Long, val title: String, val uri: String,
-        val localUri: String?, val status: Int, val bytes: Long, val total: Long
+        val localUri: String?, val status: Int, val bytes: Long, val total: Long,
+        val lastModified: Long
     )
 
     private lateinit var recycler: RecyclerView
@@ -107,13 +108,15 @@ class DownloadsActivity : AppCompatActivity() {
                             localUri = c.getString(c.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI)),
                             status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
                             bytes = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)),
-                            total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                            total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)),
+                            lastModified = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP))
                         )
                     }
                 }
             }
         }
         rows = list.reversed().toMutableList() // newest first
+        items = grouped()
         emptyView.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
         recycler.adapter = Adapter()
     }
@@ -258,7 +261,44 @@ class DownloadsActivity : AppCompatActivity() {
         const val SETTINGS_ITEM_ID = 2
     }
 
-    private inner class Adapter : RecyclerView.Adapter<Adapter.VH>() {
+    /** Flattened adapter items: a header per date bucket + rows. */
+    private sealed interface Item {
+        data class Header(val title: String) : Item
+        data class Entry(val row: Row) : Item
+    }
+
+    /** Iceraven date buckets — rows are already newest-first. */
+    private fun grouped(): List<Item> {
+        val day = 24L * 3600 * 1000
+        val todayStart = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val buckets = listOf(
+            getString(R.string.downloads_group_today) to todayStart,
+            getString(R.string.downloads_group_yesterday) to todayStart - day,
+            getString(R.string.downloads_group_last7) to todayStart - 7 * day,
+            getString(R.string.downloads_group_last30) to todayStart - 30 * day
+        )
+        val out = mutableListOf<Item>()
+        var current: String? = null
+        for (r in rows) {
+            val label = (buckets.firstOrNull { r.lastModified >= it.second }
+                ?: (getString(R.string.downloads_group_older) to 0L)).first
+            if (label != current) {
+                current = label
+                out += Item.Header(label)
+            }
+            out += Item.Entry(r)
+        }
+        return out
+    }
+
+    private var items: List<Item> = emptyList()
+
+    private inner class Adapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
             val icon: ImageView = v.findViewById(R.id.dl_icon)
             val name: TextView = v.findViewById(R.id.dl_name)
@@ -266,14 +306,37 @@ class DownloadsActivity : AppCompatActivity() {
             val menu: ImageButton = v.findViewById(R.id.dl_menu)
         }
 
-        override fun onCreateViewHolder(p: ViewGroup, t: Int) = VH(
-            layoutInflater.inflate(R.layout.download_item, p, false)
-        )
+        inner class HeaderVH(v: View) : RecyclerView.ViewHolder(v)
 
-        override fun getItemCount() = rows.size
+        override fun getItemViewType(pos: Int) =
+            if (items[pos] is Item.Header) 1 else 0
 
-        override fun onBindViewHolder(h: VH, pos: Int) {
-            val r = rows[pos]
+        override fun onCreateViewHolder(p: ViewGroup, t: Int) =
+            if (t == 1) HeaderVH(
+                TextView(this@DownloadsActivity).apply {
+                    val pad = (resources.displayMetrics.density * 14).toInt()
+                    setPadding(pad, pad, pad, pad / 2)
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+            ) else VH(
+                layoutInflater.inflate(R.layout.download_item, p, false)
+            )
+
+        override fun getItemCount() = items.size
+
+        override fun onBindViewHolder(h: RecyclerView.ViewHolder, pos: Int) {
+            val item = items[pos]
+            if (h is HeaderVH) {
+                (h.itemView as TextView).text = (item as Item.Header).title
+                return
+            }
+            val r = (item as Item.Entry).row
+            h as VH
             h.name.text = r.title.ifBlank {
                 r.uri.substringBefore('?').substringAfterLast('/')
             }
@@ -281,11 +344,13 @@ class DownloadsActivity : AppCompatActivity() {
                 if (r.status == DownloadManager.STATUS_SUCCESSFUL)
                     R.drawable.ic_file_download_black else android.R.drawable.stat_sys_download
             )
-            // "103 MB • release-assets.github.com" — Iceraven-style
-            // subtitle: size + source host.
+            // "103 MB • release-assets.github.com • 09:38" —
+            // Iceraven-style subtitle: size + source + time.
             val size = (if (r.total > 0) r.total else r.bytes) / (1024f * 1024f)
             val host = runCatching { Uri.parse(r.uri).host.orEmpty() }.getOrDefault("")
-            h.subtitle.text = "%.1f MB • %s".format(size, host)
+            val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                .format(java.util.Date(r.lastModified))
+            h.subtitle.text = "%.1f MB • %s • %s".format(size, host, time)
             h.itemView.setOnClickListener {
                 if (r.status == DownloadManager.STATUS_SUCCESSFUL) open(r) else retry(r)
             }
