@@ -50,6 +50,10 @@ UI:
   when 'Hide status bar' is on. (Pre-Android-15 devices already
   reserve the bar area via the decor — the pad only applies on
   35+, so no empty band appears there.)
+- Status bar band (all Androids): stacked fitsSystemWindows on
+  the coordinator/drawer/toolbar consumed the bar inset again
+  below the decor-reserved area, leaving an empty strip under the
+  icons — removed from the content chain (drawer rows keep it).
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a

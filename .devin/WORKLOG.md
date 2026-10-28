@@ -109,3 +109,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 1.2.4(amend19): status-bar latch — onHideCustomView restores flags BEFORE the early-return path so an aborted fullscreen can't leave the bar hidden
 - 2026-10-28 1.2.4(amend20): status-bar readability — root pads by status-bar inset (API-35 enforced edge-to-edge made icons float faintly over content) + icon appearance follows theme luminance
 - 2026-10-28 1.2.4(amend21): status-bar pad gated to API>=35 — pre-35 decor already reserves the area and the unconditional pad doubled into an empty band
+- 2026-10-28 1.2.4(amend22): removed stacked fitsSystemWindows from coordinator/drawer/toolbar — nested inset consumption produced the empty band under the status bar on all Android versions
