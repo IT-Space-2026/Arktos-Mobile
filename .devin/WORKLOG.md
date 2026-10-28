@@ -111,3 +111,4 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 1.2.4(amend21): status-bar pad gated to API>=35 — pre-35 decor already reserves the area and the unconditional pad doubled into an empty band
 - 2026-10-28 1.2.4(amend22): removed stacked fitsSystemWindows from coordinator/drawer/toolbar — nested inset consumption produced the empty band under the status bar on all Android versions
 - 2026-10-28 1.2.4(amend23): drawer fitsSystemWindows removed (tab-drawer top band) + settings toolbar gets status-bar pad on API>=35 (clipped title)
+- 2026-10-28 1.2.4(amend24): History Iceraven-style — date buckets, host+time subtitle, header-safe clicks; status-bar pad on Downloads/DownloadSettings/History toolbars (API>=35)

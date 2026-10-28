@@ -135,6 +135,15 @@ class DownloadSettingsActivity : AppCompatActivity() {
             androidx.appcompat.R.drawable.abc_ic_ab_back_material
         )
         toolbar.setNavigationOnClickListener { finish() }
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+                val bars = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.statusBars()
+                )
+                v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+                insets
+            }
+        }
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val bars = insets.getInsets(
                 androidx.core.view.WindowInsetsCompat.Type.navigationBars()

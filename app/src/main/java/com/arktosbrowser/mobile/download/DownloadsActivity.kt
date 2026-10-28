@@ -54,6 +54,7 @@ class DownloadsActivity : AppCompatActivity() {
         toolbar.title = getString(R.string.action_downloads)
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         toolbar.setNavigationOnClickListener { finish() }
+        padToolbarForStatusBar(toolbar)
         // Gear -> Iceraven-style Download Settings; Clear stays in the overflow.
         toolbar.menu.add(0, SETTINGS_ITEM_ID, 0, R.string.download_settings_title)
             .setIcon(android.R.drawable.ic_menu_preferences)
@@ -259,6 +260,17 @@ class DownloadsActivity : AppCompatActivity() {
     private companion object {
         const val CLEAR_ITEM_ID = 1
         const val SETTINGS_ITEM_ID = 2
+    }
+
+    private fun padToolbarForStatusBar(toolbar: android.view.View) {
+        if (android.os.Build.VERSION.SDK_INT < 35) return
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.statusBars()
+            )
+            v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+            insets
+        }
     }
 
     /** Flattened adapter items: a header per date bucket + rows. */

@@ -65,6 +65,27 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
         setSupportActionBar(toolbar)
         if (supportActionBar != null) supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
+        // API-35 edge-to-edge slides the toolbar under the
+        // transparent status bar — pad it like the other screens.
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(toolbar) { v, insets ->
+                val bars = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.statusBars()
+                )
+                v.setPadding(v.paddingLeft, bars.top, v.paddingRight, v.paddingBottom)
+                insets
+            }
+        }
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(
+            findViewById(R.id.history)
+        ) { v, insets ->
+            val bars = insets.getInsets(
+                androidx.core.view.WindowInsetsCompat.Type.navigationBars()
+            )
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, bars.bottom)
+            insets
+        }
+
         list = findViewById(R.id.history)
         val linearLayoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
 
@@ -74,21 +95,25 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
                     historyList = list
                 }
 
-        arrayAdapter = CustomAdapter(historyList)
+        arrayAdapter = CustomAdapter(this, historyList)
         list.layoutManager = linearLayoutManager
         list.adapter = arrayAdapter
 
         list.addOnItemTouchListener(
                 RecyclerItemClickListener(this, list, object : RecyclerItemClickListener.OnItemClickListener {
                     override fun onItemClick(view: View?, position: Int) {
+                        val entry = (list.adapter as CustomAdapter).getItem(position)
+                            ?: return // header row
                         val i = Intent(ACTION_VIEW)
-                        i.data = Uri.parse((list.adapter as CustomAdapter).getItem(position).url)
+                        i.data = Uri.parse(entry.url)
                         i.setPackage(this@HistoryActivity.packageName)
                         startActivity(i, null)
                     }
 
                     override fun onLongItemClick(view: View?, position: Int) {
-                        dialogBuilder!!.showLongPressedHistoryLinkDialog(this@HistoryActivity, historyList[position].url)
+                        val entry = (list.adapter as CustomAdapter).getItem(position)
+                            ?: return // header row
+                        dialogBuilder!!.showLongPressedHistoryLinkDialog(this@HistoryActivity, entry.url)
                     }
                 })
         )
@@ -107,23 +132,61 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
                 .subscribe { list ->
                     historyList = list
                 }
-        arrayAdapter = CustomAdapter(historyList)
+        arrayAdapter = CustomAdapter(this, historyList)
         list?.adapter = arrayAdapter
         arrayAdapter.notifyDataSetChanged()
     }
 
-    class CustomAdapter(private var dataSet: List<HistoryEntry>) :
-            RecyclerView.Adapter<CustomAdapter.ViewHolder>() {
+    /** Flattened adapter items — a date header per bucket + entries. */
+    sealed interface Item {
+        data class Header(val title: String) : Item
+        data class Entry(val entry: HistoryEntry) : Item
+    }
 
-        lateinit var filtered: MutableList<HistoryEntry>
-        lateinit var oldList: MutableList<HistoryEntry>
+    class CustomAdapter(
+            private val context: android.content.Context,
+            private var dataSet: List<HistoryEntry>) :
+            RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+        private var items: List<Item> = grouped(dataSet)
+        var filtered: List<HistoryEntry> = dataSet
+        var oldList: MutableList<HistoryEntry> = dataSet.toMutableList()
+
+        /** Iceraven-style date buckets, newest first. */
+        private fun grouped(entries: List<HistoryEntry>): List<Item> {
+            val day = 24L * 3600 * 1000
+            val todayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val buckets = listOf(
+                context.getString(R.string.downloads_group_today) to todayStart,
+                context.getString(R.string.downloads_group_yesterday) to todayStart - day,
+                context.getString(R.string.downloads_group_last7) to todayStart - 7 * day,
+                context.getString(R.string.downloads_group_last30) to todayStart - 30 * day
+            )
+            val out = mutableListOf<Item>()
+            var current: String? = null
+            for (e in entries) {
+                val label = (buckets.firstOrNull { e.lastTimeVisited >= it.second }
+                    ?: (context.getString(R.string.downloads_group_older) to 0L)).first
+                if (label != current) {
+                    current = label
+                    out += Item.Header(label)
+                }
+                out += Item.Entry(e)
+            }
+            return out
+        }
 
         fun getFilter(): Filter? {
             return object : Filter() {
                 override fun performFiltering(charSequence: CharSequence): FilterResults? {
                     val charString = charSequence.toString()
-                    if (charString.isEmpty()) {
-                        filtered = oldList
+                    filtered = if (charString.isEmpty()) {
+                        oldList
                     } else {
                         val filteredList: MutableList<HistoryEntry> = ArrayList()
                         for (row in oldList) {
@@ -134,67 +197,75 @@ class HistoryActivity : AppCompatActivity(), SearchView.OnQueryTextListener {
                                 filteredList.add(row)
                             }
                         }
-                        filtered = filteredList
+                        filteredList
                     }
                     val filterResults = FilterResults()
                     filterResults.values = filtered
                     return filterResults
                 }
 
+                @Suppress("UNCHECKED_CAST")
                 override fun publishResults(charSequence: CharSequence?, filterResults: FilterResults) {
                     dataSet = filterResults.values as MutableList<HistoryEntry>
-
+                    items = grouped(dataSet)
                     notifyDataSetChanged()
                 }
             }
         }
 
-        fun getItem(position: Int) = dataSet[position]
+        /** Null for header rows — callers must skip clicks on them. */
+        fun getItem(position: Int): HistoryEntry? =
+            (items[position] as? Item.Entry)?.entry
 
-        /**
-         * Provide a reference to the type of views that you are using
-         * (custom ViewHolder).
-         */
         class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val textView: TextView
-            val historyUrl: TextView
-            val historyDate: TextView
+            val textView: TextView = view.findViewById(R.id.historyTitle)
+            val historyUrl: TextView = view.findViewById(R.id.historyUrl)
+            val historyDate: TextView = view.findViewById(R.id.historyTime)
+        }
 
-            init {
-                // Define click listener for the ViewHolder's View.
-                textView = view.findViewById(R.id.historyTitle)
-                historyUrl = view.findViewById(R.id.historyUrl)
-                historyDate = view.findViewById(R.id.historyTime)
+        class HeaderVH(view: View) : RecyclerView.ViewHolder(view)
+
+        override fun getItemViewType(position: Int) =
+            if (items[position] is Item.Header) 1 else 0
+
+        override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int) =
+            if (viewType == 1) HeaderVH(
+                TextView(context).apply {
+                    val pad = (resources.displayMetrics.density * 14).toInt()
+                    setPadding(pad, pad, pad, pad / 2)
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+            ) else {
+                oldList = dataSet.toMutableList()
+                ViewHolder(LayoutInflater.from(viewGroup.context)
+                    .inflate(R.layout.history_row, viewGroup, false))
             }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val item = items[position]
+            if (holder is HeaderVH) {
+                (holder.itemView as TextView).text = (item as Item.Header).title
+                return
+            }
+            val e = (item as Item.Entry).entry
+            holder as ViewHolder
+            holder.textView.text = e.title
+            // Iceraven-style subtitle — host • visit time.
+            val host = runCatching { Uri.parse(e.url).host.orEmpty() }.getOrDefault(e.url)
+            holder.historyUrl.text = host
+            holder.historyDate.text = getTime(e.lastTimeVisited)
         }
 
-        // Create new views (invoked by the layout manager)
-        override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
-            // Create a new view, which defines the UI of the list item
-            val view = LayoutInflater.from(viewGroup.context)
-                    .inflate(R.layout.history_row, viewGroup, false)
-            oldList = dataSet.toMutableList()
-            return ViewHolder(view)
-        }
+        override fun getItemCount() = items.size
 
-        // Replace the contents of a view (invoked by the layout manager)
-        override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-
-            // Get element from your dataset at this position and replace the
-            // contents of the view with that element
-            viewHolder.textView.text = dataSet[position].title
-            viewHolder.historyUrl.text = dataSet[position].url
-            viewHolder.historyDate.text = getDateTime(dataSet[position].lastTimeVisited)
-        }
-
-        // Return the size of your dataset (invoked by the layout manager)
-        override fun getItemCount() = dataSet.size
-
-        private fun getDateTime(s: Long): String? {
+        private fun getTime(s: Long): String? {
             try {
-                val sdf = DateFormat.getDateTimeInstance()
-                val netDate = Date(s)
-                return sdf.format(netDate)
+                return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(s))
             } catch (e: Exception) {
                 return e.toString()
             }

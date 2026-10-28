@@ -57,6 +57,11 @@ UI:
   fitsSystemWindows went too (same double-consumption at the tab
   drawer's top). Settings pads its toolbar by the bar inset on
   API 35+, fixing the clipped title.
+- History screen restyled to match Downloads/Iceraven: date
+  buckets (Today / Yesterday / Last 7 days / Last 30 days /
+  Older), a host + visit-time subtitle, and the same toolbar
+  status-bar pad on Android 15+ — the Downloads and Download
+  Settings toolbars get the pad too.
 - Downloads page: entries were never recorded when the download-meta
   persist threw ahead of the list write — the list is now populated;
   each item gets a Retry row (re-navigates to the source URL) and a
