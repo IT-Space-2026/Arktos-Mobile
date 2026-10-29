@@ -598,6 +598,11 @@ pub fn sync_transport_drain(data_root: String) -> String {
     let mut imported = 0u32;
     for ev in t.poll() {
         crate::synctransport::note_event(root, &ev);
+        // Pairing claims first — Incoming links and handshake
+        // frames belong to live pair sessions, not the op-log.
+        if crate::syncpair::claim_event(root, &t, &ev) {
+            continue;
+        }
         if let crate::synctransport::TransportEvent::Frame { payload, .. } = ev {
             frames += 1;
             if let Ok(eng) = try_engine(&data_root) {

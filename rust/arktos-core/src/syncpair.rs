@@ -1105,6 +1105,52 @@ fn joiner_on_commit(s: &mut PairSession, t: &Arc<dyn SyncTransport>, v: &Value) 
     Ok(())
 }
 
+/// Claim a drained event for the pairing lane — the other
+/// `poll()` consumer (the worker's inbound drain) routes every
+/// event through here before importing.  Incoming links always
+/// join the pending queue (they're adoption candidates); a Frame
+/// is consumed only while a live session owns its link or it
+/// still carries a parseable msg1 on a pending link — anything
+/// else is ordinary sync traffic that must reach import.
+pub(crate) fn claim_event(
+    data_root: &Path,
+    t: &Arc<dyn SyncTransport>,
+    ev: &TransportEvent,
+) -> bool {
+    match ev {
+        TransportEvent::Incoming { link, .. } => {
+            PENDING_LINKS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push_back((data_root.to_path_buf(), *link));
+            true
+        }
+        TransportEvent::Frame { link, payload } => {
+            let bound = sessions().values().any(|s| {
+                s.root == data_root
+                    && s.link == Some(*link)
+                    && !matches!(
+                        s.phase,
+                        Phase::Done | Phase::Failed | Phase::Cancelled
+                    )
+            });
+            let pending = !bound
+                && Handshake::peek_msg1_payload(payload).is_ok()
+                && PENDING_LINKS
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .contains(&(data_root.to_path_buf(), *link));
+            if !bound && !pending {
+                return false;
+            }
+            let mut pt = Vec::new();
+            let _ = on_frame(data_root, t, *link, payload, &mut pt);
+            true
+        }
+        _ => false,
+    }
+}
+
 /// Drain the transport and advance every session rooted at
 /// `data_root`; returns the status doc for `pair_id` (or the list
 /// when 0).  Pass-through events on links no session owns ride the

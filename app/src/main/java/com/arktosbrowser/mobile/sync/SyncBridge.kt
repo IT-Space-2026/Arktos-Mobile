@@ -18,7 +18,7 @@ object SyncBridge {
     /** Append a local change to a synced store — gecko only. */
     fun append(dataRoot: String, storeName: String, bodyJson: String) {
         if (!BuildConfig.IS_GECKO) return
-        runCatching { ArktosCore.syncAppend(dataRoot, storeName, "", bodyJson) }
+        runCatching { ArktosCore.syncAppend(dataRoot, storeName, "default", bodyJson) }
     }
 
     /**

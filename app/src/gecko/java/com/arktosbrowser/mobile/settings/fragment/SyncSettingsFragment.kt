@@ -277,13 +277,15 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
      * windows with their open tabs.
      */
     private fun showRemoteTabs() {
-        val lines = try {
+        // label → url pairs; device headers carry no url and are
+        // inert in the picker.
+        val rows = try {
             val doc = JSONObject(ArktosCore.syncTabPeers(dataRoot, "default"))
             val peers = doc.optJSONArray("peers") ?: org.json.JSONArray()
-            buildList {
+            buildList<Pair<String, String?>> {
                 for (i in 0 until peers.length()) {
                     val p = peers.getJSONObject(i)
-                    add("— ${p.optString("device_id", "?")} —")
+                    add("— ${p.optString("device_id", "?")} —" to null)
                     val windows = p.optJSONArray("windows") ?: continue
                     for (w in 0 until windows.length()) {
                         val tabs = windows.getJSONObject(w).optJSONArray("tabs") ?: continue
@@ -291,20 +293,34 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                             val tab = tabs.getJSONObject(t)
                             val title = tab.optString("title", "")
                             val url = tab.optString("url", "")
-                            add(if (title.isNotEmpty()) "$title\n$url" else url)
+                            if (url.isNotEmpty()) {
+                                val label = if (title.isNotEmpty()) "$title\n$url" else url
+                                add(label to url)
+                            }
                         }
                     }
                 }
             }
         } catch (e: Exception) { emptyList() }
 
+        if (rows.isEmpty()) {
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.sync_remote_tabs_title)
+                .setMessage(R.string.sync_remote_tabs_none)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
         android.app.AlertDialog.Builder(requireContext())
             .setTitle(R.string.sync_remote_tabs_title)
-            .setMessage(
-                if (lines.isEmpty()) getString(R.string.sync_remote_tabs_none)
-                else lines.joinToString("\n")
-            )
-            .setPositiveButton(android.R.string.ok, null)
+            .setItems(rows.map { it.first }.toTypedArray()) { _, which ->
+                rows[which].second?.let { url ->
+                    val i = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                    i.data = android.net.Uri.parse(url)
+                    startActivity(i, null)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
