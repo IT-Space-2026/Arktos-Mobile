@@ -64,6 +64,13 @@ object SyncBridge {
     private var settingsPrefs: android.content.SharedPreferences? = null
     private var settingsRoot: String? = null
 
+    /** Emissions serialize here — the pref listener fires on the
+     *  main thread but the uniffi call does file IO + a sqlite
+     *  append, which must never stall it. */
+    private val emitExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "SyncEmit").apply { isDaemon = true }
+    }
+
     /** Values the apply side just wrote — the echo guard. */
     private val appliedValues = java.util.concurrent.ConcurrentHashMap<String, Any?>()
 
@@ -99,7 +106,7 @@ object SyncBridge {
         settingsPrefs = prefs
         settingsRoot = dataRoot
         prefs.registerOnSharedPreferenceChangeListener { _, key ->
-            emitSetting(key)
+            emitExecutor.execute { emitSetting(key) }
         }
         // One-time first-sync advertise: keys that never changed
         // never reached the ini, so the group would only see

@@ -1119,10 +1119,14 @@ pub(crate) fn claim_event(
 ) -> bool {
     match ev {
         TransportEvent::Incoming { link, .. } => {
-            PENDING_LINKS
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .push_back((data_root.to_path_buf(), *link));
+            let mut q = PENDING_LINKS.lock().unwrap_or_else(|e| e.into_inner());
+            q.push_back((data_root.to_path_buf(), *link));
+            // Inbound links only drain while a session adopts them —
+            // cap the queue so repeated connects can't grow it
+            // without bound over the app's lifetime.
+            while q.len() > 256 {
+                q.pop_front();
+            }
             true
         }
         TransportEvent::Frame { link, payload } => {

@@ -34,8 +34,8 @@ fn try_engine(data_root: &str) -> RcResult<&'static Mutex<SyncEngine>> {
     Ok(unsafe { &*p })
 }
 
-fn fail_json(e: &Fail) -> String {
-    format!(r#"{{"error":"{}","status":{:?}}}"#, e.msg.replace('"', "'"), e.status)
+fn json_err(e: &Fail) -> String {
+    serde_json::json!({"ok": false, "error": e.msg}).to_string()
 }
 
 /// Create an invite payload (the QR/manual-code text the peer scans).
@@ -43,7 +43,7 @@ fn fail_json(e: &Fail) -> String {
 pub fn sync_invite_begin(data_root: String, scope: String) -> String {
     match crate::syncpair::invite_begin(Path::new(&data_root), &scope) {
         Ok(v) => v.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -52,7 +52,7 @@ pub fn sync_invite_begin(data_root: String, scope: String) -> String {
 pub fn sync_join_begin(data_root: String, payload_text: String) -> String {
     match crate::syncpair::join_begin(Path::new(&data_root), &payload_text) {
         Ok(id) => format!(r#"{{"session":{id}}}"#),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -70,7 +70,7 @@ pub fn sync_fingerprint(hash_b64: String) -> String {
 pub fn sync_members(data_root: String) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.members_list() {
         Ok(members) => {
@@ -81,7 +81,7 @@ pub fn sync_members(data_root: String) -> String {
             })).collect();
             serde_json::Value::Array(arr).to_string()
         }
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -96,7 +96,7 @@ pub fn sync_transport_start(data_root: String, backend: String, name: String) ->
 pub fn sync_pair_poll(data_root: String, pair_id: u64) -> String {
     match crate::syncpair::poll(Path::new(&data_root), pair_id) {
         Ok(v) => v.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -105,7 +105,7 @@ pub fn sync_pair_poll(data_root: String, pair_id: u64) -> String {
 pub fn sync_pair_confirm(data_root: String, pair_id: u64, ok: bool) -> String {
     match crate::syncpair::confirm(Path::new(&data_root), pair_id, ok) {
         Ok(()) => r#"{"ok":true}"#.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -114,7 +114,7 @@ pub fn sync_pair_confirm(data_root: String, pair_id: u64, ok: bool) -> String {
 pub fn sync_pair_cancel(data_root: String, pair_id: u64) -> String {
     match crate::syncpair::cancel(Path::new(&data_root), pair_id) {
         Ok(()) => r#"{"ok":true}"#.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -141,11 +141,11 @@ pub fn sync_transport_running(data_root: String) -> bool {
 pub fn sync_pending_apply(data_root: String, store_name: String) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.pending_apply(&store_name) {
         Ok(ops) => serde_json::Value::Array(ops.iter().map(|o| o.to_json()).collect()).to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -155,11 +155,11 @@ pub fn sync_pending_apply(data_root: String, store_name: String) -> String {
 pub fn sync_mark_applied(data_root: String, op_id: String) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.mark_applied(&op_id) {
         Ok(()) => r#"{"ok":true}"#.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -173,11 +173,11 @@ pub fn sync_append(data_root: String, store_name: String, scope: String, body_js
     };
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.append(&store_name, &scope, &body) {
         Ok(op) => op.to_json().to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -187,11 +187,11 @@ pub fn sync_append(data_root: String, store_name: String, scope: String, body_js
 pub fn sync_export(data_root: String, store_name: Option<String>, since_seq: i64) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.export(store_name.as_deref(), since_seq) {
         Ok(ops) => serde_json::Value::Array(ops.iter().map(|o| o.to_json()).collect()).to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -205,12 +205,12 @@ pub fn sync_import(data_root: String, ops_json: String) -> String {
     };
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.import(&docs) {
         Ok(r) => format!(r#"{{"accepted":{},"applied":{},"deferred":{},"duplicates":{},"rejected":{},"apply_errors":{}}}"#,
                 r.accepted, r.applied, r.deferred, r.duplicates, r.rejected.len(), r.apply_errors.len()),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -219,12 +219,12 @@ pub fn sync_import(data_root: String, ops_json: String) -> String {
 pub fn sync_drain_pending(data_root: String, store_name: String) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.drain_pending(&store_name) {
         Ok(r) => format!(r#"{{"accepted":{},"applied":{},"deferred":{},"duplicates":{},"rejected":{},"apply_errors":{}}}"#,
                 r.accepted, r.applied, r.deferred, r.duplicates, r.rejected.len(), r.apply_errors.len()),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -233,11 +233,11 @@ pub fn sync_drain_pending(data_root: String, store_name: String) -> String {
 pub fn sync_stats(data_root: String) -> String {
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     match eng.stats() {
         Ok(v) => v.to_string(),
-        Err(e) => fail_json(&e),
+        Err(e) => json_err(&e),
     }
 }
 
@@ -249,11 +249,11 @@ pub fn sync_member_add(data_root: String, pubkey_b64: String, onion: String, sco
         Some(pk) => {
             let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
             match eng.member_add(&pk, &onion, &scope) {
                 Ok(id) => format!(r#"{{"device_id":"{id}"}}"#),
-                Err(e) => fail_json(&e),
+                Err(e) => json_err(&e),
             }
         }
         None => r#"{"error":"bad pubkey"}"#.to_string(),
@@ -342,10 +342,6 @@ pub fn sync_history_local(data_root: String, op: String, url: String, title: Str
             Err(e) => json_err(&e),
         }
     })
-}
-
-fn json_err(e: &crate::error::Fail) -> String {
-    serde_json::json!({"ok": false, "error": e.msg}).to_string()
 }
 
 /// Local open-tabs presence publish — the ephemeral per-device doc
@@ -643,13 +639,13 @@ pub fn sync_transport_push(data_root: String) -> String {
     };
     let eng = match try_engine(&data_root) {
         Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     let our_id = eng.device_id();
     let nick = format!("member-{}", &our_id[..16.min(our_id.len())]);
     let ops = match eng.export(None, 0) {
         Ok(o) => o,
-        Err(e) => return fail_json(&e),
+        Err(e) => return json_err(&e),
     };
     let docs: Vec<serde_json::Value> = ops.iter().map(|o| o.to_json()).collect();
     if docs.is_empty() {
