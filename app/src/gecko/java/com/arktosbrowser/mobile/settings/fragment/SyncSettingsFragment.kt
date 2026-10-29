@@ -158,6 +158,8 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 ArktosCore.syncPairConfirm(dataRoot, pairId, true)
                 findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
                     membersSummary()
+                // First exchange now — don't wait out the 15-min window.
+                com.arktosbrowser.mobile.sync.SyncWorker.runNow(requireContext())
             }
             .setNegativeButton(R.string.sync_fingerprint_reject) { _, _ ->
                 ArktosCore.syncPairConfirm(dataRoot, pairId, false)

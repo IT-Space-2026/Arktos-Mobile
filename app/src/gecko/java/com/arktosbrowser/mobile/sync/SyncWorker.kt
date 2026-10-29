@@ -87,5 +87,13 @@ class SyncWorker(
                 PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).build()
             )
         }
+
+        /** One immediate exchange round — pairing confirm calls this
+         *  so the first sync doesn't wait out the periodic window. */
+        fun runNow(context: Context) {
+            WorkManager.getInstance(context).enqueue(
+                androidx.work.OneTimeWorkRequestBuilder<SyncWorker>().build()
+            )
+        }
     }
 }

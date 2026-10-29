@@ -101,6 +101,27 @@ object SyncBridge {
         prefs.registerOnSharedPreferenceChangeListener { _, key ->
             emitSetting(key)
         }
+        // One-time first-sync advertise: keys that never changed
+        // never reached the ini, so the group would only see
+        // deltas — emit whatever the image lacks or disagrees on.
+        // Guarded by a marker pref (excluded from sync itself).
+        if (!prefs.getBoolean("settingsSyncedDump", false)) {
+            prefs.edit().putBoolean("settingsSyncedDump", true).apply()
+            Thread {
+                runCatching {
+                    val doc = org.json.JSONObject(
+                        ArktosCore.syncSettingsList(dataRoot, "default"))
+                    val ini = doc.optJSONObject("settings")
+                    for ((k, v) in prefs.all) {
+                        if (v == null || !isSettingSynced(k)) continue
+                        val j = settingJson(v).toString()
+                        if (ini?.optJSONObject(k)?.toString() != j) {
+                            ArktosCore.syncSettingLocal(dataRoot, "default", k, j)
+                        }
+                    }
+                }
+            }.start()
+        }
     }
 
     private fun emitSetting(key: String?) {
