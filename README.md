@@ -4,7 +4,7 @@
 
 <p align="center">
 <a href="https://github.com/IT-Space-2026/Arktos-Mobile/releases" alt="GitHub Release (latest by date)"><img src="https://img.shields.io/github/v/release/IT-Space-2026/Arktos-Mobile.svg" ></a>
-<a href="https://github.com/IT-Space-2026/Arktos-Mobile/actions" alt="Android CI"><img src="https://github.com/IT-Space-2026/Arktos-Mobile/workflows/Android%20CI/badge.svg?event=push"></a>
+<a href="https://github.com/IT-Space-2026/Arktos-Mobile/actions" alt="Android CI"><img src="https://github.com/IT-Space-2026/Arktos-Mobile/actions/workflows/android.yml/badge.svg?event=push"></a>
 <a href="https://www.mozilla.org/en-US/MPL/2.0/" alt="MPL-2.0 License"><img src="https://img.shields.io/github/license/IT-Space-2026/Arktos-Mobile"></a>
 <a href="https://github.com/IT-Space-2026/Arktos-Mobile/stargazers" alt="GitHub Stars"><img src="https://img.shields.io/github/stars/IT-Space-2026/Arktos-Mobile?style=social"></a>
 <a href="https://github.com/IT-Space-2026/Arktos-Mobile/issues" alt="GitHub Issues"><img src="https://img.shields.io/github/issues-raw/IT-Space-2026/Arktos-Mobile"></a>
