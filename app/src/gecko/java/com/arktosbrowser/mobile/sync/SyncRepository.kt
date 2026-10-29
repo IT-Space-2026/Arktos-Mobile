@@ -118,6 +118,36 @@ class SyncRepository @Inject constructor(
         }
     }
 
+    /**
+     * Reflect the group's merged settings image into the app's
+     * SharedPreferences — the apply half of the settings lane.
+     * Non-excluded keys land typed (bool/int/dbl/str/list);
+     * [SyncBridge.applySetting] suppresses the emit echo.
+     */
+    fun mergeSettings(dataRoot: String, prefs: android.content.SharedPreferences) {
+        runCatching {
+            val doc = JSONObject(ArktosCore.syncSettingsList(dataRoot, "default"))
+            val settings = doc.optJSONObject("settings") ?: return@runCatching
+            val keys = settings.keys()
+            while (keys.hasNext()) {
+                val k = keys.next()
+                val v = settings.optJSONObject(k) ?: continue
+                val parsed: Any? = when {
+                    v.has("bool") -> v.getBoolean("bool")
+                    v.has("int") -> v.getLong("int")
+                    v.has("dbl") -> v.getDouble("dbl")
+                    v.has("str") -> v.getString("str")
+                    v.has("list") -> {
+                        val a = v.getJSONArray("list")
+                        (0 until a.length()).map { a.getString(it) }.toSet()
+                    }
+                    else -> continue
+                }
+                SyncBridge.applySetting(prefs, k, parsed)
+            }
+        }
+    }
+
     /** First element whose field name contains one of the tokens —
      *  desktop records carry real HTML field names, ours use the
      *  canonical "username"/"password" keys. */

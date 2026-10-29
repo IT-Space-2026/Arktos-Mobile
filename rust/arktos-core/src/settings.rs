@@ -113,6 +113,18 @@ impl RcSettings {
             .ok_or_else(|| Fail { status: RcStatus::InvalidArgument, msg: "no such key".into() })
     }
 
+    /// All stored (key, value) pairs — the merged image the apply
+    /// side reflects into the app's own preferences store.
+    pub fn entries(&self) -> Vec<(String, Value)> {
+        self.state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
     /// Local mutation — persists, then offers the change to the
     /// sync adapter's emit lane.
     pub fn set(&self, key: &str, value: Value) -> RcResult<()> {

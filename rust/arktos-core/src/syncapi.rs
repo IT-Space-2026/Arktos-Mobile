@@ -513,6 +513,67 @@ pub fn sync_passwords_list(data_root: String, scope: String) -> String {
     }
 }
 
+/// Local settings write — persists through `RcSettings::set`,
+/// whose emit hook signs the change onto the op-log.  `value_json`
+/// is the typed wire form ({"bool":..} / {"int":..} / {"str":..} /
+/// {"list":[..]}) so peer apps share one value encoding.
+#[uniffi::export]
+pub fn sync_setting_local(
+    data_root: String,
+    scope: String,
+    key: String,
+    value_json: String,
+) -> String {
+    let v: serde_json::Value = match serde_json::from_str(&value_json) {
+        Ok(v) => v,
+        Err(_) => {
+            return r#"{"error":"malformed value_json"}"#.to_string();
+        }
+    };
+    let Some(sv) = crate::settings::value_from_json(&v) else {
+        return r#"{"error":"unsupported settings value"}"#.to_string();
+    };
+    let h = match crate::settings::RcSettings::open(&data_root, Some(&scope)) {
+        Ok(h) => h,
+        Err(e) => return json_err(&e),
+    };
+    match h.set(&key, sv) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Local settings delete — `RcSettings::remove` emits the `del`
+/// op the group converges on.
+#[uniffi::export]
+pub fn sync_setting_remove(data_root: String, scope: String, key: String) -> String {
+    let h = match crate::settings::RcSettings::open(&data_root, Some(&scope)) {
+        Ok(h) => h,
+        Err(e) => return json_err(&e),
+    };
+    match h.remove(&key) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// The merged settings image — every key the adapters wrote or
+/// applied, rendered in the typed wire form for the app-store
+/// merge.
+#[uniffi::export]
+pub fn sync_settings_list(data_root: String, scope: String) -> String {
+    let h = match crate::settings::RcSettings::open(&data_root, Some(&scope)) {
+        Ok(h) => h,
+        Err(e) => return json_err(&e),
+    };
+    let map: serde_json::Map<String, serde_json::Value> = h
+        .entries()
+        .into_iter()
+        .map(|(k, v)| (k, crate::settings::value_to_json(&v)))
+        .collect();
+    serde_json::json!({"ok": true, "settings": map}).to_string()
+}
+
 /// The peer devices' tab presence docs — the read-only "tabs on my
 /// other devices" feed.
 #[uniffi::export]

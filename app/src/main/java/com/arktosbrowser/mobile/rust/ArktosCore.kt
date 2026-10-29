@@ -532,6 +532,18 @@ object ArktosCore {
     fun syncPasswordsList(dataRoot: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncPasswordsList(dataRoot, scope)
 
+    /** Local settings write — persists + emits through RcSettings::set. */
+    fun syncSettingLocal(dataRoot: String, scope: String, key: String, valueJson: String): String =
+        com.arktosbrowser.mobile.uniffi.syncSettingLocal(dataRoot, scope, key, valueJson)
+
+    /** Local settings delete — emits the `del` op. */
+    fun syncSettingRemove(dataRoot: String, scope: String, key: String): String =
+        com.arktosbrowser.mobile.uniffi.syncSettingRemove(dataRoot, scope, key)
+
+    /** The merged settings image for the app-store merge. */
+    fun syncSettingsList(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncSettingsList(dataRoot, scope)
+
     /** Peer devices' open-tabs docs — the read-only remote tabs feed. */
     fun syncTabPeers(dataRoot: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncTabPeers(dataRoot, scope)

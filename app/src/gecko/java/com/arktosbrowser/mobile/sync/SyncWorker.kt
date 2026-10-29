@@ -39,6 +39,12 @@ class SyncWorker(
             // Imported logins materialized in the Rust vault reflect
             // into the Kotlin store gecko autofills from.
             repo.mergePasswords(root, com.arktosbrowser.mobile.passwords.LoginVaults.get(applicationContext))
+            // Imported settings land in SharedPreferences — the echo
+            // guard keeps each applied write from re-emitting.
+            repo.mergeSettings(
+                root,
+                applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            )
             // Outbound — the exported op-log rides one frame to every
             // live link (member endpoints get dialed on demand).
             ArktosCore.syncTransportPush(root)
@@ -59,6 +65,14 @@ class SyncWorker(
             runCatching {
                 SyncRepository(context.injector.arktosStore())
                     .install(context.filesDir.absolutePath)
+            }
+            // Emit on every non-excluded preference write — the
+            // settings lane's outbound half.
+            runCatching {
+                com.arktosbrowser.mobile.sync.SyncBridge.attachSettings(
+                    context.getSharedPreferences("settings", Context.MODE_PRIVATE),
+                    context.filesDir.absolutePath
+                )
             }
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
