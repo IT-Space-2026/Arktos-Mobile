@@ -65,6 +65,7 @@ class SyncWorker(
         private const val WORK_NAME = "sync-drain"
 
         /** Schedule the periodic drain — call once at app start. */
+        @JvmStatic
         fun schedule(context: Context) {
             // Bring the adapter lanes up at launch too — emission
             // starts working immediately, the 15-min worker only
@@ -98,6 +99,7 @@ class SyncWorker(
 
         /** One immediate exchange round — pairing confirm calls this
          *  so the first sync doesn't wait out the periodic window. */
+        @JvmStatic
         fun runNow(context: Context) {
             WorkManager.getInstance(context).enqueue(
                 androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()

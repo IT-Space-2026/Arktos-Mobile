@@ -12,8 +12,8 @@
         <include domain="database" path="." />
         <include domain="file" path="." />
         <exclude domain="file" path="sync" />
-    <exclude domain="file" path="profiles" />
-    <exclude domain="file" path="site-rank" />
+        <exclude domain="file" path="profiles" />
+        <exclude domain="file" path="site-rank" />
         <exclude domain="file" path="adblock_subscriptions" />
         <exclude domain="file" path="homepage.html" />
         <exclude domain="file" path="private.html" />
@@ -24,6 +24,8 @@
         <include domain="sharedpref" path="." />
         <include domain="database" path="." />
         <include domain="file" path="." />
+        <exclude domain="file" path="sync" />
+        <exclude domain="file" path="profiles" />
         <exclude domain="file" path="site-rank" />
         <exclude domain="file" path="adblock_subscriptions" />
         <exclude domain="file" path="homepage.html" />
