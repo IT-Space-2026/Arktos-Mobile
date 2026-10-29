@@ -6,18 +6,29 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
-1.2.7 — Mobile sync core (MSYNC02)
+1.2.7 — Mobile sync (MSYNC02–10)
 
 - The desktop sync engine is ported into arktos-core: the op-log
-  CRDT layer, the Noise XX handshake, the pairing state machine
-  and the transport abstraction — behind thin compat shims so the
-  mobile crate builds lean
-- UniFFI surface + Kotlin facade: the Synchronization screen's
-  pair action now creates a real invite payload (the QR/manual
-  text a peer scans); the paired list and status read the engine
-- tor_llcrypto's curve25519 swapped for x25519-dalek so the
-  mobile skips the Arti dep tree; the tor transport stays gated
-  for MSYNC03
+  CRDT layer, Noise XX handshake, pairing state machine and the
+  transport abstraction — behind thin compat shims
+- Pairing works end-to-end: QR or manual code, the six-word
+  fingerprint confirm, member management with real revoke
+  (membership cut + group-key rotation)
+- Encrypted device-to-device exchange with no server: LAN (QUIC +
+  mDNS, debug and release) and Tor onion-service legs (release
+  gecko), each degrading honestly; the periodic worker runs a
+  full round — inbound frames to import, deferred-op retries,
+  outbound push to every live link
+- All five stores live: bookmarks and history through the real
+  adapter emit/apply paths, tab presence (Settings → Synced data
+  → Remote tabs opens peers' open tabs), settings over
+  SharedPreferences (allow-all minus device-local exclusions),
+  and the password vault — passphrase-gated E2E, strictly opt-in
+- The Synchronization screen drives it all: pair/join buttons,
+  device list with fingerprints, unpair, password-sync
+  enable/unlock/lock and the remote-tabs feed
+
+
 
 1.2.6 — Sync foundation (MSYNC01)
 
