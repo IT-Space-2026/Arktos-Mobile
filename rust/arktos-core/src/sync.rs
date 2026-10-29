@@ -690,6 +690,54 @@ impl SyncEngine {
         })
     }
 
+    /// `export` plus the log seq each op came from — the outbound
+    /// pump's per-link cursor; the wire op itself stays seq-free.
+    pub fn export_tagged(&self, since_seq: i64) -> RcResult<Vec<(i64, WireOp)>> {
+        let st = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut q = st
+            .conn
+            .prepare(
+                "SELECT seq, op_id, store, scope, device_id, lamport, wall_ms, body, sig
+                 FROM oplog WHERE seq > ?1 ORDER BY seq",
+            )
+            .map_err(|e| sql_fail("export_tagged", e))?;
+        let rows = q
+            .query_map(params![since_seq], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, i64>(5)?,
+                    r.get::<_, i64>(6)?,
+                    r.get::<_, String>(7)?,
+                    r.get::<_, Vec<u8>>(8)?,
+                ))
+            })
+            .map_err(|e| sql_fail("export_tagged", e))?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (seq, op_id, store_name, scope, device_id, lamport, wall_ms, body_txt, sig) =
+                row.map_err(|e| sql_fail("export_tagged", e))?;
+            let body: Value = serde_json::from_str(&body_txt).unwrap_or(Value::Null);
+            out.push((
+                seq,
+                WireOp {
+                    op_id,
+                    store: store_name,
+                    scope,
+                    device_id,
+                    lamport: lamport as u64,
+                    wall_ms,
+                    body,
+                    sig,
+                },
+            ));
+        }
+        Ok(out)
+    }
+
     /// The transport drain: every logged op with seq > `since_seq`,
     /// optionally one store only, in log order.  SYNC02's shipper
     /// tails this per store.

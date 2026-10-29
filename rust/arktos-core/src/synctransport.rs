@@ -193,6 +193,9 @@ pub fn running(data_root: &Path) -> Option<Arc<dyn SyncTransport>> {
 struct LinkBook {
     inbound: std::collections::BTreeSet<u64>,
     outbound: HashMap<String, u64>,
+    /// Highest log seq confirmed sent on each live link — the
+    /// push cursor so established links carry only deltas.
+    sent: HashMap<u64, i64>,
 }
 
 static LINKS: LazyLock<Mutex<HashMap<PathBuf, LinkBook>>> =
@@ -215,6 +218,7 @@ pub fn note_event(data_root: &Path, ev: &TransportEvent) {
         TransportEvent::LinkClosed { link, .. } => {
             book.inbound.remove(link);
             book.outbound.retain(|_, l| l != link);
+            book.sent.remove(link);
         }
         _ => {}
     }
@@ -253,6 +257,25 @@ pub fn drop_link(data_root: &Path, link: u64) {
     if let Some(book) = map.get_mut(data_root) {
         book.inbound.remove(&link);
         book.outbound.retain(|_, l| *l != link);
+        book.sent.remove(&link);
+    }
+}
+
+/// Highest log seq successfully sent on `link` (0 = nothing yet —
+/// a fresh link gets the whole log, which is exactly the catch-up
+/// a newly paired device needs).
+pub fn sent_seq(data_root: &Path, link: u64) -> i64 {
+    links()
+        .get(data_root)
+        .and_then(|b| b.sent.get(&link).copied())
+        .unwrap_or(0)
+}
+
+/// Record `seq` as delivered on `link` after a successful send.
+pub fn mark_sent(data_root: &Path, link: u64, seq: i64) {
+    if let Some(b) = links().get_mut(data_root) {
+        let e = b.sent.entry(link).or_insert(0);
+        *e = (*e).max(seq);
     }
 }
 

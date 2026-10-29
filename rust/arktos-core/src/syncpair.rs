@@ -1187,6 +1187,20 @@ pub(crate) fn claim_event(
     }
 }
 
+/// Whether a live (non-terminal) pair session owns `link` — the
+/// outbound pump must not spray sync frames across a handshake in
+/// progress; the peer would read them as a bad message and close.
+pub(crate) fn link_claimed(data_root: &Path, link: u64) -> bool {
+    sessions().values().any(|s| {
+        s.root == data_root
+            && s.link == Some(link)
+            && !matches!(
+                s.phase,
+                Phase::Done | Phase::Failed | Phase::Cancelled
+            )
+    })
+}
+
 /// Drain the transport and advance every session rooted at
 /// `data_root`; returns the status doc for `pair_id` (or the list
 /// when 0).  Pass-through events on links no session owns ride the

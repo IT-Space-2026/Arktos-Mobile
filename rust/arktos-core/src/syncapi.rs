@@ -643,15 +643,6 @@ pub fn sync_transport_push(data_root: String) -> String {
     };
     let our_id = eng.device_id();
     let nick = format!("member-{}", &our_id[..16.min(our_id.len())]);
-    let ops = match eng.export(None, 0) {
-        Ok(o) => o,
-        Err(e) => return json_err(&e),
-    };
-    let docs: Vec<serde_json::Value> = ops.iter().map(|o| o.to_json()).collect();
-    if docs.is_empty() {
-        return r#"{"ok":true,"sent":0,"note":"oplog empty"}"#.to_string();
-    }
-    let frame = serde_json::json!({"ops": docs}).to_string().into_bytes();
     let members = eng.members_list().unwrap_or_default();
     drop(eng);
     // Open outbound links to member endpoints we have none for.
@@ -665,17 +656,44 @@ pub fn sync_transport_push(data_root: String) -> String {
             crate::synctransport::register_outbound(root, &m.onion_addr, link);
         }
     }
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return json_err(&e),
+    };
     let mut sent = 0usize;
     let mut failed = 0usize;
     for link in crate::synctransport::live_links(root) {
+        // A live pair session owns its link — sync frames sprayed
+        // across a handshake would read as a bad message and kill it.
+        if crate::syncpair::link_claimed(root, link) {
+            continue;
+        }
+        // Per-link cursor: a fresh link gets the whole log
+        // (catch-up), an established one only the delta — the
+        // frame never grows unboundedly with the log.
+        let since = crate::synctransport::sent_seq(root, link);
+        let tagged = match eng.export_tagged(since) {
+            Ok(t) => t,
+            Err(e) => return json_err(&e),
+        };
+        if tagged.is_empty() {
+            continue;
+        }
+        let max_seq = tagged.iter().map(|(s, _)| *s).max().unwrap_or(since);
+        let docs: Vec<serde_json::Value> =
+            tagged.iter().map(|(_, o)| o.to_json()).collect();
+        let frame = serde_json::json!({"ops": docs}).to_string().into_bytes();
         match t.send(link, &frame) {
-            Ok(()) => sent += 1,
+            Ok(()) => {
+                sent += 1;
+                crate::synctransport::mark_sent(root, link, max_seq);
+            }
             Err(_) => {
                 failed += 1;
                 crate::synctransport::drop_link(root, link);
             }
         }
     }
-    serde_json::json!({"ok": true, "sent": sent, "failed": failed, "ops": docs.len()})
+    serde_json::json!({"ok": true, "sent": sent, "failed": failed})
         .to_string()
 }
