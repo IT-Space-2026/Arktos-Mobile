@@ -139,3 +139,16 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - SYNC10 (LAN fast path: synctransport/lan.rs + mdns/devcert) is a
   transport-seam option — port after SYNC08/09 compile.
 - SYNC11 = SYNC-DESIGN.md + e2e legs — docs/verification, port last.
+
+## SYNC08 crypto shim — next pass
+syncpasswords.rs needs the desktop vault layer in store.rs:
+- deps: `aes-gcm` + `argon2` (exact pins from desktop Cargo.toml)
+- port from store.rs lines ~27-500: `derive_key` (argon2
+  m=65536kib t=3 p=4), `seal_with_key`, `open_with_key`
+  (AES-GCM U12 nonce), `Key`, `KDF_SALT_SIZE`, `lock()`
+  (MutexGuard<'static, Store>), `kdf_path`, `unlock`, `kdf_create`
+- `autofill::FormRecord` + `autofill_set`/`autofill_data` on the
+  store shim (syncmeta.rs test harness uses them)
+- then declare `mod syncpasswords; mod syncmeta;` + compile-fix
+- Kotlin: `sync_install` at gecko app start + emission via the
+  adapters' `with()` mutation paths
