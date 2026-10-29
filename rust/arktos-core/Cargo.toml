@@ -40,7 +40,6 @@ aho-corasick = "=1.1.5"
 # libcrypto dependency.
 ring = "=0.17.8"
 base64 = "=0.22.1"
-getrandom = "=0.2.15"
 sha2 = "=0.10.8"
 hmac = "=0.12.1"
 x25519-dalek = { version = "=2.0.1", features = ["static_secrets"] }
@@ -52,8 +51,10 @@ html5gum = "=0.8.4"
 # suggestion responses.
 serde_json = "=1.0.154"
 quick-xml = { version = "=0.42.0", features = ["encoding"] }
+aes-gcm = "=0.10.3"
+zeroize = "=1.8.1"
+getrandom = "=0.2.15"
 # PORT01 — download filename/MIME core: extension↔type mapping for
-# URLUtil.guessFileName / FetchUrlMimeType parity.
 mime_guess = "=2.0.5"
 # PORT01 — readability port replacing readability4j (same crate the
 # desktop core uses).
