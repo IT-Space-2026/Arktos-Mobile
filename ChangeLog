@@ -27,6 +27,25 @@ When you add an entry here, mirror it in the HTML page.
 - The Synchronization screen drives it all: pair/join buttons,
   device list with fingerprints, unpair, password-sync
   enable/unlock/lock and the remote-tabs feed
+- Five pre-release audit rounds hardened the lane:
+  * pairing/drain race — inbound frames now route through
+    pair-session claims first, so a mid-handshake worker tick can
+    no longer eat Noise messages or spray op frames onto a
+    session-owned link
+  * the pair button bound members to a "bookmarks" scope — peers
+    would have rejected every "default"-scoped op
+  * transport is lazy (auto→lan→mem fallback), tears itself down
+    when the last member is unpaired, and holds the Android
+    multicast permission + lock that mDNS needs
+  * outbound push keeps a per-link sequence cursor — established
+    links carry deltas instead of the whole log
+  * pair-session and pending-link maps are bounded; settings emit
+    moved off the main thread onto a serialized executor
+  * sync/ and profiles/ are excluded from cloud + device-transfer
+    backup (the Ed25519 identity key and the materialized vault)
+  * the periodic worker requires network connectivity and fires
+    one immediate round the moment pairing confirms
+
 
 
 
