@@ -40,11 +40,29 @@ class SyncRepository @Inject constructor(
      */
     fun install(dataRoot: String) {
         runCatching { ArktosCore.syncInstall(dataRoot, store) }
-        // Bring the transport up too — "auto" runs the LAN leg plus
-        // the Tor leg, each degrading honestly on its own failure.
+        // The transport stays lazy — Arti + LAN listeners only run
+        // once this device has members to reach (or the user opens
+        // the pairing flow, which calls ensureTransport itself).
+        if (hasMembers(dataRoot)) ensureTransport(dataRoot)
+    }
+
+    private fun hasMembers(dataRoot: String): Boolean = try {
+        org.json.JSONArray(ArktosCore.syncMembers(dataRoot)).length() > 0
+    } catch (e: Exception) { false }
+
+    /**
+     * Bring the transport up with the richest backend the build
+     * carries: "auto" (LAN + Tor) on release gecko, "lan" on debug
+     * (no Arti), "mem" as the loopback floor.  Idempotent — a
+     * running transport is reused, never restarted.
+     */
+    fun ensureTransport(dataRoot: String) {
         runCatching {
-            ArktosCore.syncTransportStart(dataRoot, "auto",
-                android.os.Build.MODEL.ifBlank { "Arktos" })
+            if (ArktosCore.syncTransportRunning(dataRoot)) return
+            val name = android.os.Build.MODEL.ifBlank { "Arktos" }
+            for (backend in listOf("auto", "lan", "mem")) {
+                if (ArktosCore.syncTransportStart(dataRoot, backend, name)) break
+            }
         }
     }
 

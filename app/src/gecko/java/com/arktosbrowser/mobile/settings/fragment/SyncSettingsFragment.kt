@@ -66,6 +66,9 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
         findPreference<androidx.preference.Preference>("pref_sync_pair")
             ?.setOnPreferenceClickListener {
+                // The transport stays lazy until needed — an invite
+                // mints the endpoint a peer dials, so it must be up.
+                syncRepo.ensureTransport(dataRoot)
                 val payload = ArktosCore.syncInviteBegin(dataRoot, "default")
                 showInvite(payload)
                 true
@@ -73,6 +76,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
         findPreference<androidx.preference.Preference>("pref_sync_join")
             ?.setOnPreferenceClickListener {
+                syncRepo.ensureTransport(dataRoot)
                 showJoinEntry()
                 true
             }

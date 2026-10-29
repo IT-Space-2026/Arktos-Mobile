@@ -35,6 +35,13 @@ class SyncWorker(
             // Inbound first — frames the transport caught since the
             // last run become imported ops the appliers consume.
             ArktosCore.syncTransportDrain(root)
+            // Engine-side retry — ops that landed pending before the
+            // appliers registered (or whose apply failed) re-offer
+            // through the registered lanes for every synced store.
+            listOf("bookmarks", "history", "tabs", "settings", "passwords", "syncmeta")
+                .forEach { runCatching { ArktosCore.syncDrainPending(root, it) } }
+            // Kotlin fallback lane for the two stores whose ops the
+            // adapters don't consume natively here.
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
             // Imported logins materialized in the Rust vault reflect
             // into the Kotlin store gecko autofills from.

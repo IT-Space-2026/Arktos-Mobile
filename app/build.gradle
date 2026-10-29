@@ -344,7 +344,9 @@ tasks.register('generateUniffiBindings', Exec) {
 
 // The gecko release pulls the synctor feature (the Arti transport
 // tree); the webview release stays lean — no Arti in Arktos Light.
-[['Debug', rustJniLibsDebug, ''],
+// Debug pulls synclan only — the LAN leg without the Arti tree's
+// compile cost; real device-to-device sync stays testable on wifi.
+[['Debug', rustJniLibsDebug, 'synclan'],
  ['ReleaseGecko', rustJniLibsReleaseGecko, 'synctor,synclan'],
  ['ReleaseWebview', rustJniLibsReleaseWebview, '']].each { type, outDir, feats ->
     tasks.register("cargoNdkBuild${type}", Exec) {
