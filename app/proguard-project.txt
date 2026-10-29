@@ -14,6 +14,11 @@
 -keep public class com.arktosbrowser.mobile.settings.*
 -keep public class com.arktosbrowser.mobile.settings.fragment.*
 -keep public class com.arktosbrowser.mobile.reading.*
+# Sync lane — SyncWorker is loaded reflectively by name from
+# BrowserApp and the gecko sync screens bridge into it.
+-keep public class com.arktosbrowser.mobile.sync.*
+-keep public class com.arktosbrowser.mobile.passwords.*
+-keep public class com.arktosbrowser.mobile.rust.*
 
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
