@@ -35,7 +35,10 @@ class ManifestSecurityTest {
         "android.permission.CAMERA",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "com.android.launcher.permission.INSTALL_SHORTCUT",
-        "android.permission.REQUEST_INSTALL_PACKAGES"
+        "android.permission.REQUEST_INSTALL_PACKAGES",
+        // Sync LAN leg — mDNS discovery needs it (MulticastLock held
+        // by ensureTransport). Keep in sync with the lint allowlist.
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
     )
 
     private val componentTags = listOf(
