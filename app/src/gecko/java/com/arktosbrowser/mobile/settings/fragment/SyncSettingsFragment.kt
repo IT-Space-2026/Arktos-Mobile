@@ -66,7 +66,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
         findPreference<androidx.preference.Preference>("pref_sync_pair")
             ?.setOnPreferenceClickListener {
-                val payload = ArktosCore.syncInviteBegin(dataRoot, "bookmarks")
+                val payload = ArktosCore.syncInviteBegin(dataRoot, "default")
                 showInvite(payload)
                 true
             }
@@ -74,6 +74,20 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         findPreference<androidx.preference.Preference>("pref_sync_join")
             ?.setOnPreferenceClickListener {
                 showJoinEntry()
+                true
+            }
+
+        findPreference<androidx.preference.Preference>("pref_sync_passwords")?.apply {
+            summary = passwordsSummary()
+            setOnPreferenceClickListener {
+                showPasswordsDialog()
+                true
+            }
+        }
+
+        findPreference<androidx.preference.Preference>("pref_sync_remote_tabs")
+            ?.setOnPreferenceClickListener {
+                showRemoteTabs()
                 true
             }
     }
@@ -187,6 +201,113 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /** Vault state line — off / locked / unlocked from the status doc. */
+    private fun passwordsSummary(): String {
+        return try {
+            val st = JSONObject(ArktosCore.syncPasswordsStatus(dataRoot, "default"))
+            when {
+                st.optBoolean("unlocked") -> getString(R.string.sync_passwords_unlocked)
+                st.optBoolean("enabled_ever") -> getString(R.string.sync_passwords_locked)
+                else -> getString(R.string.sync_passwords_off)
+            }
+        } catch (e: Exception) {
+            getString(R.string.sync_passwords_off)
+        }
+    }
+
+    /**
+     * Enable doubles as unlock — the passphrase re-derives the vault
+     * key and verifies it against the group's verifier op.  When
+     * already unlocked the dialog offers the lock action instead.
+     */
+    private fun showPasswordsDialog() {
+        val unlocked = try {
+            JSONObject(ArktosCore.syncPasswordsStatus(dataRoot, "default")).optBoolean("unlocked")
+        } catch (e: Exception) { false }
+
+        if (unlocked) {
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.sync_passwords_title)
+                .setMessage(R.string.sync_passwords_unlocked)
+                .setPositiveButton(R.string.sync_passwords_lock_action) { _, _ ->
+                    val r = ArktosCore.syncPasswordsLock(dataRoot, "default")
+                    toastResult(r)
+                    refreshPasswordsSummary()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            return
+        }
+
+        val input = android.widget.EditText(requireContext()).apply {
+            hint = getString(R.string.sync_passwords_passphrase_hint)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.sync_passwords_enable_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val pass = input.text.toString()
+                if (pass.isNotEmpty()) {
+                    val r = ArktosCore.syncPasswordsEnable(dataRoot, "default", pass)
+                    toastResult(r)
+                    refreshPasswordsSummary()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun refreshPasswordsSummary() {
+        findPreference<androidx.preference.Preference>("pref_sync_passwords")?.summary =
+            passwordsSummary()
+    }
+
+    /**
+     * Remote tabs — the read-only presence feed: each peer device's
+     * windows with their open tabs.
+     */
+    private fun showRemoteTabs() {
+        val lines = try {
+            val doc = JSONObject(ArktosCore.syncTabPeers(dataRoot, "default"))
+            val peers = doc.optJSONArray("peers") ?: org.json.JSONArray()
+            buildList {
+                for (i in 0 until peers.length()) {
+                    val p = peers.getJSONObject(i)
+                    add("— ${p.optString("device_id", "?")} —")
+                    val windows = p.optJSONArray("windows") ?: continue
+                    for (w in 0 until windows.length()) {
+                        val tabs = windows.getJSONObject(w).optJSONArray("tabs") ?: continue
+                        for (t in 0 until tabs.length()) {
+                            val tab = tabs.getJSONObject(t)
+                            val title = tab.optString("title", "")
+                            val url = tab.optString("url", "")
+                            add(if (title.isNotEmpty()) "$title\n$url" else url)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) { emptyList() }
+
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.sync_remote_tabs_title)
+            .setMessage(
+                if (lines.isEmpty()) getString(R.string.sync_remote_tabs_none)
+                else lines.joinToString("\n")
+            )
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun toastResult(json: String) {
+        val msg = try {
+            val o = JSONObject(json)
+            if (o.has("error")) o.getString("error") else getString(R.string.action_ok)
+        } catch (e: Exception) { json }
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
     }
 
     private fun membersSummary(): String {

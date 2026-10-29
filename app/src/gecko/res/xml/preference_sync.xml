@@ -27,4 +27,13 @@
             android:key="pref_sync_join" />
     </androidx.preference.PreferenceCategory>
 
+    <androidx.preference.PreferenceCategory android:title="@string/sync_data_title">
+        <androidx.preference.Preference
+            android:title="@string/sync_passwords_title"
+            android:key="pref_sync_passwords" />
+        <androidx.preference.Preference
+            android:title="@string/sync_remote_tabs_title"
+            android:key="pref_sync_remote_tabs" />
+    </androidx.preference.PreferenceCategory>
+
 </androidx.preference.PreferenceScreen>

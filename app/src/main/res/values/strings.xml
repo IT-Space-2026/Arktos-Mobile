@@ -90,6 +90,16 @@
     <string name="sync_unpair">Unpair device</string>
     <string name="sync_unpaired">Device unpaired</string>
     <string name="sync_coming_soon">Pairing and store sync are staged milestones — this screen is the foundation.</string>
+    <string name="sync_data_title">Synced data</string>
+    <string name="sync_passwords_title">Password sync</string>
+    <string name="sync_passwords_off">Off — enable with a passphrase</string>
+    <string name="sync_passwords_unlocked">Unlocked — logins sync encrypted with the group</string>
+    <string name="sync_passwords_locked">Locked — unlock with your passphrase</string>
+    <string name="sync_passwords_enable_title">Enable password sync</string>
+    <string name="sync_passwords_passphrase_hint">Passphrase</string>
+    <string name="sync_passwords_lock_action">Lock vault</string>
+    <string name="sync_remote_tabs_title">Remote tabs</string>
+    <string name="sync_remote_tabs_none">No tabs reported by other devices</string>
     <string name="share_crash_summary">Send the most recent crash report</string>
     <string name="no_crash_log">No crash reports on file</string>
     <string name="update_checking">Checking…</string>
