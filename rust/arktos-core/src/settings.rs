@@ -62,14 +62,40 @@ impl RcSettings {
     /// Open the single-profile settings store — profile_id is kept
     /// on the handle for the adapter's scope bookkeeping only.
     pub fn open(data_root: &str, profile_id: Option<&str>) -> RcResult<RcSettings> {
-        let file = crate::facade::profile_dir(
-                Path::new(data_root),
-                profile_id.unwrap_or("default"),
-            ).join("settings.json");
+        let file = match profile_id {
+            Some(p) => crate::facade::profile_dir(Path::new(data_root), p)
+                .join("settings.json"),
+            None => Path::new(data_root).join("settings.json"),
+        };
         if let Some(d) = file.parent() { let _ = std::fs::create_dir_all(d); }
+        // First-open legacy merge: a settings.ini beside the json
+        // fills absent keys only — bulk fill never emits; the next
+        // advertise offers the imported values.
+        let mut vals = load(&file);
+        if let Some(ini) = file.parent().map(|d| d.join("settings.ini")) {
+            if let Ok(raw) = std::fs::read_to_string(&ini) {
+                let mut section = String::new();
+                for line in raw.lines() {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with([';', '#']) { continue; }
+                    if line.starts_with('[') && line.ends_with(']') {
+                        section = line.trim_matches(['[', ']']).to_string();
+                        continue;
+                    }
+                    if let Some((k, v)) = line.split_once('=') {
+                        let (mut k, v) = (k.trim().to_string(), v.trim().trim_matches('"'));
+                        if !section.is_empty() { k = format!("{section}/{k}"); }
+                        if check_key(&k).is_ok() && !vals.contains_key(&k) {
+                            vals.insert(k, Value::Str(v.to_string()));
+                        }
+                    }
+                }
+                let _ = save(&file, &vals);
+            }
+        }
         Ok(RcSettings {
             state: Mutex::new(State {
-                values: load(&file), file,
+                values: vals, file,
                 scope: profile_id.map(|p| Scope::Profile(p.to_string()))
                     .unwrap_or(Scope::Global),
             }),
@@ -96,7 +122,11 @@ impl RcSettings {
             (st.file.clone(), st.values.clone())
         };
         save(&file, &vals)?;
-        crate::syncsettings::emit_local(&file, key, &[], Some(&value));
+        let rules = match vals.get("sync/localExclude") {
+            Some(Value::List(l)) => l.clone(),
+            _ => Vec::new(),
+        };
+        crate::syncsettings::emit_local(&file, key, &rules, Some(&value));
         Ok(())
     }
 
@@ -117,11 +147,24 @@ impl RcSettings {
             st.values.remove(key);
             (st.file.clone(), st.values.clone())
         };
-        save(&file, &vals)
+        save(&file, &vals)?;
+        let rules = match vals.get("sync/localExclude") {
+            Some(Value::List(l)) => l.clone(),
+            _ => Vec::new(),
+        };
+        crate::syncsettings::emit_local(&file, key, &rules, None);
+        Ok(())
     }
 
+    /// Merge-side delete — persists without emitting (no echo).
     pub(crate) fn remove_applied(&self, key: &str) -> RcResult<bool> {
-        self.remove(key).map(|_| true)
+        let (file, vals, _had) = {
+            let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
+            let had = st.values.remove(key).is_some();
+            (st.file.clone(), st.values.clone(), had)
+        };
+        save(&file, &vals)?;
+        Ok(true)
     }
 
     /// Every key under an optional prefix — advertise enumerates it.
@@ -130,6 +173,24 @@ impl RcSettings {
         Ok(st.values.keys()
             .filter(|k| prefix.map(|p| k.starts_with(p)).unwrap_or(true))
             .cloned().collect())
+    }
+
+    /// Import a legacy settings.ini — each `key=value` line lands
+    /// via `set` so the sync adapter advertises the imported value.
+    pub fn import_ini(&self, path: &str) -> RcResult<()> {
+        let raw = std::fs::read_to_string(path).map_err(|e| Fail {
+            status: RcStatus::Io, msg: format!("read {path}: {e}") })?;
+        for line in raw.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with(['[', ';', '#']) { continue; }
+            if let Some((k, v)) = line.split_once('=') {
+                let (k, v) = (k.trim(), v.trim().trim_matches('"'));
+                if check_key(k).is_ok() {
+                    let _ = self.set(k, Value::Str(v.to_string()));
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn sync(&self) -> RcResult<()> {

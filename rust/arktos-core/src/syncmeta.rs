@@ -62,7 +62,7 @@ use std::sync::Arc;
 
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256, Sha512};
-use tor_llcrypto::pk::curve25519::{PublicKey, StaticSecret};
+use x25519_dalek::{PublicKey, StaticSecret};
 
 use crate::error::{fail, Fail, RcResult, RcStatus};
 use crate::notify;

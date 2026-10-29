@@ -152,6 +152,7 @@ dependencies = [
  "argon2",
  "arti-client",
  "base64 0.22.1",
+ "curve25519-dalek",
  "dom_smoothie",
  "futures",
  "getrandom 0.2.15",

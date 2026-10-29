@@ -121,3 +121,89 @@ pub fn open_with_key(key: &[u8; KEY_SIZE], blob: &[u8]) -> RcResult<Vec<u8>> {
             msg: "sealed blob failed authentication".into(),
         })
 }
+
+// ── Store facade the syncpasswords adapter drives ───────────────
+use std::sync::{Mutex, MutexGuard};
+
+/// The desktop `Store` facade, minimal: data-dir binding plus the
+/// autofill.vault file the SYNC08 adapter reads/writes through.
+pub struct Store {
+    data_dir: std::path::PathBuf,
+    pub(crate) key: Option<Key>,
+}
+
+static STORE: std::sync::LazyLock<Mutex<Store>> = std::sync::LazyLock::new(|| {
+    Mutex::new(Store { data_dir: std::path::PathBuf::new(), key: None })
+});
+
+pub fn lock() -> MutexGuard<'static, Store> {
+    STORE.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+#[derive(Default)]
+pub struct AutofillData {
+    pub forms: Vec<crate::autofill::FormRecord>,
+}
+
+impl Store {
+    /// Bind the store to a data dir — the vault file lives at
+    /// <dir>/autofill.vault (JSON rows; the remote ciphertext
+    /// travels in ops, not this file).
+    pub fn set_data_dir(&mut self, dir: &str) -> RcResult<()> {
+        self.data_dir = std::path::PathBuf::from(dir);
+        Ok(())
+    }
+
+    fn vault_path(&self) -> std::path::PathBuf {
+        self.data_dir.join("autofill.vault")
+    }
+
+    /// Every saved form — the adapter's merge input.
+    pub fn autofill_data(&self) -> RcResult<AutofillData> {
+        let p = self.vault_path();
+        let Ok(raw) = std::fs::read_to_string(&p) else {
+            return Ok(AutofillData::default());
+        };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) else {
+            return Ok(AutofillData::default());
+        };
+        let mut forms = Vec::new();
+        for f in v.get("forms").and_then(|x| x.as_array()).cloned().unwrap_or_default() {
+            forms.push(crate::autofill::FormRecord {
+                url: f.get("url").and_then(|x| x.as_str()).unwrap_or("").into(),
+                name: f.get("name").and_then(|x| x.as_str()).unwrap_or("").into(),
+                has_password: f.get("has_password").and_then(|x| x.as_bool()).unwrap_or(false),
+                elements: f.get("elements").and_then(|x| x.as_array()).map(|a| {
+                    a.iter().filter_map(|e| {
+                        Some((e.get(0)?.as_str()?.to_string(), e.get(1)?.as_str()?.to_string()))
+                    }).collect()
+                }).unwrap_or_default(),
+            });
+        }
+        Ok(AutofillData { forms })
+    }
+
+    /// Local write — persists then lets the sync adapter emit.
+    pub fn autofill_set(&mut self, forms: Vec<crate::autofill::FormRecord>) -> RcResult<()> {
+        self.write_vault(&forms)?;
+        crate::syncpasswords::emit_after(&self.data_dir, &forms);
+        Ok(())
+    }
+
+    /// Merge-side write — persists without emitting (no echo).
+    pub(crate) fn autofill_set_applied(&mut self, forms: Vec<crate::autofill::FormRecord>) -> RcResult<bool> {
+        self.write_vault(&forms)?;
+        Ok(true)
+    }
+
+    fn write_vault(&self, forms: &[crate::autofill::FormRecord]) -> RcResult<()> {
+        if let Some(d) = self.vault_path().parent() { let _ = std::fs::create_dir_all(d); }
+        let arr: Vec<serde_json::Value> = forms.iter().map(|f| serde_json::json!({
+            "url": f.url, "name": f.name, "has_password": f.has_password,
+            "elements": f.elements,
+        })).collect();
+        atomic_write(&self.vault_path(),
+            serde_json::to_string_pretty(&serde_json::json!({"forms": arr}))
+                .unwrap_or_default().as_bytes())
+    }
+}

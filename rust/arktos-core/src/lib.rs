@@ -8,6 +8,7 @@
 //! `core_version`/`core_ping` exist to prove the JNI seam end-to-end
 //! from Gradle build to Kotlin call.
 
+mod autofill;
 mod blocklist;
 mod bookmarkhtml;
 mod bookmarks;
@@ -22,6 +23,8 @@ mod store;
 mod sync;
 mod syncapi;
 mod syncpair;
+mod syncpasswords;
+mod syncmeta;
 mod syncbookmarks;
 mod synchistory;
 mod syncsettings;
