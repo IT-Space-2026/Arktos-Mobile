@@ -420,22 +420,36 @@ pub fn sync_tab_peers(data_root: String, scope: String) -> String {
     }
 }
 
-/// Inbound dispatch: drain the running transport's event queue and
-/// feed Frame payloads — serialized WireOp batches — into the
-/// engine's import lane so the registered appliers run them.
+/// Inbound dispatch: drain the running transport's event queue,
+/// feed Frame payloads — `{"ops":[...]}` batches — into the
+/// engine's import lane so the registered appliers run them, and
+/// keep the live-link book current for the outbound pump.
 #[uniffi::export]
 pub fn sync_transport_drain(data_root: String) -> String {
-    let Some(t) = crate::synctransport::running(std::path::Path::new(&data_root)) else {
+    let root = Path::new(&data_root);
+    let Some(t) = crate::synctransport::running(root) else {
         return r#"{"ok":true,"drained":0,"note":"no transport running"}"#.to_string();
     };
     let mut frames = 0usize;
     let mut imported = 0u32;
     for ev in t.poll() {
+        crate::synctransport::note_event(root, &ev);
         if let crate::synctransport::TransportEvent::Frame { payload, .. } = ev {
             frames += 1;
-            if let Ok(eng) = crate::sync::SyncEngine::open(&data_root) {
+            if let Ok(eng) = try_engine(&data_root) {
+                let eng = eng.lock().unwrap_or_else(|x| x.into_inner());
+                // Wire shape is {"ops":[...]}; a bare op array is
+                // accepted too so mem-loopback tests stay readable.
                 let docs: Vec<serde_json::Value> =
-                    serde_json::from_slice(&payload).unwrap_or_default();
+                    match serde_json::from_slice::<serde_json::Value>(&payload) {
+                        Ok(v) => v
+                            .get("ops")
+                            .and_then(|o| o.as_array())
+                            .cloned()
+                            .or_else(|| v.as_array().cloned())
+                            .unwrap_or_default(),
+                        Err(_) => Vec::new(),
+                    };
                 if !docs.is_empty() {
                     if let Ok(rep) = eng.import(&docs) {
                         imported += rep.applied;
@@ -445,4 +459,58 @@ pub fn sync_transport_drain(data_root: String) -> String {
         }
     }
     serde_json::json!({"ok": true, "frames": frames, "applied": imported}).to_string()
+}
+
+/// Outbound dispatch: export the op-log into one `{"ops":[...]}`
+/// frame and fan it out to every live link — opening an outbound
+/// link to each member endpoint that lacks one.  The export
+/// cursor stays stateless (since_seq 0): content-addressed dedup
+/// makes resends free, so a full snapshot per push is correct.
+#[uniffi::export]
+pub fn sync_transport_push(data_root: String) -> String {
+    let root = Path::new(&data_root);
+    let Some(t) = crate::synctransport::running(root) else {
+        return r#"{"ok":true,"sent":0,"note":"no transport running"}"#.to_string();
+    };
+    let eng = match try_engine(&data_root) {
+        Ok(e) => e.lock().unwrap_or_else(|x| x.into_inner()),
+        Err(e) => return fail_json(&e),
+    };
+    let our_id = eng.device_id();
+    let nick = format!("member-{}", &our_id[..16.min(our_id.len())]);
+    let ops = match eng.export(None, 0) {
+        Ok(o) => o,
+        Err(e) => return fail_json(&e),
+    };
+    let docs: Vec<serde_json::Value> = ops.iter().map(|o| o.to_json()).collect();
+    if docs.is_empty() {
+        return r#"{"ok":true,"sent":0,"note":"oplog empty"}"#.to_string();
+    }
+    let frame = serde_json::json!({"ops": docs}).to_string().into_bytes();
+    let members = eng.members_list().unwrap_or_default();
+    drop(eng);
+    // Open outbound links to member endpoints we have none for.
+    for m in &members {
+        if m.onion_addr.is_empty()
+            || crate::synctransport::outbound_link(root, &m.onion_addr).is_some()
+        {
+            continue;
+        }
+        if let Ok(link) = t.connect(&m.onion_addr, &nick) {
+            crate::synctransport::register_outbound(root, &m.onion_addr, link);
+        }
+    }
+    let mut sent = 0usize;
+    let mut failed = 0usize;
+    for link in crate::synctransport::live_links(root) {
+        match t.send(link, &frame) {
+            Ok(()) => sent += 1,
+            Err(_) => {
+                failed += 1;
+                crate::synctransport::drop_link(root, link);
+            }
+        }
+    }
+    serde_json::json!({"ok": true, "sent": sent, "failed": failed, "ops": docs.len()})
+        .to_string()
 }

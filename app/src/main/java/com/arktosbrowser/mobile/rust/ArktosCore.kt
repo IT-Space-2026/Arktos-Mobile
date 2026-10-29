@@ -524,6 +524,10 @@ object ArktosCore {
     fun syncTransportDrain(dataRoot: String): String =
         com.arktosbrowser.mobile.uniffi.syncTransportDrain(dataRoot)
 
+    /** Outbound dispatch: export the op-log and fan it out to live links. */
+    fun syncTransportPush(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncTransportPush(dataRoot)
+
     fun syncMemberAdd(dataRoot: String, pubkeyB64: String, onion: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncMemberAdd(dataRoot, pubkeyB64, onion, scope)
 

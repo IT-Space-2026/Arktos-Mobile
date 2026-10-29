@@ -36,6 +36,9 @@ class SyncWorker(
             // last run become imported ops the appliers consume.
             ArktosCore.syncTransportDrain(root)
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
+            // Outbound — the exported op-log rides one frame to every
+            // live link (member endpoints get dialed on demand).
+            ArktosCore.syncTransportPush(root)
             Result.success()
         } catch (e: Exception) {
             Result.retry()

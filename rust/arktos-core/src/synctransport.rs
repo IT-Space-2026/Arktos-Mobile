@@ -184,6 +184,78 @@ pub fn running(data_root: &Path) -> Option<Arc<dyn SyncTransport>> {
     transports().get(data_root).cloned()
 }
 
+/// Live-link bookkeeping the inbound drain and the outbound pump
+/// share: drained events move links in (Incoming) and out
+/// (LinkClosed); outbound links are keyed by the endpoint we
+/// dialed.  The book is advisory — a send on a dead link fails
+/// loudly and the entry drops.
+#[derive(Default)]
+struct LinkBook {
+    inbound: std::collections::BTreeSet<u64>,
+    outbound: HashMap<String, u64>,
+}
+
+static LINKS: LazyLock<Mutex<HashMap<PathBuf, LinkBook>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn links() -> std::sync::MutexGuard<'static, HashMap<PathBuf, LinkBook>> {
+    LINKS.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Fold one drained event into the link book — every `poll()`
+/// consumer should route its events through here so the outbound
+/// pump always sees the live-link set.
+pub fn note_event(data_root: &Path, ev: &TransportEvent) {
+    let mut map = links();
+    let book = map.entry(data_root.to_path_buf()).or_default();
+    match ev {
+        TransportEvent::Incoming { link, .. } => {
+            book.inbound.insert(*link);
+        }
+        TransportEvent::LinkClosed { link, .. } => {
+            book.inbound.remove(link);
+            book.outbound.retain(|_, l| l != link);
+        }
+        _ => {}
+    }
+}
+
+/// Every live link id — inbound + outbound, deduplicated.
+pub fn live_links(data_root: &Path) -> Vec<u64> {
+    let map = links();
+    let Some(book) = map.get(data_root) else {
+        return Vec::new();
+    };
+    book.inbound
+        .iter()
+        .chain(book.outbound.values())
+        .copied()
+        .collect()
+}
+
+/// The outbound link we opened to `endpoint`, if still recorded.
+pub fn outbound_link(data_root: &Path, endpoint: &str) -> Option<u64> {
+    links().get(data_root)?.outbound.get(endpoint).copied()
+}
+
+/// Record the link `connect` returned for `endpoint`.
+pub fn register_outbound(data_root: &Path, endpoint: &str, link: u64) {
+    links()
+        .entry(data_root.to_path_buf())
+        .or_default()
+        .outbound
+        .insert(endpoint.to_string(), link);
+}
+
+/// Drop a link the transport reported dead (send/close failure).
+pub fn drop_link(data_root: &Path, link: u64) {
+    let mut map = links();
+    if let Some(book) = map.get_mut(data_root) {
+        book.inbound.remove(&link);
+        book.outbound.retain(|_, l| *l != link);
+    }
+}
+
 /// Start backend `backend` ("tor" / "mem" / "lan" / "auto") under `data_root`.
 /// Re-starting while one runs is idempotent — the live transport is
 /// returned, never a second instance racing the same state dir.
@@ -360,6 +432,7 @@ pub fn deauthorize_grant(data_root: &Path, nickname: &str) -> RcResult<bool> {
 pub fn stop(data_root: &Path) -> bool {
     if let Some(t) = transports().remove(data_root) {
         t.stop();
+        links().remove(data_root);
         true
     } else {
         false
