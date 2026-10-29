@@ -513,7 +513,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             if (userPreferences.restoreLostTabsEnabled) {
                 var editor = mPrefs.edit()
                 editor.putBoolean("shouldRestoreTabs", true)
-                editor.commit()
+                editor.apply()
                 userPreferences.restoreLostTabsEnabled = false
             }
         } else if (shouldRestoreTabs && userPreferences.restoreLostTabsEnabled == false && !userPreferences.incognito) {

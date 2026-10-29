@@ -3,7 +3,7 @@
 //! keeping the outbox semantics the sync adapter drains.
 
 use crate::error::{Fail, RcResult, RcStatus};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
 #[derive(Clone, Debug)]
@@ -196,7 +196,7 @@ impl HistoryStore {
 
     /// Merge-side title update — rewrites the title on the matching
     /// (url, ts) visit; true when something changed.
-    pub(crate) fn apply_title(&mut self, url: &str, title: &str, visited_at: i64) -> RcResult<bool> {
+    pub(crate) fn apply_title(&mut self, url: &str, title: &str, _visited_at: i64) -> RcResult<bool> {
         if has_store() {
             store()?.visit_history_entry(url.to_string(), Some(title.to_string()))
                 .map_err(|e| bad(format!("{e:?}")))?;
