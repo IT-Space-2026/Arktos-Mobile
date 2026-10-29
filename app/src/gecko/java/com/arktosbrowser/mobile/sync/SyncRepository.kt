@@ -40,6 +40,12 @@ class SyncRepository @Inject constructor(
      */
     fun install(dataRoot: String) {
         runCatching { ArktosCore.syncInstall(dataRoot, store) }
+        // Bring the transport up too — "auto" runs the LAN leg plus
+        // the Tor leg, each degrading honestly on its own failure.
+        runCatching {
+            ArktosCore.syncTransportStart(dataRoot, "auto",
+                android.os.Build.MODEL.ifBlank { "Arktos" })
+        }
     }
 
     fun drainPending(dataRoot: String, storeName: String): Int {

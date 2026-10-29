@@ -1580,7 +1580,7 @@ fn json_quote(s: &str, out: &mut String) {
 }
 
 #[cfg(test)]
-mod tests {
+mod legacy_tests {
     use super::*;
 
     const TWO: &str = "{\"url\":\"https://a.com\",\"title\":\"A\",\"folder\":\"Docs\",\"order\":0}\n\

@@ -496,6 +496,30 @@ object ArktosCore {
     fun syncTabsLocal(dataRoot: String, tabsJson: String): String =
         com.arktosbrowser.mobile.uniffi.syncTabsLocal(dataRoot, tabsJson)
 
+    /** Paired-device list for the scope. */
+    fun syncDevices(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncDevices(dataRoot, scope)
+
+    /** Revoke a paired device — cuts membership and rotates the group key. */
+    fun syncDeviceRevoke(dataRoot: String, scope: String, deviceId: String): String =
+        com.arktosbrowser.mobile.uniffi.syncDeviceRevoke(dataRoot, scope, deviceId)
+
+    /** Opt the scope into encrypted password sync. */
+    fun syncPasswordsEnable(dataRoot: String, scope: String, passphrase: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordsEnable(dataRoot, scope, passphrase)
+
+    /** Lock the scope's password vault. */
+    fun syncPasswordsLock(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordsLock(dataRoot, scope)
+
+    /** Vault state for the scope. */
+    fun syncPasswordsStatus(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordsStatus(dataRoot, scope)
+
+    /** Peer devices' open-tabs docs — the read-only remote tabs feed. */
+    fun syncTabPeers(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncTabPeers(dataRoot, scope)
+
     fun syncMemberAdd(dataRoot: String, pubkeyB64: String, onion: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncMemberAdd(dataRoot, pubkeyB64, onion, scope)
 

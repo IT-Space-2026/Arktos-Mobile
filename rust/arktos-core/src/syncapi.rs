@@ -361,3 +361,61 @@ pub fn sync_tabs_local(data_root: String, tabs_json: String) -> String {
         Err(e) => json_err(&e),
     }
 }
+
+/// Paired-device list for a scope — the syncmeta adapter's view.
+#[uniffi::export]
+pub fn sync_devices(data_root: String, scope: String) -> String {
+    match crate::syncmeta::devices(&data_root, &scope) {
+        Ok(v) => v.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Revoke a paired device — drops membership, rotates the group
+/// key so its buffered ops stop decrypting.
+#[uniffi::export]
+pub fn sync_device_revoke(data_root: String, scope: String, device_id: String) -> String {
+    match crate::syncmeta::revoke(&data_root, &scope, &device_id) {
+        Ok(v) => v.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Opt the scope into encrypted password sync — the group's shared
+/// secret gets re-wrapped under the passphrase.
+#[uniffi::export]
+pub fn sync_passwords_enable(data_root: String, scope: String, passphrase: String) -> String {
+    match crate::syncpasswords::enable(&data_root, &scope, passphrase.as_bytes()) {
+        Ok(v) => v.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Lock the scope's vault — ciphertext stays in the log, nothing
+/// decrypts locally until the next enable/unlock.
+#[uniffi::export]
+pub fn sync_passwords_lock(data_root: String, scope: String) -> String {
+    match crate::syncpasswords::lock(&data_root, &scope) {
+        Ok(v) => v.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Vault state for the scope — enabled/locked, entry counts.
+#[uniffi::export]
+pub fn sync_passwords_status(data_root: String, scope: String) -> String {
+    match crate::syncpasswords::status(&data_root, &scope) {
+        Ok(v) => v.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// The peer devices' tab presence docs — the read-only "tabs on my
+/// other devices" feed.
+#[uniffi::export]
+pub fn sync_tab_peers(data_root: String, scope: String) -> String {
+    match crate::synctabs::peers(&data_root, &scope) {
+        Ok(v) => serde_json::json!({"ok": true, "peers": v}).to_string(),
+        Err(e) => json_err(&e),
+    }
+}

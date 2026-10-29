@@ -148,19 +148,21 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     }
 
     /**
-     * MSYNC08 — device management: list each paired device with its
-     * fingerprint and an unpair action backed by syncMemberRemove.
+     * Device management — the syncmeta adapter's per-scope view;
+     * unpair goes through the real revoke op (membership cut +
+     * group-key rotation, matching the desktop's semantics).
      */
     private fun showDeviceManager() {
         val devices = try {
-            val arr = org.json.JSONArray(ArktosCore.syncMembers(dataRoot))
+            val doc = org.json.JSONObject(ArktosCore.syncDevices(dataRoot, "default"))
+            val arr = doc.optJSONArray("devices") ?: org.json.JSONArray()
             (0 until arr.length()).map { arr.getJSONObject(it) }
         } catch (e: Exception) { emptyList() }
         if (devices.isEmpty()) {
             Toast.makeText(requireContext(), getString(R.string.sync_no_devices), Toast.LENGTH_SHORT).show()
             return
         }
-        val names = devices.map { it.optString("id", "?") }.toTypedArray()
+        val names = devices.map { it.optString("device_id", "?") }.toTypedArray()
         android.app.AlertDialog.Builder(requireContext())
             .setTitle(R.string.sync_paired_devices)
             .setItems(names) { _, which ->
@@ -172,15 +174,13 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun showDeviceDetail(dev: JSONObject) {
-        val id = dev.optString("id", "?")
-        val fp = try {
-            JSONObject(ArktosCore.syncFingerprint(dev.optString("pubkey", ""))).toString()
-        } catch (e: Exception) { dev.optString("pubkey", "") }
+        val id = dev.optString("device_id", "?")
+        val fp = dev.optString("fingerprint", "?")
         android.app.AlertDialog.Builder(requireContext())
             .setTitle(id)
             .setMessage("${getString(R.string.sync_device_fingerprint)}:\n$fp")
             .setPositiveButton(R.string.sync_unpair) { _, _ ->
-                ArktosCore.syncMemberRemove(dataRoot, id)
+                ArktosCore.syncDeviceRevoke(dataRoot, "default", id)
                 Toast.makeText(requireContext(), getString(R.string.sync_unpaired), Toast.LENGTH_SHORT).show()
                 findPreference<androidx.preference.Preference>("pref_sync_device_list")?.summary =
                     membersSummary()
@@ -191,10 +191,11 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
     private fun membersSummary(): String {
         return try {
-            val arr = org.json.JSONArray(ArktosCore.syncMembers(dataRoot))
+            val doc = org.json.JSONObject(ArktosCore.syncDevices(dataRoot, "default"))
+            val arr = doc.optJSONArray("devices") ?: org.json.JSONArray()
             if (arr.length() == 0) getString(R.string.sync_no_devices)
             else (0 until arr.length()).joinToString("\n") {
-                arr.getJSONObject(it).optString("id", "?")
+                arr.getJSONObject(it).optString("device_id", "?")
             }
         } catch (e: Exception) {
             getString(R.string.sync_no_devices)
