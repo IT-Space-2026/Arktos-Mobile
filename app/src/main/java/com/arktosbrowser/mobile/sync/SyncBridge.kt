@@ -20,4 +20,25 @@ object SyncBridge {
         if (!BuildConfig.IS_GECKO) return
         runCatching { ArktosCore.syncAppend(dataRoot, storeName, "", bodyJson) }
     }
+
+    /**
+     * A local bookmark mutation — routes through the real adapter's
+     * emit path so the op body matches the desktop's wire format.
+     */
+    fun bookmark(dataRoot: String, op: String, url: String, title: String, folder: String) {
+        if (!BuildConfig.IS_GECKO) return
+        runCatching { ArktosCore.syncBookmarkLocal(dataRoot, op, url, title, folder) }
+    }
+
+    /** A local history mutation — same adapter emit path. */
+    fun history(dataRoot: String, op: String, url: String, title: String) {
+        if (!BuildConfig.IS_GECKO) return
+        runCatching { ArktosCore.syncHistoryLocal(dataRoot, op, url, title) }
+    }
+
+    /** Publish the open-tabs presence document — gecko only. */
+    fun tabs(dataRoot: String, tabsJson: String) {
+        if (!BuildConfig.IS_GECKO) return
+        runCatching { ArktosCore.syncTabsLocal(dataRoot, tabsJson) }
+    }
 }

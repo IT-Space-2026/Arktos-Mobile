@@ -479,6 +479,23 @@ object ArktosCore {
     fun syncStats(dataRoot: String): String =
         com.arktosbrowser.mobile.uniffi.syncStats(dataRoot)
 
+    /** One-shot adapter bring-up — installs the shared store and
+     * registers every adapter's apply lane (gecko only). */
+    fun syncInstall(dataRoot: String, store: ArktosStore): String =
+        com.arktosbrowser.mobile.uniffi.syncInstall(dataRoot, store)
+
+    /** Local bookmark mutation through the real adapter emit path. */
+    fun syncBookmarkLocal(dataRoot: String, op: String, url: String, title: String, folder: String): String =
+        com.arktosbrowser.mobile.uniffi.syncBookmarkLocal(dataRoot, op, url, title, folder)
+
+    /** Local history mutation through the real adapter emit path. */
+    fun syncHistoryLocal(dataRoot: String, op: String, url: String, title: String): String =
+        com.arktosbrowser.mobile.uniffi.syncHistoryLocal(dataRoot, op, url, title)
+
+    /** Publish the open-tabs presence document. */
+    fun syncTabsLocal(dataRoot: String, tabsJson: String): String =
+        com.arktosbrowser.mobile.uniffi.syncTabsLocal(dataRoot, tabsJson)
+
     fun syncMemberAdd(dataRoot: String, pubkeyB64: String, onion: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncMemberAdd(dataRoot, pubkeyB64, onion, scope)
 

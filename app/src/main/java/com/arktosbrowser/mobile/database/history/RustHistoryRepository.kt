@@ -21,24 +21,24 @@ class RustHistoryRepository @Inject constructor(
 
     private val dataRoot = application.filesDir.absolutePath
 
-    private fun syncAppend(bodyJson: String) {
-        com.arktosbrowser.mobile.sync.SyncBridge.append(dataRoot, "history", bodyJson)
+    private fun syncAppend(op: String, url: String = "", title: String = "") {
+        com.arktosbrowser.mobile.sync.SyncBridge.history(dataRoot, op, url, title)
     }
 
     override fun deleteHistory(): Completable = Completable.fromAction {
         store.deleteHistory()
     }
-        .doOnComplete { syncAppend("""{"clear":{}}""") }
+        .doOnComplete { syncAppend("clear") }
 
     override fun deleteHistoryEntry(url: String): Completable = Completable.fromAction {
         store.deleteHistoryEntry(url)
     }
-        .doOnComplete { syncAppend("""{"remove":{"url":"$url"}}""") }
+        .doOnComplete { syncAppend("remove", url) }
 
     override fun visitHistoryEntry(url: String, title: String?): Completable =
         Completable.fromAction {
             store.visitHistoryEntry(url, title)
-            syncAppend("""{"visit":{"url":"$url","title":"${title ?: ""}"}}""")
+            syncAppend("visit", url, title ?: "")
         }
 
     override fun findHistoryEntriesContaining(query: String): Single<List<HistoryEntry>> =

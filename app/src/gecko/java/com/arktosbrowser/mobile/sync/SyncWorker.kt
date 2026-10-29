@@ -27,6 +27,10 @@ class SyncWorker(
         return try {
             val root = applicationContext.filesDir.absolutePath
             val repo = SyncRepository(applicationContext.injector.arktosStore())
+            // Bring the adapter lanes up before draining — installs
+            // the shared store into the Rust shims and registers the
+            // appliers that route imported ops into it.
+            repo.install(root)
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
             Result.success()
         } catch (e: Exception) {
@@ -39,6 +43,13 @@ class SyncWorker(
 
         /** Schedule the periodic drain — call once at app start. */
         fun schedule(context: Context) {
+            // Bring the adapter lanes up at launch too — emission
+            // starts working immediately, the 15-min worker only
+            // drains the wire.
+            runCatching {
+                SyncRepository(context.injector.arktosStore())
+                    .install(context.filesDir.absolutePath)
+            }
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,

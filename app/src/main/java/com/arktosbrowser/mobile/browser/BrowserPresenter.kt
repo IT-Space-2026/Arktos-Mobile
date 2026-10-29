@@ -421,7 +421,7 @@ class BrowserPresenter(
                     .put("title", t.title))
             }
             val root = (view as? android.app.Activity)?.filesDir?.absolutePath ?: return@runCatching
-            com.arktosbrowser.mobile.sync.SyncBridge.append(root, "tabs",
+            com.arktosbrowser.mobile.sync.SyncBridge.tabs(root,
                 """{"open_tabs":$tabs}""")
         }
     }

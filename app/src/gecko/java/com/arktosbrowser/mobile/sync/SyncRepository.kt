@@ -33,6 +33,15 @@ class SyncRepository @Inject constructor(
      * Drain all unapplied ops for [storeName], applying each into the
      * shared store and marking applied. Returns ops applied.
      */
+    /**
+     * One-shot bring-up: installs this shared store into the Rust
+     * shims and registers every adapter's apply lane. Called once
+     * at app start on the gecko flavor.
+     */
+    fun install(dataRoot: String) {
+        runCatching { ArktosCore.syncInstall(dataRoot, store) }
+    }
+
     fun drainPending(dataRoot: String, storeName: String): Int {
         return try {
             val arr = org.json.JSONArray(ArktosCore.syncPendingApply(dataRoot, storeName))

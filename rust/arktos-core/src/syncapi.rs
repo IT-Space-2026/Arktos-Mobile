@@ -283,3 +283,81 @@ pub fn sync_install(data_root: String, store: Arc<crate::storage::ArktosStore>) 
     crate::synctabs::install(&data_root);
     r#"{"ok":true}"#.to_string()
 }
+
+/// Local bookmark write — routes through the real adapter's emit
+/// path (bookmarks::with -> outbox -> flush_local -> signed ops),
+/// matching the desktop's wire format exactly.
+#[uniffi::export]
+pub fn sync_bookmark_local(data_root: String, op: String, url: String, title: String, folder: String) -> String {
+    let xbel = crate::facade::profile_dir(std::path::Path::new(&data_root), "default")
+        .join("bookmarks.xbel");
+    crate::bookmarks::with(|b| -> String {
+        if let Err(e) = b.ensure_path(&xbel) { return json_err(&e); }
+        let r = match op.as_str() {
+            "add" => {
+                let parent = if folder.is_empty() { b.root() } else {
+                    b.child_folder_named(b.root(), &folder)
+                        .or_else(|| {
+                            b.create(b.root(), -1, &serde_json::json!({
+                                "type": crate::bookmarks::TYPE_FOLDER,
+                                "title": folder, "id": format!("folder:{folder}"),
+                            })).ok()
+                        })
+                        .unwrap_or_else(|| b.root())
+                };
+                b.create(parent, -1, &serde_json::json!({
+                    "type": crate::bookmarks::TYPE_BOOKMARK,
+                    "url": url, "title": title,
+                })).map(|_| ())
+            }
+            "remove" => match b.find_url(&url) {
+                Some(h) => b.destroy(h),
+                None => Ok(()),
+            },
+            _ => Ok(()),
+        };
+        match r {
+            Ok(()) => { let _ = b.save_path(&xbel); r#"{"ok":true}"#.to_string() }
+            Err(e) => json_err(&e),
+        }
+    })
+}
+
+/// Local history write — same route via history::with.
+#[uniffi::export]
+pub fn sync_history_local(data_root: String, op: String, url: String, title: String) -> String {
+    let db = crate::facade::profile_dir(std::path::Path::new(&data_root), "default")
+        .join("history.db");
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64;
+    crate::history::with(|h| -> String {
+        if let Err(e) = h.open(db.to_str()) { return json_err(&e); }
+        let r = match op.as_str() {
+            "visit" => h.add(&url, &title, ts),
+            "remove" => h.remove(&url, &title, ts),
+            _ => Ok(()),
+        };
+        match r {
+            Ok(()) => r#"{"ok":true}"#.to_string(),
+            Err(e) => json_err(&e),
+        }
+    })
+}
+
+fn json_err(e: &crate::error::Fail) -> String {
+    serde_json::json!({"ok": false, "error": e.msg}).to_string()
+}
+
+/// Local open-tabs presence publish — the ephemeral per-device doc
+/// the desktop's read-only peer view consumes.
+#[uniffi::export]
+pub fn sync_tabs_local(data_root: String, tabs_json: String) -> String {
+    let windows: serde_json::Value = match serde_json::from_str(&tabs_json) {
+        Ok(v) => v,
+        Err(e) => return serde_json::json!({"ok": false, "error": format!("{e}")}).to_string(),
+    };
+    match crate::synctabs::publish(&data_root, "default", &windows) {
+        Ok(_) => r#"{"ok":true}"#.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
