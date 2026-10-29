@@ -114,7 +114,7 @@ object SyncBridge {
         // Guarded by a marker pref (excluded from sync itself).
         if (!prefs.getBoolean("settingsSyncedDump", false)) {
             prefs.edit().putBoolean("settingsSyncedDump", true).apply()
-            Thread {
+            emitExecutor.execute {
                 runCatching {
                     val doc = org.json.JSONObject(
                         ArktosCore.syncSettingsList(dataRoot, "default"))
@@ -127,7 +127,7 @@ object SyncBridge {
                         }
                     }
                 }
-            }.start()
+            }
         }
     }
 

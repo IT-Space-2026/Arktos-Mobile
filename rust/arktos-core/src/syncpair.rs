@@ -736,7 +736,9 @@ pub fn invite_begin(data_root: &Path, scope: &str) -> RcResult<Value> {
         qr: qr.clone(),
         code: code.clone(),
     };
-    sessions().insert(id, s);
+    let mut map = sessions();
+    map.insert(id, s);
+    cap_sessions(&mut map);
     Ok(json!({
         "pair_id": id,
         "qr": qr,
@@ -803,7 +805,9 @@ pub fn join_begin(data_root: &Path, payload_text: &str) -> RcResult<u64> {
         qr: String::new(),
         code: String::new(),
     };
-    sessions().insert(id, s);
+    let mut map = sessions();
+    map.insert(id, s);
+    cap_sessions(&mut map);
     Ok(id)
 }
 
@@ -1103,6 +1107,34 @@ fn joiner_on_commit(s: &mut PairSession, t: &Arc<dyn SyncTransport>, v: &Value) 
     s.scope = scope;
     s.phase = Phase::Done;
     Ok(())
+}
+
+/// Finished sessions never come back — cap the map so a device
+/// that lives through many pairing attempts can't grow it without
+/// bound.  Evicts the lowest-id terminal sessions first (ids are
+/// monotonically increasing).
+fn cap_sessions(map: &mut HashMap<u64, PairSession>) {
+    const MAX_SESSIONS: usize = 64;
+    if map.len() <= MAX_SESSIONS {
+        return;
+    }
+    let mut terminal: Vec<u64> = map
+        .iter()
+        .filter(|(_, s)| {
+            matches!(
+                s.phase,
+                Phase::Done | Phase::Failed | Phase::Cancelled
+            )
+        })
+        .map(|(id, _)| *id)
+        .collect();
+    terminal.sort_unstable();
+    for id in terminal
+        .into_iter()
+        .take(map.len().saturating_sub(MAX_SESSIONS))
+    {
+        map.remove(&id);
+    }
 }
 
 /// Claim a drained event for the pairing lane — the other

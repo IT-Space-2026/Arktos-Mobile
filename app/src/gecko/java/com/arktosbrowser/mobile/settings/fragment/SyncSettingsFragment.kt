@@ -14,6 +14,7 @@ import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.di.injector
 import com.arktosbrowser.mobile.rust.ArktosCore
 import com.arktosbrowser.mobile.sync.SyncRepository
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
@@ -101,7 +102,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         val input = android.widget.EditText(requireContext()).apply {
             hint = getString(R.string.sync_join_hint)
         }
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_join_button)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -151,7 +152,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
     /** The fingerprint check — the human-verification lane of the handshake. */
     private fun showFingerprintConfirm(pairId: ULong, fingerprint: String) {
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_fingerprint_title)
             .setMessage(fingerprint)
             .setPositiveButton(R.string.sync_fingerprint_confirm) { _, _ ->
@@ -183,7 +184,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             return
         }
         val names = devices.map { it.optString("device_id", "?") }.toTypedArray()
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_paired_devices)
             .setItems(names) { _, which ->
                 val dev = devices[which]
@@ -196,7 +197,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     private fun showDeviceDetail(dev: JSONObject) {
         val id = dev.optString("device_id", "?")
         val fp = dev.optString("fingerprint", "?")
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(id)
             .setMessage("${getString(R.string.sync_device_fingerprint)}:\n$fp")
             .setPositiveButton(R.string.sync_unpair) { _, _ ->
@@ -234,7 +235,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         } catch (e: Exception) { false }
 
         if (unlocked) {
-            android.app.AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.sync_passwords_title)
                 .setMessage(R.string.sync_passwords_unlocked)
                 .setPositiveButton(R.string.sync_passwords_lock_action) { _, _ ->
@@ -252,7 +253,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
                 android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_passwords_enable_title)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -304,14 +305,14 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         } catch (e: Exception) { emptyList() }
 
         if (rows.isEmpty()) {
-            android.app.AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.sync_remote_tabs_title)
                 .setMessage(R.string.sync_remote_tabs_none)
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
             return
         }
-        android.app.AlertDialog.Builder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_remote_tabs_title)
             .setItems(rows.map { it.first }.toTypedArray()) { _, which ->
                 rows[which].second?.let { url ->
@@ -378,7 +379,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 setPadding(0, pad, 0, 0)
             })
 
-            android.app.AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Pair this device")
                 .setView(layout)
                 .setPositiveButton(android.R.string.ok, null)
