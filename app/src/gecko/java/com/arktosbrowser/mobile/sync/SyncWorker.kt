@@ -84,7 +84,15 @@ class SyncWorker(
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,
-                PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).build()
+                PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
+                    // No point waking the transport while offline —
+                    // every drain/push would be a wasted no-op.
+                    .setConstraints(
+                        androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                            .build()
+                    )
+                    .build()
             )
         }
 
@@ -92,7 +100,13 @@ class SyncWorker(
          *  so the first sync doesn't wait out the periodic window. */
         fun runNow(context: Context) {
             WorkManager.getInstance(context).enqueue(
-                androidx.work.OneTimeWorkRequestBuilder<SyncWorker>().build()
+                androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()
+                    .setConstraints(
+                        androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                            .build()
+                    )
+                    .build()
             )
         }
     }

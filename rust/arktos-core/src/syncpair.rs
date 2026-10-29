@@ -1129,11 +1129,19 @@ fn cap_sessions(map: &mut HashMap<u64, PairSession>) {
         .map(|(id, _)| *id)
         .collect();
     terminal.sort_unstable();
-    for id in terminal
-        .into_iter()
-        .take(map.len().saturating_sub(MAX_SESSIONS))
-    {
+    let excess = map.len() - MAX_SESSIONS;
+    for id in terminal.into_iter().take(excess) {
         map.remove(&id);
+    }
+    // Still over? The rest are stuck live sessions (an inviter's
+    // WaitLink that never answered) — evict the oldest of those
+    // too rather than let the map grow without bound.
+    if map.len() > MAX_SESSIONS {
+        let mut ids: Vec<u64> = map.keys().copied().collect();
+        ids.sort_unstable();
+        for id in ids.into_iter().take(map.len() - MAX_SESSIONS) {
+            map.remove(&id);
+        }
     }
 }
 
