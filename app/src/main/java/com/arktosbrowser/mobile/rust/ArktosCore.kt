@@ -455,6 +455,9 @@ object ArktosCore {
     fun syncTransportStart(dataRoot: String, backend: String, name: String): Boolean =
         com.arktosbrowser.mobile.uniffi.syncTransportStart(dataRoot, backend, name)
 
+    fun syncTransportStop(dataRoot: String): Boolean =
+        com.arktosbrowser.mobile.uniffi.syncTransportStop(dataRoot)
+
     fun syncTransportRunning(dataRoot: String): Boolean =
         com.arktosbrowser.mobile.uniffi.syncTransportRunning(dataRoot)
 

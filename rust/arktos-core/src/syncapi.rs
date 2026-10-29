@@ -130,6 +130,14 @@ pub fn sync_transport_running(data_root: String) -> bool {
     crate::synctransport::running(Path::new(&data_root)).is_some()
 }
 
+/// Tear the transport down — the unpaired-everyone battery win:
+/// once the last member is revoked, listeners + discovery would
+/// otherwise keep running for the process lifetime.
+#[uniffi::export]
+pub fn sync_transport_stop(data_root: String) -> bool {
+    crate::synctransport::stop(Path::new(&data_root))
+}
+
 // MSYNC05 — the store-sync surface: append/export/import/drain the
 // op-log, plus a callback trait Kotlin implements per store so ops
 // apply into ArktosStore/preferences rather than Rust reaching in.

@@ -133,6 +133,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     private fun pollPair(pairId: ULong, attempts: Int = 0) {
         if (attempts > 30) return // give up after ~90s
         handler.postDelayed({
+            // The view may be gone between onDestroyView and the
+            // delayed fire — findPreference/requireContext on a
+            // detached fragment is a wasted wakeup at best.
+            if (!isAdded) return@postDelayed
             try {
                 val st = JSONObject(ArktosCore.syncPairPoll(dataRoot, pairId))
                 val phase = st.optString("phase", "")

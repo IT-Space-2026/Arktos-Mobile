@@ -48,7 +48,16 @@ class SyncRepository @Inject constructor(
         // The transport stays lazy — Arti + LAN listeners only run
         // once this device has members to reach (or the user opens
         // the pairing flow, which calls ensureTransport itself).
-        if (hasMembers(dataRoot)) ensureTransport(dataRoot, context)
+        // Unpairing the last member tears it back down: listeners,
+        // mDNS and the MulticastLock all release, so a reverted
+        // user pays no battery for a transport that has nothing to
+        // reach.
+        if (hasMembers(dataRoot)) {
+            ensureTransport(dataRoot, context)
+        } else if (ArktosCore.syncTransportRunning(dataRoot)) {
+            runCatching { ArktosCore.syncTransportStop(dataRoot) }
+            multicastLock?.takeIf { it.isHeld }?.release()
+        }
     }
 
     private fun hasMembers(dataRoot: String): Boolean = try {
