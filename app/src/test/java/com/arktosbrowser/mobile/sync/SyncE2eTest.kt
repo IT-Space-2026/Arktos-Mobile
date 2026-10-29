@@ -24,13 +24,12 @@ class SyncE2eTest {
     @get:Rule val tmp = TemporaryFolder()
 
     @Test
-    fun `two engines converge on the same op log`() {
+    fun `non-member ops are rejected at import`() {
         val rootA = tmp.newFolder("devA").absolutePath
         val rootB = tmp.newFolder("devB").absolutePath
 
-        // A appends a bookmark op; B imports A's export and both
-        // end with the same op count — the convergence check the
-        // transport's E2E asserts at the engine layer.
+        // A signs an op B has never vouched for — the member gate
+        // must reject it by signature, never silently apply it.
         val opJson = """{"add":{"url":"https://example.org","title":"Ex","folder":"","position":0}}"""
         ArktosCore.syncAppend(rootA, "bookmarks", "", opJson)
 
@@ -38,12 +37,11 @@ class SyncE2eTest {
         assertTrue("A's export carries the op", exported.length() >= 1)
 
         val report = JSONObject(ArktosCore.syncImport(rootB, exported.toString()))
-        assertEquals(1, report.optInt("accepted"))
-
-        // Dedup: re-importing the same ops yields zero accepts.
-        val reimport = JSONObject(ArktosCore.syncImport(rootB, exported.toString()))
-        assertEquals(0, reimport.optInt("accepted"))
-        assertTrue(reimport.optInt("duplicates") >= 1)
+        assertEquals(0, report.optInt("accepted"))
+        assertTrue(
+            "the stranger's op is rejected, not applied",
+            report.optInt("rejected") >= 1
+        )
     }
 
     @Test

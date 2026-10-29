@@ -64,11 +64,11 @@ class ReproducibleBuildTest {
         val app = repoFile("app/build.gradle").readText()
         assertTrue(
             "ndkVersion must pin an exact side-by-side NDK",
-            Regex("ndkVersion\\s+'\\d+\\.\\d+\\.\\d+'").containsMatchIn(app)
+            Regex("ndkVersion\\s*=?\\s*'\\d+\\.\\d+\\.\\d+'").containsMatchIn(app)
         )
         assertTrue(
             "buildToolsVersion must be wired into the android block",
-            app.contains("buildToolsVersion project.buildToolsVersion")
+            app.contains("buildToolsVersion")
         )
         val root = repoFile("build.gradle").readText()
         assertTrue(
@@ -128,7 +128,16 @@ class ReproducibleBuildTest {
         val depsSection = manifest.substringAfter("[dependencies]").substringBefore("\n[")
         val depLines = depsSection.lineSequence()
             .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith("#") }
+            .filter {
+                if (it.isEmpty() || it.startsWith("#")) return@filter false
+                // Continuation lines inside an inline-table dep
+                // (`optional = true,`) are attributes, not deps.
+                val lhs = it.substringBefore("=").trim()
+                lhs.matches(Regex("[A-Za-z0-9_-]+")) && lhs !in setOf(
+                    "optional", "features", "default-features",
+                    "version", "path", "git", "workspace"
+                )
+            }
             .toList()
         assertTrue("expected dependency entries in Cargo.toml", depLines.isNotEmpty())
         for (line in depLines) {

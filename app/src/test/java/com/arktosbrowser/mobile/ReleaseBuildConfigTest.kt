@@ -40,11 +40,11 @@ class ReleaseBuildConfigTest {
         val release = blockBody(moduleFile("build.gradle").readText(), "release")
         assertTrue(
             "release buildType must set minifyEnabled true",
-            release.contains(Regex("minifyEnabled\\s+true"))
+            release.contains(Regex("minifyEnabled\\s*=?\\s*true"))
         )
         assertTrue(
             "release buildType must set shrinkResources true",
-            release.contains(Regex("shrinkResources\\s+true"))
+            release.contains(Regex("shrinkResources\\s*=?\\s*true"))
         )
     }
 
