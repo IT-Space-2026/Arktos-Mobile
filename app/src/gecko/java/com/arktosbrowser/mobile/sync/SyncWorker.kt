@@ -31,7 +31,7 @@ class SyncWorker(
             // Bring the adapter lanes up before draining — installs
             // the shared store into the Rust shims and registers the
             // appliers that route imported ops into it.
-            repo.install(root)
+            repo.install(root, applicationContext)
             // Inbound first — frames the transport caught since the
             // last run become imported ops the appliers consume.
             ArktosCore.syncTransportDrain(root)
@@ -71,7 +71,7 @@ class SyncWorker(
             // drains the wire.
             runCatching {
                 SyncRepository(context.injector.arktosStore())
-                    .install(context.filesDir.absolutePath)
+                    .install(context.filesDir.absolutePath, context.applicationContext)
             }
             // Emit on every non-excluded preference write — the
             // settings lane's outbound half.

@@ -28,6 +28,11 @@ import org.json.JSONObject
 class SyncRepository @Inject constructor(
     private val store: ArktosStore
 ) {
+    private companion object {
+        @Volatile
+        private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
+    }
+
 
     /**
      * Drain all unapplied ops for [storeName], applying each into the
@@ -38,12 +43,12 @@ class SyncRepository @Inject constructor(
      * shims and registers every adapter's apply lane. Called once
      * at app start on the gecko flavor.
      */
-    fun install(dataRoot: String) {
+    fun install(dataRoot: String, context: android.content.Context? = null) {
         runCatching { ArktosCore.syncInstall(dataRoot, store) }
         // The transport stays lazy — Arti + LAN listeners only run
         // once this device has members to reach (or the user opens
         // the pairing flow, which calls ensureTransport itself).
-        if (hasMembers(dataRoot)) ensureTransport(dataRoot)
+        if (hasMembers(dataRoot)) ensureTransport(dataRoot, context)
     }
 
     private fun hasMembers(dataRoot: String): Boolean = try {
@@ -51,14 +56,37 @@ class SyncRepository @Inject constructor(
     } catch (e: Exception) { false }
 
     /**
+     * Android filters inbound multicast unless the app holds a
+     * WifiManager.MulticastLock — without it the LAN leg's mDNS
+     * socket hears nothing.  Held for process lifetime once the
+     * transport is up; reference-counted so repeated calls are cheap.
+     */
+    private fun acquireMulticastLock(context: android.content.Context?) {
+        if (context == null) return
+        runCatching {
+            if (multicastLock == null) {
+                multicastLock = (context.applicationContext
+                    .getSystemService(android.content.Context.WIFI_SERVICE)
+                        as? android.net.wifi.WifiManager)
+                    ?.createMulticastLock("arktos-sync")
+                    ?.apply { setReferenceCounted(true) }
+            }
+            multicastLock?.takeIf { !it.isHeld }?.acquire()
+        }
+    }
+
+    /**
      * Bring the transport up with the richest backend the build
      * carries: "auto" (LAN + Tor) on release gecko, "lan" on debug
      * (no Arti), "mem" as the loopback floor.  Idempotent — a
-     * running transport is reused, never restarted.
+     * running transport is reused, never restarted.  Holds a wifi
+     * MulticastLock so Android actually delivers mDNS packets to
+     * the discovery socket.
      */
-    fun ensureTransport(dataRoot: String) {
+    fun ensureTransport(dataRoot: String, context: android.content.Context? = null) {
         runCatching {
             if (ArktosCore.syncTransportRunning(dataRoot)) return
+            acquireMulticastLock(context)
             val name = android.os.Build.MODEL.ifBlank { "Arktos" }
             for (backend in listOf("auto", "lan", "mem")) {
                 if (ArktosCore.syncTransportStart(dataRoot, backend, name)) break
