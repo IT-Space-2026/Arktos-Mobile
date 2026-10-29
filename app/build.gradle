@@ -415,4 +415,12 @@ afterEvaluate {
             it.dependsOn 'cargoNdkBuildReleaseWebview'
         }
     }
+    // mergeJniLibFolders copies libarktos.so into the APK — but its
+    // up-to-date snapshot can go stale (observed: a pre-sync .so
+    // shipped for days while the source dir was fresh). The merge is
+    // a file copy — always re-run it so the packaged .so can never
+    // lag the cargo output.
+    tasks.matching { it.name ==~ /merge.*JniLibFolders/ }.configureEach {
+        outputs.upToDateWhen { false }
+    }
 }
