@@ -49,6 +49,10 @@ PERMISSION_ALLOWLIST = {
     # Needed so the Downloads screen can hand a finished APK to the
     # package installer (notification tap → install prompt).
     "android.permission.REQUEST_INSTALL_PACKAGES",
+    # Sync's LAN leg runs mDNS discovery; Android filters inbound
+    # multicast unless the app holds both this permission and a
+    # WifiManager.MulticastLock (acquired in ensureTransport).
+    "android.permission.CHANGE_WIFI_MULTICAST_STATE",
 }
 
 
