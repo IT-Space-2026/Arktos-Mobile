@@ -43,10 +43,14 @@ private fun Autocomplete.LoginEntry.toStoredLogin(): StoredLogin = StoredLogin(
  * anywhere, and disk IO must never stall the compositor's callers.
  */
 class GeckoLoginStore internal constructor(
-    private val vault: LoginVault
+    private val vault: LoginVault,
+    private val dataRoot: String = ""
 ) : Autocomplete.StorageDelegate {
 
-    constructor(application: Application) : this(LoginVaults.get(application))
+    constructor(application: Application) : this(
+        LoginVaults.get(application),
+        application.filesDir.absolutePath
+    )
 
     private val io = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "GeckoLoginStore").apply { isDaemon = true }
@@ -75,7 +79,16 @@ class GeckoLoginStore internal constructor(
     }
 
     override fun onLoginSave(login: Autocomplete.LoginEntry) {
-        io.execute { vault.upsert(login.toStoredLogin()) }
+        io.execute {
+            val stored = login.toStoredLogin()
+            vault.upsert(stored)
+            // The sync half — a no-op while the vault is locked.
+            if (dataRoot.isNotEmpty()) {
+                com.arktosbrowser.mobile.sync.SyncBridge.password(
+                    dataRoot, "set", stored.origin, stored.username, stored.password
+                )
+            }
+        }
     }
 
     override fun onLoginUsed(login: Autocomplete.LoginEntry, usedFields: Int) {
@@ -87,6 +100,11 @@ class GeckoLoginStore internal constructor(
      * clear covers form data (matches the WebView's form-data wipe).
      */
     fun clear() {
-        io.execute { vault.clear() }
+        io.execute {
+            vault.clear()
+            if (dataRoot.isNotEmpty()) {
+                com.arktosbrowser.mobile.sync.SyncBridge.password(dataRoot, "clear", "")
+            }
+        }
     }
 }

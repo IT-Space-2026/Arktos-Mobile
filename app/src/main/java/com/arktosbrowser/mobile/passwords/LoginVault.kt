@@ -81,6 +81,11 @@ class LoginVault(
     private val entries = mutableListOf<StoredLogin>()
     private var loaded = false
 
+    companion object {
+        /** httpRealm marker on entries that arrived via sync. */
+        const val SYNC_REALM = "arktos-sync"
+    }
+
     fun all(): List<StoredLogin> = synchronized(lock) {
         ensureLoaded()
         entries.toList()
@@ -100,6 +105,11 @@ class LoginVault(
      */
     fun upsert(login: StoredLogin) = synchronized(lock) {
         ensureLoaded()
+        upsertLocked(login)
+        persist()
+    }
+
+    private fun upsertLocked(login: StoredLogin) {
         val idx = entries.indexOfFirst {
             (login.guid != null && it.guid == login.guid) ||
                 (it.origin == login.origin && it.username == login.username)
@@ -112,6 +122,20 @@ class LoginVault(
         } else {
             entries.add(login)
         }
+    }
+
+    /**
+     * Merge the sync group's login image: upsert each record, then
+     * drop marker-tagged entries the group no longer reports.
+     * Synced rows carry [SYNC_REALM] in httpRealm so the delete
+     * sweep only prunes what sync itself imported — locally saved
+     * logins are never removed by a peer's tombstone.
+     */
+    fun applySynced(synced: List<StoredLogin>) = synchronized(lock) {
+        ensureLoaded()
+        val keep = synced.mapTo(mutableSetOf()) { it.origin to it.username }
+        entries.removeAll { it.httpRealm == SYNC_REALM && (it.origin to it.username) !in keep }
+        synced.forEach(::upsertLocked)
         persist()
     }
 

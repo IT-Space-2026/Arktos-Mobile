@@ -81,6 +81,59 @@ class SyncRepository @Inject constructor(
     /** Engine stats for the Synchronization screen. */
     fun stats(dataRoot: String): String = ArktosCore.syncStats(dataRoot)
 
+    /**
+     * Merge the group's decrypted login image into the app's vault.
+     * The Rust applier materializes peer ops into the scope's
+     * autofill vault at import time; this reflects them into the
+     * store gecko actually autofills from.  Synced rows carry the
+     * [LoginVault.SYNC_REALM] marker so the delete sweep only prunes
+     * what sync itself imported.
+     */
+    fun mergePasswords(dataRoot: String, vault: com.arktosbrowser.mobile.passwords.LoginVault) {
+        runCatching {
+            val doc = JSONObject(ArktosCore.syncPasswordsList(dataRoot, "default"))
+            val arr = doc.optJSONArray("logins") ?: return@runCatching
+            val synced = buildList {
+                for (i in 0 until arr.length()) {
+                    val l = arr.getJSONObject(i)
+                    val els = l.optJSONObject("elements") ?: continue
+                    val username = pickElement(els, "user", "login", "email")
+                    val password = pickElement(els, "pass", "pwd", "secret")
+                    val url = l.optString("url", "")
+                    if (url.isNotEmpty() && !username.isNullOrEmpty() && !password.isNullOrEmpty()) {
+                        add(
+                            com.arktosbrowser.mobile.passwords.StoredLogin(
+                                guid = null,
+                                origin = url,
+                                formActionOrigin = null,
+                                httpRealm = com.arktosbrowser.mobile.passwords.LoginVault.SYNC_REALM,
+                                username = username,
+                                password = password
+                            )
+                        )
+                    }
+                }
+            }
+            vault.applySynced(synced)
+        }
+    }
+
+    /** First element whose field name contains one of the tokens —
+     *  desktop records carry real HTML field names, ours use the
+     *  canonical "username"/"password" keys. */
+    private fun pickElement(els: JSONObject, vararg tokens: String): String? {
+        for (token in tokens) {
+            val it = els.keys()
+            while (it.hasNext()) {
+                val k = it.next()
+                if (k.contains(token, ignoreCase = true)) {
+                    return els.optString(k).takeIf { v -> v.isNotEmpty() }
+                }
+            }
+        }
+        return null
+    }
+
     // ── Op-body application ──────────────────────────────────────────
 
     private fun applyBody(storeName: String, scope: String, body: JSONObject): Boolean {

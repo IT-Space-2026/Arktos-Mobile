@@ -516,6 +516,22 @@ object ArktosCore {
     fun syncPasswordsStatus(dataRoot: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncPasswordsStatus(dataRoot, scope)
 
+    /** Local login save — upsert into the autofill vault + emit. */
+    fun syncPasswordLocal(dataRoot: String, scope: String, url: String, username: String, password: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordLocal(dataRoot, scope, url, username, password)
+
+    /** Local login delete — drops the record + emits the tombstone. */
+    fun syncPasswordRemove(dataRoot: String, scope: String, url: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordRemove(dataRoot, scope, url)
+
+    /** Local login wipe — tombstones the synced set in one pass. */
+    fun syncPasswordClear(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordClear(dataRoot, scope)
+
+    /** The decrypted group image — materialized records for merging. */
+    fun syncPasswordsList(dataRoot: String, scope: String): String =
+        com.arktosbrowser.mobile.uniffi.syncPasswordsList(dataRoot, scope)
+
     /** Peer devices' open-tabs docs — the read-only remote tabs feed. */
     fun syncTabPeers(dataRoot: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncTabPeers(dataRoot, scope)

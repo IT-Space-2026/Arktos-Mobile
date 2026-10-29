@@ -41,4 +41,21 @@ object SyncBridge {
         if (!BuildConfig.IS_GECKO) return
         runCatching { ArktosCore.syncTabsLocal(dataRoot, tabsJson) }
     }
+
+    /**
+     * A local login mutation — routes through the autofill vault so
+     * the passwords adapter emits the sealed op.  Emission is a
+     * no-op while the vault is locked/opted-out; the local write
+     * still lands.
+     */
+    fun password(dataRoot: String, op: String, url: String, username: String = "", password: String = "") {
+        if (!BuildConfig.IS_GECKO) return
+        runCatching {
+            when (op) {
+                "set" -> ArktosCore.syncPasswordLocal(dataRoot, "default", url, username, password)
+                "remove" -> ArktosCore.syncPasswordRemove(dataRoot, "default", url)
+                "clear" -> ArktosCore.syncPasswordClear(dataRoot, "default")
+            }
+        }
+    }
 }

@@ -36,6 +36,9 @@ class SyncWorker(
             // last run become imported ops the appliers consume.
             ArktosCore.syncTransportDrain(root)
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
+            // Imported logins materialized in the Rust vault reflect
+            // into the Kotlin store gecko autofills from.
+            repo.mergePasswords(root, com.arktosbrowser.mobile.passwords.LoginVaults.get(applicationContext))
             // Outbound — the exported op-log rides one frame to every
             // live link (member endpoints get dialed on demand).
             ArktosCore.syncTransportPush(root)

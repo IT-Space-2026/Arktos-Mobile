@@ -410,6 +410,109 @@ pub fn sync_passwords_status(data_root: String, scope: String) -> String {
     }
 }
 
+/// Shared write path for the login lanes: open the scope's
+/// autofill vault, apply the caller's edit to its records, and
+/// persist through `autofill_set` — the funnel that lets the
+/// passwords adapter diff + seal + sign whatever moved.  Locked
+/// or never-enabled scopes still persist locally; emit_after
+/// returns at once and nothing leaks.
+fn password_write(
+    data_root: &str,
+    scope: &str,
+    edit: impl FnOnce(&mut Vec<crate::autofill::FormRecord>),
+) -> String {
+    let dir = Path::new(data_root).join("profiles").join(scope);
+    let mut st = crate::store::lock();
+    if let Err(e) = st.set_data_dir(&dir.to_string_lossy()) {
+        return json_err(&e);
+    }
+    let mut forms = match st.autofill_data() {
+        Ok(d) => d.forms,
+        Err(e) => return json_err(&e),
+    };
+    edit(&mut forms);
+    match st.autofill_set(forms) {
+        Ok(()) => r#"{"ok":true}"#.to_string(),
+        Err(e) => json_err(&e),
+    }
+}
+
+/// Local login save routed through the real emit path — upsert by
+/// url into the scope's autofill vault; the adapter diffs the
+/// changed fields into sealed ops.  The element names match the
+/// desktop record shape the applier materializes.
+#[uniffi::export]
+pub fn sync_password_local(
+    data_root: String,
+    scope: String,
+    url: String,
+    username: String,
+    password: String,
+) -> String {
+    password_write(&data_root, &scope, |forms| {
+        forms.retain(|f| !(f.has_password && f.url == url));
+        forms.push(crate::autofill::FormRecord {
+            url: url.clone(),
+            name: username.clone(),
+            has_password: true,
+            elements: vec![
+                ("username".to_string(), username.clone()),
+                ("password".to_string(), password.clone()),
+            ],
+        });
+    })
+}
+
+/// Local login delete — dropping the url's record makes the next
+/// diff sign the tombstone the group converges on.
+#[uniffi::export]
+pub fn sync_password_remove(data_root: String, scope: String, url: String) -> String {
+    password_write(&data_root, &scope, |forms| {
+        forms.retain(|f| !(f.has_password && f.url == url));
+    })
+}
+
+/// Local login wipe — every password record drops, tombstoning the
+/// synced set in one pass (the stored-data clear's sync half).
+#[uniffi::export]
+pub fn sync_password_clear(data_root: String, scope: String) -> String {
+    password_write(&data_root, &scope, |forms| {
+        forms.retain(|f| !f.has_password);
+    })
+}
+
+/// The decrypted group image — materialized password records the
+/// applier landed in the scope's vault, so the app can merge them
+/// into its own login store.
+#[uniffi::export]
+pub fn sync_passwords_list(data_root: String, scope: String) -> String {
+    let dir = Path::new(&data_root).join("profiles").join(&scope);
+    let mut st = crate::store::lock();
+    if let Err(e) = st.set_data_dir(&dir.to_string_lossy()) {
+        return json_err(&e);
+    }
+    match st.autofill_data() {
+        Ok(d) => {
+            let arr: Vec<serde_json::Value> = d
+                .forms
+                .iter()
+                .filter(|f| f.has_password)
+                .map(|f| {
+                    serde_json::json!({
+                        "url": f.url,
+                        "name": f.name,
+                        "elements": f.elements.iter()
+                            .map(|(k, v)| (k.clone(), serde_json::json!(v)))
+                            .collect::<serde_json::Map<String, serde_json::Value>>(),
+                    })
+                })
+                .collect();
+            serde_json::json!({"ok": true, "logins": arr}).to_string()
+        }
+        Err(e) => json_err(&e),
+    }
+}
+
 /// The peer devices' tab presence docs — the read-only "tabs on my
 /// other devices" feed.
 #[uniffi::export]
