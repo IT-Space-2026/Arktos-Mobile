@@ -93,6 +93,44 @@ class BrowserApp : Application() {
             } catch (_: Throwable) {
             }
 
+            // DIAG — also drop a copy into the public Downloads dir via
+            // MediaStore so the report is retrievable on devices where
+            // Android/data is locked down and adb is unavailable.
+            try {
+                val trace = ex.javaClass.name + ": " + (ex.message ?: "") +
+                    "\n" + android.util.Log.getStackTraceString(ex)
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, "arkos-crash.log")
+                    put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH,
+                        android.os.Environment.DIRECTORY_DOWNLOADS)
+                }
+                contentResolver.insert(
+                    android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                )?.let { uri ->
+                    contentResolver.openOutputStream(uri, "wt")
+                        ?.use { it.write(trace.toByteArray()) }
+                }
+            } catch (_: Throwable) {
+            }
+
+            // DIAG — surface the trace on screen in a :crash-process
+            // activity that outlives this process's teardown.
+            try {
+                startActivity(
+                    android.content.Intent(
+                        this,
+                        com.arktosbrowser.mobile.crash.CrashActivity::class.java
+                    )
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra(
+                            com.arktosbrowser.mobile.crash.CrashActivity.EXTRA_TRACE,
+                            android.util.Log.getStackTraceString(ex)
+                        )
+                )
+            } catch (_: Throwable) {
+            }
+
             if (defaultHandler != null) {
                 defaultHandler.uncaughtException(thread, ex)
             } else {
