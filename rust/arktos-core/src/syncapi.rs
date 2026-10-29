@@ -419,3 +419,30 @@ pub fn sync_tab_peers(data_root: String, scope: String) -> String {
         Err(e) => json_err(&e),
     }
 }
+
+/// Inbound dispatch: drain the running transport's event queue and
+/// feed Frame payloads — serialized WireOp batches — into the
+/// engine's import lane so the registered appliers run them.
+#[uniffi::export]
+pub fn sync_transport_drain(data_root: String) -> String {
+    let Some(t) = crate::synctransport::running(std::path::Path::new(&data_root)) else {
+        return r#"{"ok":true,"drained":0,"note":"no transport running"}"#.to_string();
+    };
+    let mut frames = 0usize;
+    let mut imported = 0u32;
+    for ev in t.poll() {
+        if let crate::synctransport::TransportEvent::Frame { payload, .. } = ev {
+            frames += 1;
+            if let Ok(eng) = crate::sync::SyncEngine::open(&data_root) {
+                let docs: Vec<serde_json::Value> =
+                    serde_json::from_slice(&payload).unwrap_or_default();
+                if !docs.is_empty() {
+                    if let Ok(rep) = eng.import(&docs) {
+                        imported += rep.applied;
+                    }
+                }
+            }
+        }
+    }
+    serde_json::json!({"ok": true, "frames": frames, "applied": imported}).to_string()
+}

@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.arktosbrowser.mobile.di.injector
+import com.arktosbrowser.mobile.rust.ArktosCore
 import java.util.concurrent.TimeUnit
 
 /**
@@ -31,6 +32,9 @@ class SyncWorker(
             // the shared store into the Rust shims and registers the
             // appliers that route imported ops into it.
             repo.install(root)
+            // Inbound first — frames the transport caught since the
+            // last run become imported ops the appliers consume.
+            ArktosCore.syncTransportDrain(root)
             listOf("bookmarks", "history").forEach { repo.drainPending(root, it) }
             Result.success()
         } catch (e: Exception) {

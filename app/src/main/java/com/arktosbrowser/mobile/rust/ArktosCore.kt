@@ -520,6 +520,10 @@ object ArktosCore {
     fun syncTabPeers(dataRoot: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncTabPeers(dataRoot, scope)
 
+    /** Inbound dispatch: drain transport frames into the import lane. */
+    fun syncTransportDrain(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncTransportDrain(dataRoot)
+
     fun syncMemberAdd(dataRoot: String, pubkeyB64: String, onion: String, scope: String): String =
         com.arktosbrowser.mobile.uniffi.syncMemberAdd(dataRoot, pubkeyB64, onion, scope)
 

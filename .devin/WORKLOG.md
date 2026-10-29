@@ -152,3 +152,4 @@ syncpasswords.rs needs the desktop vault layer in store.rs:
 - then declare `mod syncpasswords; mod syncmeta;` + compile-fix
 - Kotlin: `sync_install` at gecko app start + emission via the
   adapters' `with()` mutation paths
+- 2026-10-29 mobile-sync — inbound dispatch closes the interop loop: uniffi sync_transport_drain(dataRoot) polls the running transport, decodes Frame payloads as WireOp JSON batches, feeds them to engine.import (registered appliers apply). SyncWorker.doWork calls it before the outbound pending drains; ArktosCore.syncTransportDrain facade added. Gecko debug Kotlin compile green (bindings regenerated).
