@@ -14,9 +14,9 @@
 
 ---
 
-## 1.2.7 — Mobile sync core
+## 1.2.7 — Mobile sync
 
-The desktop sync engine is ported into arktos-core (op-log CRDT, Noise XX handshake, pairing state machine, transport abstraction) with a UniFFI surface the Synchronization screen drives — the pair action creates a real invite payload.
+The desktop sync engine is ported into arktos-core and wired end-to-end: pair devices over QR or manual code with a six-word fingerprint confirm, then ops exchange encrypted — LAN (QUIC + mDNS) and Tor onion legs on the gecko build. All five stores sync: bookmarks, history, tab presence (Settings → Synced data → Remote tabs), settings, and the passphrase-gated E2E password vault.
 
 ## 1.2.6 — Sync foundation
 
@@ -115,6 +115,9 @@ SmartCookieWeb#314).
 - Blocks ads and trackers — unified in the Rust `BlocklistEngine`
   (`libarktos.so`): ad hosts, malware list, custom site block, and
   public→local-network request blocking all share one per-request verdict
+- Device-to-device sync with no server: pair over QR/manual code +
+  fingerprint, encrypted exchange on LAN (QUIC+mDNS) and Tor — bookmarks,
+  history, remote tabs, settings and an E2E password vault (gecko build)
 - Multi-list ad-block subscriptions: the desktop preset catalog
   (EasyList, uBlock, AdGuard, regional lists, …) plus custom remote or
   local lists, each toggleable and auto-refreshed on a 7-day cadence
