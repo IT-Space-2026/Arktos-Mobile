@@ -127,3 +127,15 @@ About→Licenses synced to real deps: dropped snacktory (removed with Rust reada
 - 2026-10-28 MSYNC02 — sync core compiles in arktos-core: error/notify/store/mw shims written; tor_llcrypto→x25519-dalek 2.0.1 (static_secrets); deps ring 0.17.8/sha2/hmac/base64/getrandom; modules declared in lib.rs; synctor feature gates tor.rs out. Warnings only (dead-code). NEXT: uniffi export wrappers for SyncEngine/Invite on ArktosStore + Kotlin SyncRepository.
 - 2026-10-28 MSYNC02 — Kotlin facade committed (ArktosCore.sync* wrappers). LAST STEP for the milestone: SyncSettingsFragment wiring — pair button → ArktosCore.syncInviteBegin(filesDir.path,"bookmarks") → show QR/manual text; paired list → syncMembers JSON; status → syncTransportRunning. Then compile+release 1.2.7.
 - 2026-10-28 MSYNC03/04 — Arti dep tree committed (cdb0b63f, 8d6f20ad): cargoNdkBuildRelease gets --features synctor, full Arti tree compiles into release .so for all ABIs. rusqlite 0.40.2 (tor-dirmgr bound). Pairing UX: QR bitmap + manual code dialog (ZXing). NEXT: MSYNC04 scan/fingerprint UI, MSYNC05 store appliers, tor.rs battery-aware runtime wiring, MSYNC06-09.
+
+## SYNC08-09 port staging (desktop complete through SYNC11)
+- syncpasswords.rs / syncmeta.rs copied, NOT declared in lib.rs yet.
+  Needed before they compile:
+  * re-copy desktop sync.rs — it gained `RotationMark` + `Member`
+    updates for SYNC09 group-key rotation (re-resolve the shims)
+  * store shim: `Key`, `KDF_LANES`, `KDF_MEMORY_KIB`, `KDF_PASSES`,
+    `unlock`, `kdf_create`, `kdf_path`, `derive_key`
+  * `autofill::FormRecord` for syncpasswords
+- SYNC10 (LAN fast path: synctransport/lan.rs + mdns/devcert) is a
+  transport-seam option — port after SYNC08/09 compile.
+- SYNC11 = SYNC-DESIGN.md + e2e legs — docs/verification, port last.
