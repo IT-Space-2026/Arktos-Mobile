@@ -79,6 +79,20 @@ object Diag {
         }
     }
 
+    /** Sync join/pair step log — append-only, arkos-sync.log in
+     *  Downloads, DIAG builds only. */
+    private val syncLog = StringBuilder()
+    fun sync(ctx: Context, tag: String) {
+        if (!BuildConfig.DIAG) return
+        runCatching {
+            synchronized(syncLog) {
+                syncLog.append(ts.format(Date())).append(' ')
+                    .append(tag).append('\n')
+                writeDownloads(ctx, "arkos-sync.log", syncLog.toString().toByteArray())
+            }
+        }
+    }
+
     /** The fatal-Java path — every step guarded so nothing can silence it. */
     private fun report(app: Context, thread: Thread, ex: Throwable) {
         val trace = ex.javaClass.name + ": " + (ex.message ?: "") +

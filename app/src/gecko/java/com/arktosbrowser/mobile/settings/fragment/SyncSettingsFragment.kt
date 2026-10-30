@@ -157,11 +157,18 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         Toast.makeText(context?.applicationContext ?: return,
             R.string.sync_joining, Toast.LENGTH_SHORT).show()
         io.execute {
+            val ctx = context?.applicationContext ?: return@execute
+            com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.start len=${text.length}")
             runCatching {
                 syncRepo.ensureTransport(dataRoot, context)
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.transport up=${ArktosCore.syncTransportRunning(dataRoot)}")
                 val resp = ArktosCore.syncJoinBegin(dataRoot, text)
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.began ${resp.take(80)}")
                 handler.post { if (isAdded) startPairPolling(resp) }
-            }.onFailure { e -> handler.post { toastError(e) } }
+            }.onFailure { e ->
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.error ${e.javaClass.simpleName} ${e.message}")
+                handler.post { toastError(e) }
+            }
         }
     }
 
@@ -206,6 +213,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                     }
                     val phase = st.optString("phase", "")
                     val fp = st.optString("fingerprint", st.optString("fp", ""))
+                    context?.applicationContext?.let {
+                        com.arktosbrowser.mobile.crash.Diag.sync(it,
+                            "poll.$attempts phase=$phase fp=${fp.isNotEmpty()}")
+                    }
                     when {
                         fp.isNotEmpty() -> showFingerprintConfirm(pairId, fp)
                         phase == "done" -> {
