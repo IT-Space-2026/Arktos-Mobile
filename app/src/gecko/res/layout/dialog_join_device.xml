@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- Join-a-device field: outlined Material box, multiline manual
+     code, QR-camera affordance as the field's trailing icon. -->
+<com.google.android.material.textfield.TextInputLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/join_code_layout"
+    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="24dp"
+    android:layout_marginEnd="24dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:hint="@string/sync_join_hint"
+    app:endIconMode="custom"
+    app:endIconDrawable="@drawable/ic_qr_scan"
+    app:endIconContentDescription="@string/sync_join_scan"
+    app:helperTextEnabled="true"
+    app:helperText="@string/sync_join_hint">
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/join_code_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minLines="3"
+        android:gravity="top"
+        android:inputType="textMultiLine|textNoSuggestions"
+        android:fontFamily="monospace"
+        android:textSize="13sp" />
+</com.google.android.material.textfield.TextInputLayout>

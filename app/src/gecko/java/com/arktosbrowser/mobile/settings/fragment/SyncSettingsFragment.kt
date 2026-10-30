@@ -123,23 +123,25 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
     /** Join lane — scan the peer's QR or paste the manual code. */
     private fun showJoinEntry() {
-        val input = android.widget.EditText(requireContext()).apply {
-            hint = getString(R.string.sync_join_hint)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_join_device, null)
+        val layout = dialogView.findViewById<
+            com.google.android.material.textfield.TextInputLayout>(R.id.join_code_layout)
+        val input = dialogView.findViewById<
+            com.google.android.material.textfield.TextInputEditText>(R.id.join_code_input)
+        layout.setEndIconOnClickListener {
+            scanLauncher.launch(
+                ScanOptions()
+                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                    .setBeepEnabled(false)
+                    .setOrientationLocked(false)
+            )
         }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_join_button)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
+            .setView(dialogView)
+            .setPositiveButton(R.string.sync_join_button) { _, _ ->
                 input.text.toString().trim().takeIf { it.isNotEmpty() }
                     ?.let(::joinWithText)
-            }
-            .setNeutralButton(R.string.sync_join_scan) { _, _ ->
-                scanLauncher.launch(
-                    ScanOptions()
-                        .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                        .setBeepEnabled(false)
-                        .setOrientationLocked(false)
-                )
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
