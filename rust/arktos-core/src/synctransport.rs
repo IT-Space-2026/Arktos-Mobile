@@ -167,6 +167,11 @@ pub trait SyncTransport: Send + Sync {
     fn discovered_peers_json(&self) -> Vec<Value> {
         Vec::new()
     }
+    /// Leg-level status for diagnostics — composite transports
+    /// report their parts; single-leg backends the default view.
+    fn debug_json(&self) -> Value {
+        json!({ "backend": self.backend(), "peers": self.discovered_peers_json() })
+    }
     /// Tear the transport down.  Idempotent.
     fn stop(&self);
 }

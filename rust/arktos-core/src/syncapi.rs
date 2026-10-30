@@ -598,13 +598,9 @@ pub fn sync_transport_debug(data_root: String) -> String {
     let Some(t) = crate::synctransport::running(root) else {
         return r#"{"running":false}"#.to_string();
     };
-    let peers = t.discovered_peers_json();
-    serde_json::json!({
-        "running": true,
-        "backend": t.backend(),
-        "peers": peers,
-    })
-    .to_string()
+    let mut doc = t.debug_json();
+    doc["running"] = serde_json::json!(true);
+    doc.to_string()
 }
 
 /// Inbound dispatch: drain the running transport's event queue,

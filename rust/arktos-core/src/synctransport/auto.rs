@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::error::{Fail, RcResult, RcStatus};
 use crate::synctransport::lan::LanTransport;
@@ -243,6 +243,20 @@ impl AutoTransport {
 impl SyncTransport for AutoTransport {
     fn backend(&self) -> &'static str {
         "auto"
+    }
+
+    /// Per-leg view: which legs are live, whether mDNS is listening,
+    /// and the discovered peer table — the data that answers "why
+    /// did my dial take the tor leg".
+    fn debug_json(&self) -> Value {
+        let tor_up = self.tor.lock().unwrap_or_else(|e| e.into_inner()).is_some();
+        json!({
+            "backend": "auto",
+            "lan": self.lan.is_some(),
+            "mdns": self.lan.as_ref().map(|l| l.discovery_active()).unwrap_or(false),
+            "tor": tor_up,
+            "peers": self.discovered_peers_json(),
+        })
     }
 
     fn endpoint(&self) -> RcResult<String> {

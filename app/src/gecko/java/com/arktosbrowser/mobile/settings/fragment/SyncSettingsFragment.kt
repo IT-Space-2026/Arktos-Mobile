@@ -184,10 +184,14 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                     "join.transport up=${ArktosCore.syncTransportRunning(dataRoot)} " +
                         "dbg=${ArktosCore.syncTransportDebug(dataRoot).take(220)}")
                 val resp = ArktosCore.syncJoinBegin(dataRoot, text)
-                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.began ${resp.take(80)}")
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx,
+                    "join.began ${resp.take(80)} " +
+                        "dbg=${ArktosCore.syncTransportDebug(dataRoot).take(220)}")
                 handler.post { if (isAdded) startPairPolling(resp) }
             }.onFailure { e ->
-                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.error ${e.javaClass.simpleName} ${e.message}")
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx,
+                    "join.error ${e.javaClass.simpleName} ${e.message} " +
+                        "dbg=${ArktosCore.syncTransportDebug(dataRoot).take(220)}")
                 handler.post { toastError(e) }
             }
         }
