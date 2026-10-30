@@ -27,6 +27,12 @@ android {
         targetSdkVersion = rootProject.targetSdkVersion
         versionName = "1.2.7"
         versionCode = 168
+        // -ParktosDiag builds the launch-crash instrumentation (boot
+        // beacons + ApplicationExitInfo tombstone dump in
+        // crash/Diag.kt). Release builds pass nothing — the code ships
+        // but every entry point no-ops.
+        buildConfigField "boolean", "DIAG",
+            project.hasProperty('arktosDiag') ? 'true' : 'false'
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }

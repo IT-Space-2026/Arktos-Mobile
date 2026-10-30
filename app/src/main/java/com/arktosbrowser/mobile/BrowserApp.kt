@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatDelegate
 import com.arktosbrowser.mobile.browser.AppLockState
+import com.arktosbrowser.mobile.crash.Diag
 import com.arktosbrowser.mobile.browser.IncognitoPartition
 import com.arktosbrowser.mobile.browser.SecureWindowPolicy
 import com.arktosbrowser.mobile.database.bookmark.BookmarkExporter
@@ -53,6 +54,9 @@ class BrowserApp : Application() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
+        // DIAG — earliest possible catch: runs before every
+        // ContentProvider, so a provider-init crash is reported too.
+        Diag.earlyInit(this)
         if (BuildConfig.DEBUG && Build.VERSION.SDK_INT < 21) {
             installMultiDex(context = base)
         }
@@ -60,11 +64,7 @@ class BrowserApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        runCatching {
-            Class.forName("com.arktosbrowser.mobile.sync.SyncWorker")
-                .getMethod("schedule", android.content.Context::class.java)
-                .invoke(null, this)
-        }
+        Diag.checkpoint(this, "onCreate.begin")
         OkHttp.initialize(this)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()
@@ -154,12 +154,24 @@ class BrowserApp : Application() {
         if (!isBrowserProcess()) {
             return
         }
+        Diag.checkpoint(this, "browserProcess.ok")
 
         applicationComponent = DaggerAppComponent.builder()
                 .application(this)
                 .buildInfo(createBuildInfo())
                 .build()
         injector.inject(this)
+        Diag.checkpoint(this, "injector.ready")
+
+        // Gecko sync bring-up — must run AFTER the component exists:
+        // SyncRepository.install resolves the store through `injector`,
+        // so calling this at the top of onCreate silently no-oped.
+        runCatching {
+            Class.forName("com.arktosbrowser.mobile.sync.SyncWorker")
+                .getMethod("schedule", android.content.Context::class.java)
+                .invoke(null, this)
+        }
+        Diag.checkpoint(this, "syncWorker.scheduled")
 
         // ENG02/ENG03 — the flavor's engine backend registers itself
         // through the engine registry (webview flavor → WebViewEngine,
@@ -167,7 +179,9 @@ class BrowserApp : Application() {
         // process-wide setup and still runs before the first page is
         // created.
         Engines.install(EngineSelector.createBackend(this))
+        Diag.checkpoint(this, "engines.installed")
         Engines.backend.initialize(this)
+        Diag.checkpoint(this, "engine.initialized")
 
         Single.fromCallable(bookmarkModel::count)
                 .filter { it == 0L }
@@ -180,6 +194,7 @@ class BrowserApp : Application() {
 
         registerActivityLifecycleCallbacks(object : MemoryLeakUtils.LifecycleAdapter() {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                Diag.checkpoint(this@BrowserApp, "activity.${activity.javaClass.simpleName}")
                 // SEC07 — extends the FLAG_SECURE decision to windows
                 // outside BrowserActivity (settings, reading mode, …)
                 // so the whole-app toggle really covers every window.
