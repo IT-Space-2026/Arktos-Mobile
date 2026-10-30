@@ -42,9 +42,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         Thread(r, "SyncIo").apply { isDaemon = true }
     }
 
-    /** QR scan result — the scanned text joins exactly like a paste. */
+    /** QR scan result — fill the field so the user reviews the code
+     *  and taps Join deliberately, same as a paste. */
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let(::joinWithText)
+        result.contents?.let { if (isAdded) showJoinEntry(it) }
     }
 
     private lateinit var syncRepo: SyncRepository
@@ -62,7 +63,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
         val status = try {
             val st = JSONObject(ArktosCore.syncStats(dataRoot))
-            "Ops: ${st.optLong("ops", 0)} · Members: ${st.optLong("members", 0)}" +
+            "Changes: ${st.optLong("ops", 0)} · Members: ${st.optLong("members", 0)}" +
                 if (ArktosCore.syncTransportRunning(dataRoot)) " · Transport up" else " · Transport down"
         } catch (e: Exception) {
             getString(R.string.sync_status_not_connected)
@@ -119,10 +120,11 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     }
 
     /** Join lane — scan the peer's QR or paste the manual code. */
-    private fun showJoinEntry() {
+    private fun showJoinEntry(prefill: String? = null) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_join_device, null)
         val input = dialogView.findViewById<
             com.google.android.material.textfield.TextInputEditText>(R.id.join_code_input)
+        prefill?.let { input.setText(it) }
         dialogView.findViewById<android.view.View>(R.id.join_scan_button)
             .setOnClickListener {
                 scanLauncher.launch(
