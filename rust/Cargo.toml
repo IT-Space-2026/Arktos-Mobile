@@ -13,5 +13,9 @@ members = ["arktos-core"]
 opt-level = "z"
 lto = true
 codegen-units = 1
-panic = "abort"
+# unwind, not abort: panic=abort turns every Rust panic into an
+# instant SIGABRT that no Java-side crash surface can report (the
+# gecko launch-crash hunt proved that). With unwind, uniffi's
+# catch_unwind converts panics into ordinary Kotlin exceptions.
+panic = "unwind"
 strip = true
