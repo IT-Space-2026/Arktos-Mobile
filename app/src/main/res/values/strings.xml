@@ -9,6 +9,7 @@
     <string name="ytdl_package_name" translatable="false">com.cookiejarapps.smartcookieweb_ytdl</string>
     <string name="app_desc">A free and open source web browser that blocks ads and trackers</string>
     <string name="action_new_tab">New tab</string>
+    <string name="action_new_remote_tab">New remote tab</string>
     <string name="action_share">Share</string>
     <string name="action_print">Print</string>
     <string name="action_history">History</string>

@@ -22,6 +22,7 @@ import android.view.View
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.arktosbrowser.mobile.AppTheme
+import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.IncognitoActivity
 import com.arktosbrowser.mobile.R
 import com.arktosbrowser.mobile.adblock.allowlist.AllowListModel
@@ -54,6 +55,9 @@ import com.arktosbrowser.mobile.settings.activity.SettingsActivity
 import com.arktosbrowser.mobile.utils.IntentUtils
 import com.arktosbrowser.mobile.utils.Utils
 import com.arktosbrowser.mobile.utils.isSpecialUrl
+import com.arktosbrowser.mobile.view.UrlInitializer
+import org.json.JSONArray
+import org.json.JSONObject
 import io.github.rosemoe.sora.widget.CodeEditor
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import javax.inject.Inject
@@ -184,6 +188,7 @@ class PopUpClass {
                 MenuDividerClass(),
                 MenuItemClass("new_tab", R.string.action_new_tab, R.drawable.ic_round_add, true),
                 MenuItemClass("new_private_tab", R.string.action_incognito, R.drawable.incognito_mode, true),
+                MenuItemClass("new_remote_tab", R.string.action_new_remote_tab, R.drawable.ic_settings_sync_layers, BuildConfig.IS_GECKO),
                 MenuDividerClass(),
                 MenuItemClass("share", R.string.action_share, R.drawable.ic_share_black, currentUrl != null && !currentUrl.isSpecialUrl()),
                 MenuItemClass("open_in_app", R.string.open_in_app, R.drawable.ic_round_open_in_new, userPreferences.navbar && !activity.isIncognito() && resolved != null && resolved.packageName != activity.applicationContext.packageName && !currentUrl.isSpecialUrl()),
@@ -249,6 +254,10 @@ class PopUpClass {
 
             when((finalMenu[position] as MenuItemClass).id){
                 "new_tab" -> uiController!!.newTabButtonClicked() // 0 - New tab
+                "new_remote_tab" -> {
+                    popupWindow.dismiss()
+                    showRemoteTabsPicker(activity)
+                }
                 "new_private_tab" -> view.context.startActivity(Intent(view.context, IncognitoActivity::class.java)) // 1 - New incognito tab
                 "share" -> IntentUtils(activity).shareUrl(currentUrl, currentView?.title) // 2 - Share
                 "print" -> currentView?.createWebPagePrint() // 3 - Print
@@ -438,5 +447,48 @@ class PopUpClass {
             }
             popupWindow.dismiss()
         }
+    }
+
+    /**
+     * "New remote tab" picker — the peer devices' tab presence feed
+     * (the same rows the Synchronization screen lists), opening the
+     * tapped URL as a fresh foreground tab. An empty list shows when
+     * no peer has reported tabs — same shape as an empty bookmarks
+     * view, headers are inert.
+     */
+    private fun showRemoteTabsPicker(activity: BrowserActivity) {
+        val rows = runCatching {
+            val doc = JSONObject(ArktosCore.syncTabPeers(activity.filesDir.absolutePath, "default"))
+            val peers = doc.optJSONArray("peers") ?: JSONArray()
+            buildList<Pair<String, String?>> {
+                for (i in 0 until peers.length()) {
+                    val p = peers.getJSONObject(i)
+                    add("— ${p.optString("device_id", "?")} —" to null)
+                    val windows = p.optJSONArray("windows") ?: continue
+                    for (w in 0 until windows.length()) {
+                        val tabs = windows.getJSONObject(w).optJSONArray("tabs") ?: continue
+                        for (t in 0 until tabs.length()) {
+                            val tab = tabs.getJSONObject(t)
+                            val url = tab.optString("url", "")
+                            if (url.isNotEmpty()) {
+                                val title = tab.optString("title", "")
+                                add((if (title.isNotEmpty()) "$title\n$url" else url) to url)
+                            }
+                        }
+                    }
+                }
+            }
+        }.getOrDefault(emptyList())
+
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.sync_remote_tabs_title)
+            .setItems(rows.map { it.first }.toTypedArray()) { _, which ->
+                rows[which].second?.let { url ->
+                    activity.tabsManager.newTab(activity, UrlInitializer(url), false)
+                    uiController?.tabClicked(activity.tabsManager.last())
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

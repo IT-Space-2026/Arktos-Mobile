@@ -27,6 +27,10 @@ When you add an entry here, mirror it in the HTML page.
 - The Synchronization screen drives it all: pair/join buttons,
   device list with fingerprints, unpair, password-sync
   enable/unlock/lock and the remote-tabs feed
+- "New remote tab" in the main menu (gecko only) opens the remote-
+  tabs feed as a picker — device headers plus each peer's open
+  tabs; a tap opens the page as a fresh foreground tab, and an
+  empty feed shows an empty list like an empty bookmarks view
 - Five pre-release audit rounds hardened the lane:
   * pairing/drain race — inbound frames now route through
     pair-session claims first, so a mid-handshake worker tick can
