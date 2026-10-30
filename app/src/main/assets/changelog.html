@@ -183,6 +183,7 @@
             <li>Hardened over six audit rounds: pairing/drain race closed, lazy transport with teardown on unpair, per-link export cursors, bounded session/link maps, main-thread-safe emits, backup exclusions for the identity key and vault, a network-constrained sync worker, a packaging fix for a stale native lib that crashed launch on the first sync releases, a @JvmStatic fix that had silently dead-started the sync worker, R8 keep rules, and a crash-surface that reports launch failures to the screen and Downloads.</li>
             <li>Gecko launch crash fixed: R8 had stripped androidx.work's Room-generated database constructor, killing WorkManagerInitializer before Application.onCreate — Room subclasses are kept now. Sync's launch bring-up also ran before the Dagger component existed; it now waits for inject.</li>
             <li>"New remote tab" main-menu entry (gecko only) lists peer devices' open tabs and opens the pick in a fresh tab.</li>
+            <li>Join flow fixed: transport bring-up and invite/join moved off the main thread (they ANR'd); a real QR scan picker is wired; join errors toast instead of crashing.</li>
         </ul>
         <h2>1.2.6 — Sync foundation (MSYNC01)</h2>
         <ul>

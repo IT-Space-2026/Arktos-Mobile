@@ -18,6 +18,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import java.util.concurrent.Executors
 import org.json.JSONObject
 
 /**
@@ -31,6 +34,18 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
     private val dataRoot get() = requireContext().filesDir.absolutePath
     private val handler = Handler(Looper.getMainLooper())
+
+    /** Blocking Rust calls (transport bring-up = a full Tor bootstrap,
+     *  join = a link dial + send) must never run on the main thread —
+     *  they ANR'd the whole app from the Pair/Join taps. */
+    private val io = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "SyncIo").apply { isDaemon = true }
+    }
+
+    /** QR scan result — the scanned text joins exactly like a paste. */
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        result.contents?.let(::joinWithText)
+    }
 
     private lateinit var syncRepo: SyncRepository
 
@@ -69,16 +84,25 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             ?.setOnPreferenceClickListener {
                 // The transport stays lazy until needed — an invite
                 // mints the endpoint a peer dials, so it must be up.
-                syncRepo.ensureTransport(dataRoot, context)
-                val payload = ArktosCore.syncInviteBegin(dataRoot, "default")
-                showInvite(payload)
+                // Bring-up blocks through Tor bootstrap — off the UI.
+                io.execute {
+                    runCatching {
+                        syncRepo.ensureTransport(dataRoot, context)
+                        val payload = ArktosCore.syncInviteBegin(dataRoot, "default")
+                        handler.post { if (isAdded) showInvite(payload) }
+                    }.onFailure { e -> handler.post { toastError(e) } }
+                }
                 true
             }
 
         findPreference<androidx.preference.Preference>("pref_sync_join")
             ?.setOnPreferenceClickListener {
-                syncRepo.ensureTransport(dataRoot, context)
-                showJoinEntry()
+                io.execute {
+                    runCatching {
+                        syncRepo.ensureTransport(dataRoot, context)
+                        handler.post { if (isAdded) showJoinEntry() } 
+                    }.onFailure { e -> handler.post { toastError(e) } }
+                }
                 true
             }
 
@@ -97,7 +121,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             }
     }
 
-    /** Join lane — paste the peer's manual code (or scanned QR text). */
+    /** Join lane — scan the peer's QR or paste the manual code. */
     private fun showJoinEntry() {
         val input = android.widget.EditText(requireContext()).apply {
             hint = getString(R.string.sync_join_hint)
@@ -106,14 +130,36 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             .setTitle(R.string.sync_join_button)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                val text = input.text.toString().trim()
-                if (text.isNotEmpty()) {
-                    val resp = ArktosCore.syncJoinBegin(dataRoot, text)
-                    startPairPolling(resp)
-                }
+                input.text.toString().trim().takeIf { it.isNotEmpty() }
+                    ?.let(::joinWithText)
+            }
+            .setNeutralButton(R.string.sync_join_scan) { _, _ ->
+                scanLauncher.launch(
+                    ScanOptions()
+                        .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        .setBeepEnabled(false)
+                        .setOrientationLocked(false)
+                )
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    /** The blocking dial+handshake — a bad code or a dead peer must
+     *  surface as a toast, not an uncaught uniffi exception. */
+    private fun joinWithText(text: String) {
+        io.execute {
+            runCatching {
+                val resp = ArktosCore.syncJoinBegin(dataRoot, text)
+                handler.post { if (isAdded) startPairPolling(resp) }
+            }.onFailure { e -> handler.post { toastError(e) } }
+        }
+    }
+
+    private fun toastError(e: Throwable) {
+        if (isAdded) {
+            Toast.makeText(requireContext(), e.message ?: "Sync failed", Toast.LENGTH_LONG).show()
+        }
     }
 
     /**

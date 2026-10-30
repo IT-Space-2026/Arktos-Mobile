@@ -31,6 +31,12 @@ When you add an entry here, mirror it in the HTML page.
   tabs feed as a picker — device headers plus each peer's open
   tabs; a tap opens the page as a fresh foreground tab, and an
   empty feed shows an empty list like an empty bookmarks view
+- Join-a-device no longer freezes: transport bring-up (a full Tor
+  bootstrap) and the invite/join calls moved off the main thread —
+  they used to ANR/crash the app on tap and after pasting a code.
+  The join dialog's promised "Scan" is wired: a real QR camera
+  picker (zxing-android-embedded, gecko only); invite/join errors
+  toast instead of throwing uncaught
 - Five pre-release audit rounds hardened the lane:
   * pairing/drain race — inbound frames now route through
     pair-session claims first, so a mid-handshake worker tick can

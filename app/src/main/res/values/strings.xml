@@ -84,6 +84,7 @@
     <string name="sync_pair_button">Pair a device</string>
     <string name="sync_join_button">Join a device</string>
     <string name="sync_join_hint">Scan the peer&#8217;s QR or paste the manual code</string>
+    <string name="sync_join_scan">Scan</string>
     <string name="sync_fingerprint_title">Confirm device fingerprint</string>
     <string name="sync_fingerprint_confirm">Confirm</string>
     <string name="sync_fingerprint_reject">Not a match</string>
