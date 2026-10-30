@@ -47,7 +47,17 @@ When you add an entry here, mirror it in the HTML page.
     one immediate round the moment pairing confirms
   * fixed a release-packaging bug where every sync-era APK
     shipped a pre-sync libarktos.so — the app died at launch
-    resolving uniffi exports that weren't in the packaged lib
+    resolving uniffi exports that weren't in the packaged lib;
+    mergeJniLibFolders is now forced to always re-run
+  * the SyncWorker entry points are @JvmStatic — the reflective
+    startup call was throwing and the worker, adapter install and
+    settings listener never ran in any build
+  * the sync/passwords/rust packages are ProGuard-kept (the
+    reflective entry point must survive R8)
+  * restore-tab flag writes use apply() instead of a blocking
+    commit() on the UI thread
+  * launch crashes now surface: a CrashActivity shows the trace
+    on screen and arkos-crash.log lands in Downloads
 
 
 
