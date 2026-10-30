@@ -61,6 +61,7 @@ import androidx.core.view.marginTop
 import androidx.core.widget.doOnTextChanged
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.palette.graphics.Palette
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.arktosbrowser.mobile.AppTheme
 import com.arktosbrowser.mobile.BuildConfig
 import com.arktosbrowser.mobile.isDark
@@ -269,6 +270,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     var webPageBitmap: Bitmap? = null
     private val backgroundDrawable = ColorDrawable()
     private var incognitoNotification: IncognitoNotification? = null
+    private var swipeRefresh: SwipeRefreshLayout? = null
 
     private var presenter: BrowserPresenter? = null
     private var tabsView: TabsView? = null
@@ -377,6 +379,17 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
             setFullscreen = this::setFullscreen,
             showActionBar = this::showActionBar
         )
+
+        // Pull-to-refresh: the SwipeRefreshLayout wraps content_frame
+        // — the pull only fires when the engine can't scroll up.
+        swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.swipe_refresh)?.also { s ->
+            s.setOnRefreshListener {
+                tabsManager.currentTab?.reload()
+                // Pages that never reach 100 (offline, error page)
+                // must not pin the spinner forever.
+                mainHandler.postDelayed({ s.isRefreshing = false }, 15_000)
+            }
+        }
 
         DynamicColors.applyIfAvailable(this)
 
@@ -2131,6 +2144,7 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     override fun updateProgress(progress: Int) {
         setIsLoading(progress < 100)
         binding.progressView.progress = progress
+        if (progress >= 100) swipeRefresh?.isRefreshing = false
     }
 
     protected fun addItemToHistory(title: String?, url: String) {

@@ -70,13 +70,18 @@
 
                 </LinearLayout>
 
-                <FrameLayout
-                    android:id="@+id/content_frame"
+                <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                    android:id="@+id/swipe_refresh"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:background="@color/primary_color"
-                    android:clipChildren="true"/>
+                    android:layout_weight="1">
+                    <FrameLayout
+                        android:id="@+id/content_frame"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/primary_color"
+                        android:clipChildren="true"/>
+                </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
                 <RelativeLayout
                     android:id="@+id/search_bar"

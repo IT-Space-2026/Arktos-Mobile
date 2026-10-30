@@ -397,8 +397,20 @@ pub fn bind_socket(group: Ipv4Addr, mport: u16, iface: Ipv4Addr) -> io::Result<U
     sock.set_multicast_ttl_v4(2)?;
     if !iface.is_unspecified() {
         sock.set_multicast_if_v4(&iface)?;
+        sock.join_multicast_v4(&group, &iface)?;
+    } else {
+        // Multi-interface hosts (Android wifi + rmnet both live): an
+        // unspecified join lets the kernel pick — often the wrong
+        // one, leaving the group joined on cellular and deaf on
+        // wifi. Join on every local address instead.
+        let mut joined = false;
+        for a in local_addrs(&[]) {
+            joined |= sock.join_multicast_v4(&group, &a).is_ok();
+        }
+        if !joined {
+            sock.join_multicast_v4(&group, &iface)?;
+        }
     }
-    sock.join_multicast_v4(&group, &iface)?;
     sock.set_nonblocking(false)?;
     Ok(sock.into())
 }
