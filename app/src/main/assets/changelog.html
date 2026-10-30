@@ -181,6 +181,7 @@
             <li>Serverless encrypted exchange: LAN leg (QUIC + mDNS) and Tor onion leg on gecko; the periodic worker runs full inbound/outbound rounds.</li>
             <li>All five stores live: bookmarks, history, tab presence (Settings → Synced data → Remote tabs), settings, and the passphrase-gated E2E password vault.</li>
             <li>Hardened over six audit rounds: pairing/drain race closed, lazy transport with teardown on unpair, per-link export cursors, bounded session/link maps, main-thread-safe emits, backup exclusions for the identity key and vault, a network-constrained sync worker, a packaging fix for a stale native lib that crashed launch on the first sync releases, a @JvmStatic fix that had silently dead-started the sync worker, R8 keep rules, and a crash-surface that reports launch failures to the screen and Downloads.</li>
+            <li>Gecko launch crash fixed: R8 had stripped androidx.work's Room-generated database constructor, killing WorkManagerInitializer before Application.onCreate — Room subclasses are kept now. Sync's launch bring-up also ran before the Dagger component existed; it now waits for inject.</li>
         </ul>
         <h2>1.2.6 — Sync foundation (MSYNC01)</h2>
         <ul>

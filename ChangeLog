@@ -58,6 +58,17 @@ When you add an entry here, mirror it in the HTML page.
     commit() on the UI thread
   * launch crashes now surface: a CrashActivity shows the trace
     on screen and arkos-crash.log lands in Downloads
+  * fixed the gecko launch crash itself: R8 stripped the no-arg
+    constructor of androidx.work's Room-generated WorkDatabase_Impl,
+    so WorkManagerInitializer died inside InitializationProvider —
+    before Application.onCreate, invisible to the crash surface.
+    Room-database subclasses are ProGuard-kept now. Found via the
+    new diag instrumentation (attachBaseContext handler +
+    ApplicationExitInfo tombstones + boot beacons, built with
+    -ParktosDiag; ships inert without it)
+  * the reflective SyncWorker.schedule call ran before the Dagger
+    component existed, so SyncRepository.install silently never ran
+    at launch — the call now happens after inject
 
 
 

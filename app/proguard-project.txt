@@ -19,6 +19,12 @@
 -keep public class com.arktosbrowser.mobile.sync.*
 -keep public class com.arktosbrowser.mobile.passwords.*
 -keep public class com.arktosbrowser.mobile.rust.*
+# androidx.work's Room database — WorkDatabase_Impl is instantiated
+# reflectively (Class.getDeclaredConstructor) inside
+# WorkManagerInitializer, which runs before Application.onCreate;
+# R8 stripped the no-arg ctor and the provider died at launch — the
+# gecko-only crash with zero diagnostics (gecko-only dep).
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
 
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
