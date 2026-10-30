@@ -161,7 +161,9 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.start len=${text.length}")
             runCatching {
                 syncRepo.ensureTransport(dataRoot, context)
-                com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.transport up=${ArktosCore.syncTransportRunning(dataRoot)}")
+                com.arktosbrowser.mobile.crash.Diag.sync(ctx,
+                    "join.transport up=${ArktosCore.syncTransportRunning(dataRoot)} " +
+                        "dbg=${ArktosCore.syncTransportDebug(dataRoot).take(220)}")
                 val resp = ArktosCore.syncJoinBegin(dataRoot, text)
                 com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.began ${resp.take(80)}")
                 handler.post { if (isAdded) startPairPolling(resp) }

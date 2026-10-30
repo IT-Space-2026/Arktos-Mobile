@@ -505,7 +505,7 @@ impl LanTransport {
         if !onion.is_empty() {
             txt.push(format!("on={onion}").into_bytes());
         }
-        let mdns = mdns::MdnsService::start(mdns::MdnsConfig {
+        let mdns = match mdns::MdnsService::start(mdns::MdnsConfig {
             instance: format!("{id16}.{}", mdns::SERVICE_TYPE),
             host: format!("arktos-{id16}.local"),
             port,
@@ -515,8 +515,21 @@ impl LanTransport {
             mport: cfg.mdns_port,
             iface: cfg.mdns_iface,
             query_every: cfg.query_every,
-        })
-        .ok();
+        }) {
+            Ok(m) => Some(m),
+            Err(e) => {
+                // Discovery dead (multicast join refused etc.) — the
+                // transport stays up, but surface it so status/diag
+                // doesn't report a healthy LAN leg it isn't.
+                push_event(
+                    &t.events,
+                    TransportEvent::Failed {
+                        reason: format!("mdns: {e}"),
+                    },
+                );
+                None
+            }
+        };
 
         *t.live.lock().unwrap_or_else(|e| e.into_inner()) = Some(Live {
             endpoint: ep,

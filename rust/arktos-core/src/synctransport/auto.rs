@@ -146,7 +146,9 @@ impl AutoTransport {
                     }
                     Err(e) => push_event(
                         &t2.events,
-                        TransportEvent::Bootstrap(0),
+                        TransportEvent::Failed {
+                            reason: format!("tor leg: {}", e.msg),
+                        },
                     ),
                 })
                 .ok();
@@ -315,6 +317,22 @@ impl SyncTransport for AutoTransport {
     }
 
     fn connect(&self, endpoint: &str, as_nickname: &str) -> RcResult<u64> {
+        // An onion endpoint right after bring-up: mDNS needs a few
+        // seconds to hear the peer's announce. Give LAN discovery a
+        // short window before committing to a Tor circuit — on a
+        // shared network that window is the difference between a
+        // sub-second dial and a ~2min tor deadline.
+        if self.lan.is_some()
+            && !endpoint.starts_with("lan://")
+            && !endpoint.starts_with("mem:")
+        {
+            for _ in 0..30 {
+                if self.route(endpoint).0 == LEG_LAN {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        }
         let (leg, target) = self.route(endpoint);
         let l = self.leg(leg).ok_or_else(|| Fail {
             status: RcStatus::Unavailable,

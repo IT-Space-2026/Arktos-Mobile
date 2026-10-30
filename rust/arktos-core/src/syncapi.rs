@@ -588,6 +588,25 @@ pub fn sync_tab_peers(data_root: String, scope: String) -> String {
     }
 }
 
+/// Status view for diagnostics: backend name + the LAN leg's
+/// discovered-peer list (device_id/onion/addrs). Empty peers + lan
+/// leg present on a shared network means mDNS isn't hearing
+/// announces — the reason onion dials fall back to Tor.
+#[uniffi::export]
+pub fn sync_transport_debug(data_root: String) -> String {
+    let root = Path::new(&data_root);
+    let Some(t) = crate::synctransport::running(root) else {
+        return r#"{"running":false}"#.to_string();
+    };
+    let peers = t.discovered_peers_json();
+    serde_json::json!({
+        "running": true,
+        "backend": t.backend(),
+        "peers": peers,
+    })
+    .to_string()
+}
+
 /// Inbound dispatch: drain the running transport's event queue,
 /// feed Frame payloads — `{"ops":[...]}` batches — into the
 /// engine's import lane so the registered appliers run them, and

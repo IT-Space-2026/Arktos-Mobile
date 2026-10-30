@@ -461,6 +461,9 @@ object ArktosCore {
     fun syncTransportRunning(dataRoot: String): Boolean =
         com.arktosbrowser.mobile.uniffi.syncTransportRunning(dataRoot)
 
+    fun syncTransportDebug(dataRoot: String): String =
+        com.arktosbrowser.mobile.uniffi.syncTransportDebug(dataRoot)
+
     fun syncAppend(dataRoot: String, storeName: String, scope: String, bodyJson: String): String =
         com.arktosbrowser.mobile.uniffi.syncAppend(dataRoot, storeName, scope, bodyJson)
 
