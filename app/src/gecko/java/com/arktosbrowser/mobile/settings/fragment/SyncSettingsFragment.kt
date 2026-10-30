@@ -152,6 +152,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
      *  too (idempotent), so the entry dialog can open instantly. A
      *  bad code or a dead peer surfaces as a toast, not a crash. */
     private fun joinWithText(text: String) {
+        // Immediate ack — the bootstrap+dial takes seconds, give the
+        // tap visible feedback instead of silence.
+        Toast.makeText(context?.applicationContext ?: return,
+            R.string.sync_joining, Toast.LENGTH_SHORT).show()
         io.execute {
             runCatching {
                 syncRepo.ensureTransport(dataRoot, context)
@@ -161,10 +165,11 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         }
     }
 
+    /** App-context toasts — a join/pair error must still surface when
+     *  the fragment detached behind the camera or a back press. */
     private fun toastError(e: Throwable) {
-        if (isAdded) {
-            Toast.makeText(requireContext(), e.message ?: "Sync failed", Toast.LENGTH_LONG).show()
-        }
+        val ctx = context?.applicationContext ?: return
+        Toast.makeText(ctx, e.message ?: "Sync failed", Toast.LENGTH_LONG).show()
     }
 
     /**
@@ -182,7 +187,9 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     }
 
     private fun pollPair(pairId: ULong, attempts: Int = 0) {
-        if (attempts > 30) return // give up after ~90s
+        // A first-time join can wait out a cold Tor bootstrap plus the
+        // handshake itself — ~3 minutes of patient polling.
+        if (attempts > 60) return
         handler.postDelayed({
             if (!isAdded) return@postDelayed
             // The uniffi call drives the transport event pump — off

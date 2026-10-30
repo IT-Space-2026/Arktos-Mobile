@@ -86,6 +86,7 @@
     <string name="sync_join_hint">Scan the peer&#8217;s QR or paste the manual code</string>
     <string name="sync_join_scan">Scan QR code</string>
     <string name="sync_pair_done">Paired successfully</string>
+    <string name="sync_joining">Joining…</string>
     <string name="sync_pair_failed">Pairing failed</string>
     <string name="sync_fingerprint_title">Confirm device fingerprint</string>
     <string name="sync_fingerprint_confirm">Confirm</string>
