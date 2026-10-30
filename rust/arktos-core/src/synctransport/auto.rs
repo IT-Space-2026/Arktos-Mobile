@@ -333,6 +333,17 @@ impl SyncTransport for AutoTransport {
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
         }
+        // A tor-routed dial right after bring-up: the leg fills on a
+        // background thread once Arti finishes bootstrapping — wait
+        // for it instead of failing the connect cold.
+        if self.route(endpoint).0 == LEG_TOR {
+            for _ in 0..180 {
+                if self.leg(LEG_TOR).is_some() {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        }
         let (leg, target) = self.route(endpoint);
         let l = self.leg(leg).ok_or_else(|| Fail {
             status: RcStatus::Unavailable,
