@@ -45,6 +45,9 @@ When you add an entry here, mirror it in the HTML page.
     backup (the Ed25519 identity key and the materialized vault)
   * the periodic worker requires network connectivity and fires
     one immediate round the moment pairing confirms
+  * fixed a release-packaging bug where every sync-era APK
+    shipped a pre-sync libarktos.so — the app died at launch
+    resolving uniffi exports that weren't in the packaged lib
 
 
 

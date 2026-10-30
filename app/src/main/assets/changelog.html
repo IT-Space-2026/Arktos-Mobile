@@ -180,7 +180,7 @@
             <li>Pairing end-to-end: QR or manual code, six-word fingerprint confirm, device list with unpair (membership cut + group-key rotation).</li>
             <li>Serverless encrypted exchange: LAN leg (QUIC + mDNS) and Tor onion leg on gecko; the periodic worker runs full inbound/outbound rounds.</li>
             <li>All five stores live: bookmarks, history, tab presence (Settings → Synced data → Remote tabs), settings, and the passphrase-gated E2E password vault.</li>
-            <li>Hardened over five audit rounds: pairing/drain race closed, lazy transport with teardown on unpair, per-link export cursors, bounded session/link maps, main-thread-safe emits, backup exclusions for the identity key and vault, and a network-constrained sync worker.</li>
+            <li>Hardened over six audit rounds: pairing/drain race closed, lazy transport with teardown on unpair, per-link export cursors, bounded session/link maps, main-thread-safe emits, backup exclusions for the identity key and vault, a network-constrained sync worker, and a packaging fix for a stale native lib that crashed launch on the first sync releases.</li>
         </ul>
         <h2>1.2.6 — Sync foundation (MSYNC01)</h2>
         <ul>
