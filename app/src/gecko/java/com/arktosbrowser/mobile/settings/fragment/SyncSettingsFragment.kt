@@ -117,6 +117,25 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 showRemoteTabs()
                 true
             }
+
+        // A pair ceremony outlives this screen — resume polling any
+        // in-flight session so the fingerprint dialog isn't orphaned
+        // by a back-out-and-in.
+        io.execute {
+            runCatching {
+                val sessions = JSONObject(ArktosCore.syncPairPoll(dataRoot, 0u))
+                    .optJSONArray("sessions") ?: return@runCatching
+                val live = setOf("waiting", "handshaking", "fingerprint", "committing")
+                for (i in 0 until sessions.length()) {
+                    val s = sessions.getJSONObject(i)
+                    val id = s.optLong("pair_id", -1)
+                    if (id >= 0 && s.optString("state") in live) {
+                        val uid = id.toULong()
+                        handler.post { if (isAdded) pollPair(uid) }
+                    }
+                }
+            }
+        }
     }
 
     /** Join lane — scan the peer's QR or paste the manual code. */
@@ -185,6 +204,20 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
      * Drive a pair session's handshake — poll its status JSON;
      * when the fingerprint lands, show the confirm dialog.
      */
+    /** The status_json fingerprint is {"words":[],"emoji":[]} —
+     *  flatten it to a display string; plain-string forms pass too. */
+    private fun fingerprintText(st: JSONObject): String {
+        st.optJSONObject("fingerprint")?.let { obj ->
+            val words = obj.optJSONArray("words")
+            val emoji = obj.optJSONArray("emoji")
+            return buildString {
+                words?.let { for (i in 0 until it.length()) append(it.getString(i)).append(' ') }
+                emoji?.let { for (i in 0 until it.length()) append(it.getString(i)).append(' ') }
+            }.trim()
+        }
+        return st.optString("fingerprint", st.optString("fp", ""))
+    }
+
     private fun startPairPolling(joinResp: String) {
         val id = try { JSONObject(joinResp).optLong("session", -1) } catch (e: Exception) { -1L }
         val uid = id.toULong()
@@ -213,21 +246,28 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                         pollPair(pairId, attempts + 1)
                         return@post
                     }
-                    val phase = st.optString("phase", "")
-                    val fp = st.optString("fingerprint", st.optString("fp", ""))
+                    // status_json emits "state" (waiting/handshaking/
+                    // fingerprint/committing/done/failed/cancelled)
+                    // and fingerprint as {"words":[],"emoji":[]}.
+                    val phase = st.optString("state", st.optString("phase", ""))
+                    val fp = fingerprintText(st)
+                    val err = st.optString("error", "")
                     context?.applicationContext?.let {
                         com.arktosbrowser.mobile.crash.Diag.sync(it,
-                            "poll.$attempts phase=$phase fp=${fp.isNotEmpty()}")
+                            "poll.$attempts state=$phase fp=${fp.isNotEmpty()} err=$err")
                     }
                     when {
-                        fp.isNotEmpty() -> showFingerprintConfirm(pairId, fp)
+                        fp.isNotEmpty() || phase == "fingerprint" ->
+                            showFingerprintConfirm(pairId, fp.ifEmpty { "—" })
                         phase == "done" -> {
                             Toast.makeText(requireContext(), R.string.sync_pair_done, Toast.LENGTH_LONG).show()
                             findPreference<androidx.preference.Preference>("pref_sync_device_list")
                                 ?.summary = membersSummary()
                         }
-                        phase == "failed" || phase == "cancelled" ->
-                            Toast.makeText(requireContext(), "Pairing $phase", Toast.LENGTH_LONG).show()
+                        phase == "failed" || phase == "cancelled" || phase == "gone" ->
+                            Toast.makeText(requireContext(),
+                                "Pairing $phase${if (err.isNotEmpty()) ": $err" else ""}",
+                                Toast.LENGTH_LONG).show()
                         else -> pollPair(pairId, attempts + 1)
                     }
                 }
