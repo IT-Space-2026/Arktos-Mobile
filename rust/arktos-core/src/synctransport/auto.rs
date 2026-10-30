@@ -59,7 +59,9 @@ fn no_link(link: u64) -> Fail {
 pub struct AutoTransport {
     dir: PathBuf,
     lan: Option<Arc<LanTransport>>,
-    tor: Option<Arc<dyn SyncTransport>>,
+    /// Late-bound: the tor leg bootstraps on a background
+    /// thread so a cold Arti boot never holds start() hostage.
+    tor: Mutex<Option<Arc<dyn SyncTransport>>>,
     /// own-event queue (leg startup failures surface here).
     events: Mutex<VecDeque<TransportEvent>>,
     /// outer link id -> (leg, inner id)
@@ -82,7 +84,7 @@ impl AutoTransport {
         let t = Arc::new(AutoTransport {
             dir: dir.to_path_buf(),
             lan,
-            tor,
+            tor: Mutex::new(tor),
             events: Mutex::new(VecDeque::new()),
             links: Mutex::new(HashMap::new()),
             ids: [Mutex::new(HashMap::new()), Mutex::new(HashMap::new())],
@@ -93,7 +95,7 @@ impl AutoTransport {
         }
         // Swallow each leg's startup Ready — the composite reports
         // ONE Ready for the whole transport.
-        if let Some(l) = &t.tor {
+        if let Some(l) = t.tor.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             let _ = l.poll();
         }
         if let Some(l) = &t.lan {
@@ -115,26 +117,47 @@ impl AutoTransport {
                 None
             }
         };
-        let tor: Option<Arc<dyn SyncTransport>> = match super::tor::TorTransport::start(dir) {
-            Ok(t) => Some(t),
-            Err(e) => {
-                errors.push(format!("tor leg: {}", e.msg));
-                None
-            }
-        };
-        if lan.is_none() && tor.is_none() {
-            return Err(Fail {
-                status: RcStatus::Unavailable,
-                msg: format!("auto transport: no leg came up — {}", errors.join("; ")),
-            });
+        if lan.is_none() {
+            // No LAN: tor is the only hope — wait for it synchronously.
+            let tor: Option<Arc<dyn SyncTransport>> = match super::tor::TorTransport::start(dir) {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    errors.push(format!("tor leg: {}", e.msg));
+                    return Err(Fail {
+                        status: RcStatus::Unavailable,
+                        msg: format!("auto transport: no leg came up — {}", errors.join("; ")),
+                    });
+                }
+            };
+            return Ok(Self::from_legs(dir, lan, tor, errors));
         }
-        Ok(Self::from_legs(dir, lan, tor, errors))
+        let t = Self::from_legs(dir, lan, None, errors);
+        // Tor leg boots in the background — a cold Arti bootstrap
+        // (30-60s+) used to block pair/join taps on a working LAN.
+        {
+            let t2 = Arc::clone(&t);
+            let dir = t.dir.clone();
+            std::thread::Builder::new()
+                .name("arktos-tor-leg".into())
+                .spawn(move || match super::tor::TorTransport::start(&dir) {
+                    Ok(leg) => {
+                        *t2.tor.lock().unwrap_or_else(|e| e.into_inner()) =
+                            Some(leg as Arc<dyn SyncTransport>);
+                    }
+                    Err(e) => push_event(
+                        &t2.events,
+                        TransportEvent::Bootstrap(0),
+                    ),
+                })
+                .ok();
+        }
+        Ok(t)
     }
 
     fn leg(&self, leg: u8) -> Option<Arc<dyn SyncTransport>> {
         match leg {
             LEG_LAN => self.lan.clone().map(|l| l as Arc<dyn SyncTransport>),
-            _ => self.tor.clone(),
+            _ => self.tor.lock().unwrap_or_else(|e| e.into_inner()).clone(),
         }
     }
 
@@ -222,10 +245,15 @@ impl SyncTransport for AutoTransport {
 
     fn endpoint(&self) -> RcResult<String> {
         // The stable name peers dial — lan is discovered, not dialed.
-        if let Some(t) = &self.tor {
+        if let Some(t) = self.tor.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             if let Ok(e) = t.endpoint() {
                 return Ok(e);
             }
+        }
+        // Tor leg still bootstrapping — the onion name is keystore-
+        // derived, so it exists before the client is live.
+        if let Ok(e) = super::tor::endpoint_for(&self.dir) {
+            return Ok(e);
         }
         if let Some(l) = &self.lan {
             return l.endpoint();
@@ -236,7 +264,7 @@ impl SyncTransport for AutoTransport {
     fn authorize(&self, nickname: &str, discovery_key: &str) -> RcResult<()> {
         let mut first_err = None;
         let mut touched = false;
-        for leg in [self.leg(LEG_LAN), self.tor.clone()].into_iter().flatten() {
+        for leg in [self.leg(LEG_LAN), self.leg(LEG_TOR)].into_iter().flatten() {
             touched = true;
             if let Err(e) = leg.authorize(nickname, discovery_key) {
                 first_err.get_or_insert(e);
@@ -256,7 +284,7 @@ impl SyncTransport for AutoTransport {
     fn deauthorize(&self, nickname: &str) -> RcResult<bool> {
         let mut removed = false;
         let mut touched = false;
-        for leg in [self.leg(LEG_LAN), self.tor.clone()].into_iter().flatten() {
+        for leg in [self.leg(LEG_LAN), self.leg(LEG_TOR)].into_iter().flatten() {
             touched = true;
             removed |= leg.deauthorize(nickname)?;
         }
@@ -352,7 +380,7 @@ impl SyncTransport for AutoTransport {
         if let Some(l) = &self.lan {
             l.stop();
         }
-        if let Some(t) = &self.tor {
+        if let Some(t) = self.tor.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             t.stop();
         }
         self.links
