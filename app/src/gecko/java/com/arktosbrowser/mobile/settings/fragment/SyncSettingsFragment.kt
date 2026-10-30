@@ -97,12 +97,9 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
 
         findPreference<androidx.preference.Preference>("pref_sync_join")
             ?.setOnPreferenceClickListener {
-                io.execute {
-                    runCatching {
-                        syncRepo.ensureTransport(dataRoot, context)
-                        handler.post { if (isAdded) showJoinEntry() } 
-                    }.onFailure { e -> handler.post { toastError(e) } }
-                }
+                // Instant response — the transport bring-up moved into
+                // joinWithText so the entry dialog opens immediately.
+                showJoinEntry()
                 true
             }
 
@@ -124,18 +121,20 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     /** Join lane — scan the peer's QR or paste the manual code. */
     private fun showJoinEntry() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_join_device, null)
-        val layout = dialogView.findViewById<
-            com.google.android.material.textfield.TextInputLayout>(R.id.join_code_layout)
         val input = dialogView.findViewById<
             com.google.android.material.textfield.TextInputEditText>(R.id.join_code_input)
-        layout.setEndIconOnClickListener {
-            scanLauncher.launch(
-                ScanOptions()
-                    .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                    .setBeepEnabled(false)
-                    .setOrientationLocked(false)
-            )
-        }
+        dialogView.findViewById<android.view.View>(R.id.join_scan_button)
+            .setOnClickListener {
+                scanLauncher.launch(
+                    ScanOptions()
+                        .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                        .setBeepEnabled(false)
+                        .setOrientationLocked(true)
+                        .setCaptureActivity(
+                            com.arktosbrowser.mobile.sync.QrScanActivity::class.java
+                        )
+                )
+            }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.sync_join_button)
             .setView(dialogView)
@@ -147,11 +146,13 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             .show()
     }
 
-    /** The blocking dial+handshake — a bad code or a dead peer must
-     *  surface as a toast, not an uncaught uniffi exception. */
+    /** The blocking dial+handshake — transport bring-up happens here
+     *  too (idempotent), so the entry dialog can open instantly. A
+     *  bad code or a dead peer surfaces as a toast, not a crash. */
     private fun joinWithText(text: String) {
         io.execute {
             runCatching {
+                syncRepo.ensureTransport(dataRoot, context)
                 val resp = ArktosCore.syncJoinBegin(dataRoot, text)
                 handler.post { if (isAdded) startPairPolling(resp) }
             }.onFailure { e -> handler.post { toastError(e) } }
@@ -181,23 +182,33 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     private fun pollPair(pairId: ULong, attempts: Int = 0) {
         if (attempts > 30) return // give up after ~90s
         handler.postDelayed({
-            // The view may be gone between onDestroyView and the
-            // delayed fire — findPreference/requireContext on a
-            // detached fragment is a wasted wakeup at best.
             if (!isAdded) return@postDelayed
-            try {
-                val st = JSONObject(ArktosCore.syncPairPoll(dataRoot, pairId))
-                val phase = st.optString("phase", "")
-                val fp = st.optString("fingerprint", st.optString("fp", ""))
-                if (fp.isNotEmpty()) {
-                    showFingerprintConfirm(pairId, fp)
-                } else if (phase == "done" || phase == "failed" || phase == "cancelled") {
-                    Toast.makeText(requireContext(), "Pairing $phase", Toast.LENGTH_LONG).show()
-                } else {
-                    pollPair(pairId, attempts + 1)
+            // The uniffi call drives the transport event pump — off
+            // the main thread, or every 3s tick stalls the UI.
+            io.execute {
+                val st = runCatching {
+                    JSONObject(ArktosCore.syncPairPoll(dataRoot, pairId))
+                }.getOrNull()
+                handler.post {
+                    if (!isAdded) return@post
+                    if (st == null) {
+                        pollPair(pairId, attempts + 1)
+                        return@post
+                    }
+                    val phase = st.optString("phase", "")
+                    val fp = st.optString("fingerprint", st.optString("fp", ""))
+                    when {
+                        fp.isNotEmpty() -> showFingerprintConfirm(pairId, fp)
+                        phase == "done" -> {
+                            Toast.makeText(requireContext(), R.string.sync_pair_done, Toast.LENGTH_LONG).show()
+                            findPreference<androidx.preference.Preference>("pref_sync_device_list")
+                                ?.summary = membersSummary()
+                        }
+                        phase == "failed" || phase == "cancelled" ->
+                            Toast.makeText(requireContext(), "Pairing $phase", Toast.LENGTH_LONG).show()
+                        else -> pollPair(pairId, attempts + 1)
+                    }
                 }
-            } catch (e: Exception) {
-                pollPair(pairId, attempts + 1)
             }
         }, if (attempts == 0) 0 else 3000)
     }
