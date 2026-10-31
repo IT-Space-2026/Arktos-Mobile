@@ -53,6 +53,30 @@ When you add an entry here, mirror it in the HTML page.
     moved off the main thread onto a serialized executor
   * sync/ and profiles/ are excluded from cloud + device-transfer
     backup (the Ed25519 identity key and the materialized vault)
+- Join flow, real this time: designed dialog with a Scan button
+  under the field, portrait QR camera, scanned codes prefill the
+  field for review, the dialog closes on Join and a status row
+  appears under "Join a device" — spinner while in flight, then a
+  readable copyable result; session polling resumes if you leave
+  and return to the screen
+- Transport fixes: the Tor leg starts in the background (QR/pair is
+  instant on LAN now), connects wait for the Tor leg instead of
+  failing cold, LAN discovery gets a 15s window before falling to
+  Tor, mDNS joins on every local interface (kernel used to pick
+  wifi-or-cellular wrong), port-suffixed onions no longer break
+  discovery-key ops (desktop SYNC11 port), leg failures surface
+  instead of being swallowed
+- Pull to refresh on pages: only arms when the gesture starts at
+  the top — a mid-page drag back to the top no longer fires a
+  reload; the arm consults the engine's real scroll position
+  (GeckoView scroll delegate), spinner stops on load or timeout
+- Sync options in Synchronization: interval picker (1 / 5 / 15 /
+  30 min — sub-15 runs as an in-app ticker, WorkManager's floor is
+  15) and a Sync now button; the wifi multicast lock is scoped to
+  pairing and exchange rounds instead of app-lifetime (a held lock
+  wakes the CPU on every LAN multicast packet — real battery)
+- Status label "Ops" is now "Changes" — it counts op-log entries,
+  including the startup settings snapshot and membership ops
   * the periodic worker requires network connectivity and fires
     one immediate round the moment pairing confirms
   * fixed a release-packaging bug where every sync-era APK

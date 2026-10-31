@@ -866,4 +866,20 @@
     <string name="no_installed_app">No installed app can open this file</string>
     <string name="data_scheme">Images stored as Base64 data cannot currently be downloaded</string>
     <!-- finish pages -->
+    <string name="sync_options_title">Sync options</string>
+    <string name="sync_interval_title">Sync interval</string>
+    <string name="sync_now_title">Sync now</string>
+    <string name="sync_now_started">Sync started</string>
+    <string-array name="sync_interval_entries">
+        <item>1 minute</item>
+        <item>5 minutes</item>
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+    </string-array>
+    <string-array name="sync_interval_values">
+        <item>1</item>
+        <item>5</item>
+        <item>15</item>
+        <item>30</item>
+    </string-array>
 </resources>

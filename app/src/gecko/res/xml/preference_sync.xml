@@ -42,4 +42,15 @@
             android:key="pref_sync_remote_tabs" />
     </androidx.preference.PreferenceCategory>
 
+    <androidx.preference.PreferenceCategory android:title="@string/sync_options_title">
+        <androidx.preference.ListPreference
+            android:key="pref_sync_interval"
+            android:title="@string/sync_interval_title"
+            android:entries="@array/sync_interval_entries"
+            android:entryValues="@array/sync_interval_values"
+            android:defaultValue="15" />
+        <androidx.preference.Preference
+            android:key="pref_sync_now"
+            android:title="@string/sync_now_title" />
+    </androidx.preference.PreferenceCategory>
 </androidx.preference.PreferenceScreen>

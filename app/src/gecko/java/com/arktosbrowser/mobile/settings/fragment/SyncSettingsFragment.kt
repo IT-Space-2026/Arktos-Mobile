@@ -137,6 +137,29 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             }
         }
 
+        findPreference<androidx.preference.ListPreference>("pref_sync_interval")?.apply {
+            summary = entry
+            setOnPreferenceChangeListener { pref, newValue ->
+                val lp = pref as androidx.preference.ListPreference
+                lp.summary = lp.entries?.getOrNull(
+                    lp.entryValues?.indexOf(newValue) ?: -1)
+                context?.applicationContext?.let {
+                    com.arktosbrowser.mobile.sync.SyncRepository.armInAppSync(it)
+                }
+                true
+            }
+        }
+
+        findPreference<androidx.preference.Preference>("pref_sync_now")
+            ?.setOnPreferenceClickListener {
+                context?.applicationContext?.let {
+                    com.arktosbrowser.mobile.sync.SyncWorker.runNow(it)
+                    Toast.makeText(context, R.string.sync_now_started,
+                        Toast.LENGTH_SHORT).show()
+                }
+                true
+            }
+
         // A pair ceremony outlives this screen — resume polling any
         // in-flight session so the fingerprint dialog isn't orphaned
         // by a back-out-and-in.
@@ -587,6 +610,19 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         } catch (e: Exception) {
             null
         }
+    }
+
+    // The multicast lock is screen-scoped: held while pairing/
+    // discovery is actually possible, released on leave — a held
+    // lock wakes the CPU on every multicast packet on the LAN.
+    override fun onResume() {
+        super.onResume()
+        if (::syncRepo.isInitialized) syncRepo.holdMulticast(context)
+    }
+
+    override fun onPause() {
+        if (::syncRepo.isInitialized) syncRepo.dropMulticast()
+        super.onPause()
     }
 
     override fun onDestroy() {

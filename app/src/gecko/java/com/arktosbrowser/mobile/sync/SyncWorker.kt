@@ -25,9 +25,13 @@ class SyncWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        val root = applicationContext.filesDir.absolutePath
+        val repo = SyncRepository(applicationContext.injector.arktosStore())
+        // Hold the multicast lock for the round only — LAN member
+        // resolution needs it, but a held lock between rounds wakes
+        // the CPU on every multicast packet on the LAN.
+        repo.holdMulticast(applicationContext)
         return try {
-            val root = applicationContext.filesDir.absolutePath
-            val repo = SyncRepository(applicationContext.injector.arktosStore())
             // Bring the adapter lanes up before draining — installs
             // the shared store into the Rust shims and registers the
             // appliers that route imported ops into it.
@@ -58,6 +62,8 @@ class SyncWorker(
             Result.success()
         } catch (e: Exception) {
             Result.retry()
+        } finally {
+            repo.dropMulticast()
         }
     }
 
@@ -82,19 +88,9 @@ class SyncWorker(
                     context.filesDir.absolutePath
                 )
             }
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
-                    // No point waking the transport while offline —
-                    // every drain/push would be a wasted no-op.
-                    .setConstraints(
-                        androidx.work.Constraints.Builder()
-                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                            .build()
-                    )
-                    .build()
-            )
+            // Periodic floor + in-app ticker honouring the user's
+            // pref_sync_interval (WorkManager's floor is 15min).
+            SyncRepository.armInAppSync(context)
         }
 
         /** One immediate exchange round — pairing confirm calls this

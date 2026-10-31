@@ -184,6 +184,11 @@
             <li>Gecko launch crash fixed: R8 had stripped androidx.work's Room-generated database constructor, killing WorkManagerInitializer before Application.onCreate — Room subclasses are kept now. Sync's launch bring-up also ran before the Dagger component existed; it now waits for inject.</li>
             <li>"New remote tab" main-menu entry (gecko only) lists peer devices' open tabs and opens the pick in a fresh tab.</li>
             <li>Join flow fixed: transport bring-up and invite/join moved off the main thread (they ANR'd); a real QR scan picker is wired; join errors toast instead of crashing.</li>
+            <li>Join flow, real this time: designed dialog, portrait QR scan button under the field, scanned codes prefill the field, dialog closes on Join and a status row shows a spinner then a readable copyable result; polling survives leaving the screen.</li>
+            <li>Transport fixes: Tor leg starts in the background (pair/QR is instant on LAN), connects wait for it instead of failing cold, 15s LAN-discovery window before Tor fallback, mDNS joins on every local interface, port-suffixed onions fixed for discovery-key ops, leg failures surface instead of being swallowed.</li>
+            <li>Pull to refresh on pages: arms only when the gesture starts at the top (mid-page scroll-back no longer reloads); the arm reads the engine's real scroll position via a GeckoView scroll delegate.</li>
+            <li>Sync options: interval picker (1 / 5 / 15 / 30 min) and a Sync now button; the multicast lock is scoped to pairing and exchange rounds instead of app-lifetime — a held lock wakes the CPU on every LAN multicast packet.</li>
+            <li>Status label "Ops" renamed to "Changes" — it counts op-log entries including the startup settings snapshot and membership ops.</li>
         </ul>
         <h2>1.2.6 — Sync foundation (MSYNC01)</h2>
         <ul>

@@ -207,6 +207,14 @@ class GeckoPage(
         )
         session.open(engine.runtime)
         session.navigationDelegate = GeckoNavigationDelegate()
+        session.scrollDelegate = object : GeckoSession.ScrollDelegate {
+            override fun onScrollChanged(
+                session: GeckoSession, scrollX: Int, scrollY: Int
+            ) {
+                lastScrollX = scrollX.toFloat()
+                lastScrollY = scrollY.toFloat()
+            }
+        }
         session.progressDelegate = GeckoProgressDelegate()
         session.contentDelegate = GeckoContentDelegate()
         session.historyDelegate = GeckoHistoryDelegate()
@@ -454,9 +462,13 @@ class GeckoPage(
     // stored for the shell; engine application is a parity gap (ENG05).
     override var zoomFactor: Float = 1f
 
-    // No scroll-offset surface exposed — gap.
+    private var lastScrollX = 0f
+    private var lastScrollY = 0f
+
+    // Fed by the session's ScrollDelegate — the pull-to-refresh arm
+    // checks this so a mid-page drag back to the top doesn't refresh.
     override val scrollPosition: Pair<Float, Float>
-        get() = Pair(0f, 0f)
+        get() = Pair(lastScrollX, lastScrollY)
 
     override fun findText(subString: String, backwards: Boolean) {
         session.finder.find(

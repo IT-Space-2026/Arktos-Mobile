@@ -28,9 +28,52 @@ import org.json.JSONObject
 class SyncRepository @Inject constructor(
     private val store: ArktosStore
 ) {
-    private companion object {
+    companion object {
         @Volatile
         private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
+
+        private val inAppHandler =
+            android.os.Handler(android.os.Looper.getMainLooper())
+        private var inAppTick: Runnable? = null
+
+        /**
+         * Re-arm sync cadence from pref_sync_interval.  <15min runs
+         * as an in-app ticker (WorkManager's floor is 15min); the
+         * periodic work is re-scheduled for anything >=15 so a
+         * closed app still honors slower cadences.
+         */
+        fun armInAppSync(context: android.content.Context) {
+            val ctx = context.applicationContext
+            val minutes = androidx.preference.PreferenceManager
+                .getDefaultSharedPreferences(ctx)
+                .getString("pref_sync_interval", "15")
+                ?.toLongOrNull()?.coerceAtLeast(1L) ?: 15L
+
+            inAppTick?.let { inAppHandler.removeCallbacks(it) }
+            if (minutes < 15L) {
+                val tick = object : Runnable {
+                    override fun run() {
+                        SyncWorker.runNow(ctx)
+                        inAppHandler.postDelayed(this, minutes * 60_000L)
+                    }
+                }
+                inAppTick = tick
+                inAppHandler.postDelayed(tick, minutes * 60_000L)
+            }
+
+            androidx.work.WorkManager.getInstance(ctx)
+                .enqueueUniquePeriodicWork(
+                    "sync-drain",
+                    androidx.work.ExistingPeriodicWorkPolicy.REPLACE,
+                    androidx.work.PeriodicWorkRequestBuilder<SyncWorker>(
+                        minutes.coerceAtLeast(15L), java.util.concurrent.TimeUnit.MINUTES)
+                        .setConstraints(
+                            androidx.work.Constraints.Builder()
+                                .setRequiredNetworkType(
+                                    androidx.work.NetworkType.CONNECTED)
+                                .build())
+                        .build())
+        }
     }
 
 
@@ -70,7 +113,13 @@ class SyncRepository @Inject constructor(
      * socket hears nothing.  Held for process lifetime once the
      * transport is up; reference-counted so repeated calls are cheap.
      */
-    private fun acquireMulticastLock(context: android.content.Context?) {
+    /**
+     * Scoped multicast lock — only held while discovery actually
+     * matters (the sync screen is open, or a worker exchange is
+     * draining).  Held continuously it wakes the CPU on every
+     * multicast packet on the LAN, not just sync traffic.
+     */
+    fun holdMulticast(context: android.content.Context?) {
         if (context == null) return
         runCatching {
             if (multicastLock == null) {
@@ -84,6 +133,10 @@ class SyncRepository @Inject constructor(
         }
     }
 
+    fun dropMulticast() {
+        runCatching { multicastLock?.takeIf { it.isHeld }?.release() }
+    }
+
     /**
      * Bring the transport up with the richest backend the build
      * carries: "auto" (LAN + Tor) on release gecko, "lan" on debug
@@ -95,7 +148,9 @@ class SyncRepository @Inject constructor(
     fun ensureTransport(dataRoot: String, context: android.content.Context? = null) {
         runCatching {
             if (ArktosCore.syncTransportRunning(dataRoot)) return
-            acquireMulticastLock(context)
+            // The lock is caller-scoped now — the sync screen holds
+            // it while pairing, the worker holds it per round.  A
+            // paired device merely browsing doesn't pay for it.
             val name = android.os.Build.MODEL.ifBlank { "Arktos" }
             for (backend in listOf("auto", "lan", "mem")) {
                 if (ArktosCore.syncTransportStart(dataRoot, backend, name)) break
