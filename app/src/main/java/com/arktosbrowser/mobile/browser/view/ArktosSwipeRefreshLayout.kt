@@ -22,12 +22,19 @@ class ArktosSwipeRefreshLayout @JvmOverloads constructor(
 
     private var armed = false
 
+    /** The engine's own scroll state — GeckoView doesn't report
+     *  canScrollVertically for web content, so the activity feeds
+     *  the tab's scrollPosition instead. */
+    var canScrollUpProvider: (() -> Boolean)? = null
+
     /**
      * Our direct child is the content_frame FrameLayout — it never
      * scrolls, so the default check always reports "at top" and the
-     * pull fires mid-page. Look through to the engine view.
+     * pull fires mid-page. Prefer the engine's scrollPosition; fall
+     * back to looking through to the engine view.
      */
     override fun canChildScrollUp(): Boolean {
+        canScrollUpProvider?.let { return it() }
         val container = getChildAt(0) as? ViewGroup ?: return false
         for (i in 0 until container.childCount) {
             if (container.getChildAt(i).canScrollVertically(-1)) return true

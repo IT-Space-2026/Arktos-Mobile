@@ -42,10 +42,16 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         Thread(r, "SyncIo").apply { isDaemon = true }
     }
 
+    /** The open join dialog — the scan re-open replaces, not stacks. */
+    private var joinDialog: androidx.appcompat.app.AlertDialog? = null
+
     /** QR scan result — fill the field so the user reviews the code
      *  and taps Join deliberately, same as a paste. */
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
-        result.contents?.let { if (isAdded) showJoinEntry(it) }
+        result.contents?.let {
+            joinDialog?.dismiss()
+            if (isAdded) showJoinEntry(it)
+        }
     }
 
     private lateinit var syncRepo: SyncRepository
@@ -178,6 +184,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+            .also { joinDialog = it }
     }
 
     /** The blocking dial+handshake — transport bring-up happens here
@@ -228,8 +235,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     }
 
     /** Uniffi error text → a message the user can act on. */
-    private fun readableJoinError(e: Throwable): String {
-        val m = e.message ?: return "Pairing failed"
+    private fun readableJoinError(e: Throwable): String =
+        readableJoinErrorText(e.message ?: return "Pairing failed")
+
+    private fun readableJoinErrorText(m: String): String {
         return when {
             "connect deadline" in m -> "Peer unreachable — keep the other " +
                 "device's pairing screen open and try again"
@@ -268,7 +277,10 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         val id = try { JSONObject(joinResp).optLong("session", -1) } catch (e: Exception) { -1L }
         val uid = id.toULong()
         if (id < 0) {
-            Toast.makeText(requireContext(), joinResp, Toast.LENGTH_LONG).show()
+            // Error JSON, not a session — surface it in the row too.
+            val err = JSONObject(joinResp).optString("error", joinResp)
+            joinStatus(readableJoinErrorText(err), false)
+            Toast.makeText(requireContext(), err, Toast.LENGTH_LONG).show()
             return
         }
         pollPair(uid)

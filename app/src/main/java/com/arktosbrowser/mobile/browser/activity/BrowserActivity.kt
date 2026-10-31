@@ -383,6 +383,10 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         // Pull-to-refresh: the SwipeRefreshLayout wraps content_frame
         // — the pull only fires when the engine can't scroll up.
         swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.swipe_refresh)?.also { s ->
+            (s as? com.arktosbrowser.mobile.browser.view.ArktosSwipeRefreshLayout)
+                ?.canScrollUpProvider = {
+                    (tabsManager.currentTab?.scrollPosition?.second ?: 0f) > 0f
+                }
             s.setOnRefreshListener {
                 tabsManager.currentTab?.reload()
                 // Pages that never reach 100 (offline, error page)
