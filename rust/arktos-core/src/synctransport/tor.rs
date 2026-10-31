@@ -145,6 +145,18 @@ fn ensure_dir_700(path: &Path) -> RcResult<()> {
 /// get-or-generate for the per-peer discovery key — pairing ops are
 /// retryable, so keygen must be idempotent: an existing keystore
 /// entry is returned, never re-rolled.
+/// Parse a peer's onion into an HsId, tolerating the canonical
+/// "<onion>:<port>" endpoint spelling — endpoint() and member
+/// onion_addr carry the sync port, while keystore lookups are
+/// service-identity-only.  (Ported from the desktop SYNC11 fix:
+/// feeding the port into HsId::from_str made rotate/discovery
+/// calls fail, and the member grant then failed authorize.)
+fn parse_hsid(peer_onion: &str) -> RcResult<HsId> {
+    let bare = peer_onion.split(':').next().unwrap_or(peer_onion);
+    HsId::from_str(bare)
+        .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())
+}
+
 fn discovery_key_get_or_gen<C>(client: &C, hsid: HsId) -> RcResult<tor_hscrypto::pk::HsClientDescEncKey>
 where
     C: DiscoveryKeys,
@@ -542,8 +554,7 @@ pub fn endpoint_for(dir: &Path) -> RcResult<String> {
 /// keystore so pairing-time key exchange works before first launch.
 pub fn discovery_key(dir: &Path, peer_onion: &str) -> RcResult<String> {
     install_crypto_provider();
-    let hsid = HsId::from_str(peer_onion)
-        .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+    let hsid = parse_hsid(peer_onion)?;
     let cfg = client_config(&dir.join(TRANSPORT_DIR))?;
     let key = discovery_key_get_or_gen(&inert_client(&cfg)?, hsid)?;
     Ok(key.to_string())
@@ -556,8 +567,7 @@ pub fn discovery_key(dir: &Path, peer_onion: &str) -> RcResult<String> {
 /// colliding with the no-overwrite insert.  `dir` is the sync dir.
 pub fn import_discovery_key(dir: &Path, peer_onion: &str, secret: &[u8; 32]) -> RcResult<()> {
     install_crypto_provider();
-    let hsid = HsId::from_str(peer_onion)
-        .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+    let hsid = parse_hsid(peer_onion)?;
     let cfg = client_config(&dir.join(TRANSPORT_DIR))?;
     let client = inert_client(&cfg)?;
     let _ = client
@@ -576,8 +586,7 @@ pub fn import_discovery_key(dir: &Path, peer_onion: &str, secret: &[u8; 32]) -> 
 /// authorize.  Keystore-only — works with the transport down.
 pub fn rotate_discovery_key(dir: &Path, peer_onion: &str) -> RcResult<String> {
     install_crypto_provider();
-    let hsid = HsId::from_str(peer_onion)
-        .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+    let hsid = parse_hsid(peer_onion)?;
     let cfg = client_config(&dir.join(TRANSPORT_DIR))?;
     let client = inert_client(&cfg)?;
     let key = client
@@ -664,14 +673,12 @@ impl SyncTransport for TorTransport {
     }
 
     fn discovery_key(&self, peer_onion: &str) -> RcResult<String> {
-        let hsid = HsId::from_str(peer_onion)
-            .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+        let hsid = parse_hsid(peer_onion)?;
         self.discovery_key_impl(hsid)
     }
 
     fn import_discovery_key(&self, peer_onion: &str, secret: &[u8; 32]) -> RcResult<()> {
-        let hsid = HsId::from_str(peer_onion)
-            .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+        let hsid = parse_hsid(peer_onion)?;
         let client = self.discovery_client()?;
         let _ = client
             .remove_service_discovery_key(KeystoreSelector::Primary, hsid)
@@ -684,8 +691,7 @@ impl SyncTransport for TorTransport {
     }
 
     fn rotate_discovery_key(&self, peer_onion: &str) -> RcResult<String> {
-        let hsid = HsId::from_str(peer_onion)
-            .map_err(|e| bad_arg::<()>(format!("peer onion address: {e}")).unwrap_err())?;
+        let hsid = parse_hsid(peer_onion)?;
         let client = self.discovery_client()?;
         let key = client
             .rotate_service_discovery_key(KeystoreSelector::Primary, hsid)

@@ -5,6 +5,7 @@ package com.arktosbrowser.mobile.browser.view
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ViewGroup
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
@@ -20,6 +21,19 @@ class ArktosSwipeRefreshLayout @JvmOverloads constructor(
 ) : SwipeRefreshLayout(context, attrs) {
 
     private var armed = false
+
+    /**
+     * Our direct child is the content_frame FrameLayout — it never
+     * scrolls, so the default check always reports "at top" and the
+     * pull fires mid-page. Look through to the engine view.
+     */
+    override fun canChildScrollUp(): Boolean {
+        val container = getChildAt(0) as? ViewGroup ?: return false
+        for (i in 0 until container.childCount) {
+            if (container.getChildAt(i).canScrollVertically(-1)) return true
+        }
+        return false
+    }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
