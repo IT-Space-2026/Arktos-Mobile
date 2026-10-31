@@ -118,6 +118,19 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 true
             }
 
+        findPreference<androidx.preference.Preference>("pref_sync_join_status")?.apply {
+            isVisible = false
+            setOnPreferenceClickListener {
+                // Copy the terminal message — the summary holds it.
+                val cm = requireContext().getSystemService(
+                    android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText(
+                    "join result", summary?.toString() ?: ""))
+                Toast.makeText(requireContext(), "Copied", Toast.LENGTH_SHORT).show()
+                true
+            }
+        }
+
         // A pair ceremony outlives this screen — resume polling any
         // in-flight session so the fingerprint dialog isn't orphaned
         // by a back-out-and-in.
@@ -175,6 +188,7 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
         // tap visible feedback instead of silence.
         Toast.makeText(context?.applicationContext ?: return,
             R.string.sync_joining, Toast.LENGTH_SHORT).show()
+        joinStatus("Contacting peer…", true)
         io.execute {
             val ctx = context?.applicationContext ?: return@execute
             com.arktosbrowser.mobile.crash.Diag.sync(ctx, "join.start len=${text.length}")
@@ -192,8 +206,36 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                 com.arktosbrowser.mobile.crash.Diag.sync(ctx,
                     "join.error ${e.javaClass.simpleName} ${e.message} " +
                         "dbg=${ArktosCore.syncTransportDebug(dataRoot).take(220)}")
-                handler.post { toastError(e) }
+                handler.post {
+                    joinStatus(readableJoinError(e), false)
+                    toastError(e)
+                }
             }
+        }
+    }
+
+    /** The status row under "Join a device": spinner while in
+     *  flight, then a readable terminal message (tap to copy). */
+    private fun joinStatus(msg: String, inFlight: Boolean) {
+        handler.post {
+            if (!isAdded) return@post
+            findPreference<androidx.preference.Preference>("pref_sync_join_status")?.apply {
+                isVisible = true
+                summary = msg
+                setWidgetLayoutResource(if (inFlight) R.layout.sync_join_progress else 0)
+            }
+        }
+    }
+
+    /** Uniffi error text → a message the user can act on. */
+    private fun readableJoinError(e: Throwable): String {
+        val m = e.message ?: return "Pairing failed"
+        return when {
+            "connect deadline" in m -> "Peer unreachable — keep the other " +
+                "device's pairing screen open and try again"
+            "tor leg is not running" in m -> "Tor is still starting — try again in a moment"
+            "invite" in m || "parse" in m -> "That code doesn't look like a pairing invite"
+            else -> "Pairing failed: ${m.take(160)}"
         }
     }
 
@@ -261,17 +303,21 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
                             "poll.$attempts state=$phase fp=${fp.isNotEmpty()} err=$err")
                     }
                     when {
-                        fp.isNotEmpty() || phase == "fingerprint" ->
+                        fp.isNotEmpty() || phase == "fingerprint" -> {
+                            joinStatus("Confirm the fingerprint on both devices", true)
                             showFingerprintConfirm(pairId, fp.ifEmpty { "—" })
+                        }
                         phase == "done" -> {
+                            joinStatus(getString(R.string.sync_pair_done), false)
                             Toast.makeText(requireContext(), R.string.sync_pair_done, Toast.LENGTH_LONG).show()
                             findPreference<androidx.preference.Preference>("pref_sync_device_list")
                                 ?.summary = membersSummary()
                         }
-                        phase == "failed" || phase == "cancelled" || phase == "gone" ->
-                            Toast.makeText(requireContext(),
-                                "Pairing $phase${if (err.isNotEmpty()) ": $err" else ""}",
-                                Toast.LENGTH_LONG).show()
+                        phase == "failed" || phase == "cancelled" || phase == "gone" -> {
+                            val msg = "Pairing $phase${if (err.isNotEmpty()) ": $err" else ""}"
+                            joinStatus(msg, false)
+                            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                        }
                         else -> pollPair(pairId, attempts + 1)
                     }
                 }

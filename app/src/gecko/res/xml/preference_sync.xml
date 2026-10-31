@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.preference.PreferenceScreen
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.preference.PreferenceCategory android:title="@string/sync_status_title">
         <androidx.preference.Preference
@@ -25,6 +25,12 @@
             android:title="@string/sync_join_button"
             android:summary="@string/sync_join_hint"
             android:key="pref_sync_join" />
+        <androidx.preference.Preference
+            android:key="pref_sync_join_status"
+            android:title="@string/sync_joining"
+            android:iconSpaceReserved="false"
+            app:widgetLayout="@layout/sync_join_progress"
+            android:persistent="false" />
     </androidx.preference.PreferenceCategory>
 
     <androidx.preference.PreferenceCategory android:title="@string/sync_data_title">
