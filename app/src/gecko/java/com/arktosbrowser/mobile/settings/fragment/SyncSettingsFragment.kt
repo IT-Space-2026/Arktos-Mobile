@@ -32,7 +32,7 @@ import org.json.JSONObject
  */
 class SyncSettingsFragment : AbstractSettingsFragment() {
 
-    private val dataRoot get() = requireContext().filesDir.absolutePath
+    private lateinit var dataRoot: String
     private val handler = Handler(Looper.getMainLooper())
 
     /** Blocking Rust calls (transport bring-up = a full Tor bootstrap,
@@ -63,6 +63,9 @@ class SyncSettingsFragment : AbstractSettingsFragment() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preference_sync, rootKey)
         syncRepo = com.arktosbrowser.mobile.sync.SyncRepository(injector.arktosStore())
+        // Captured once — every io.execute reads this on a worker
+        // thread where requireContext() crashes when detached.
+        dataRoot = requireContext().filesDir.absolutePath
 
         findPreference<androidx.preference.Preference>("pref_sync_device_name")?.summary =
             android.os.Build.MODEL
