@@ -417,6 +417,18 @@ class GeckoEngine(
         // any fields; the save-passwords toggle must only gate signon.
         setGeckoPref(PREF_FORMFILL, !incognitoProcess)
         setGeckoPref("extensions.formautofill.heuristics.enabled", !incognitoProcess)
+        // Page-load and restore speed: the restored-tab path reloads
+        // the document, so these help both.  Predictor pre-connects
+        // to likely hosts, prefetch-next pulls link targets early,
+        // RCWN races disk-cache entries against the network, and
+        // http3 avoids a handshake round-trip where supported.
+        setGeckoPref("network.predictor.enabled", true)
+        setGeckoPref("network.predictor.enable-prefetch", true)
+        setGeckoPref("network.http.speculative-parallel-limit", 4)
+        setGeckoPref("network.prefetch-next", true)
+        setGeckoPref("network.http.rcwn.enabled", true)
+        setGeckoPref("network.http.http3.enabled", true)
+
         // The login manager's own save/fill pipeline backs the app's
         // password store (AUTOF02) — the "save passwords" toggle gates
         // save prompts, and private sessions must neither prompt nor
