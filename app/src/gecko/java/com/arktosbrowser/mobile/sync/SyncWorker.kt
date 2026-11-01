@@ -75,10 +75,14 @@ class SyncWorker(
         fun schedule(context: Context) {
             // Bring the adapter lanes up at launch too — emission
             // starts working immediately, the 15-min worker only
-            // drains the wire.
-            runCatching {
-                SyncRepository(context.injector.arktosStore())
-                    .install(context.filesDir.absolutePath, context.applicationContext)
+            // drains the wire.  Off the main thread: install →
+            // ensureTransport can block on a Tor bootstrap, which
+            // would freeze the whole app at startup.
+            kotlin.concurrent.thread(name = "arktos-sync-install") {
+                runCatching {
+                    SyncRepository(context.injector.arktosStore())
+                        .install(context.filesDir.absolutePath, context.applicationContext)
+                }
             }
             // Emit on every non-excluded preference write — the
             // settings lane's outbound half.
@@ -97,7 +101,11 @@ class SyncWorker(
          *  so the first sync doesn't wait out the periodic window. */
         @JvmStatic
         fun runNow(context: Context) {
-            WorkManager.getInstance(context).enqueue(
+            // Unique + KEEP — the short-interval ticker and the
+            // pair-confirm path must not pile up overlapping rounds.
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "sync-now",
+                androidx.work.ExistingWorkPolicy.KEEP,
                 androidx.work.OneTimeWorkRequestBuilder<SyncWorker>()
                     .setConstraints(
                         androidx.work.Constraints.Builder()
