@@ -30,13 +30,25 @@ import java.util.Locale
  */
 object Diag {
 
-    private const val BOOT_LOG = "arkos-boot.log"
-    private const val EXIT_LOG = "arkos-exit.log"
+    /** Everything diag lands in one file — boot checkpoints, exit
+     *  reasons and sync steps share a single timeline, so there is
+     *  exactly one artifact to copy out. */
+    private const val DIAG_LOG = "arkos-diag.log"
     private const val RUST_PANIC_LOG = "arktos-rust-panic.log"
 
     @Volatile private var initialized = false
-    private val boot = StringBuilder()
+    private val log = StringBuilder()
     private val ts = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
+
+    /** One timestamped line + a full rewrite of the single file. */
+    private fun line(ctx: Context, stream: String, tag: String) {
+        synchronized(log) {
+            log.append(ts.format(Date())).append(' ')
+                .append(android.os.Process.myPid()).append(' ')
+                .append(stream).append(' ').append(tag).append('\n')
+            writeDownloads(ctx, DIAG_LOG, log.toString().toByteArray())
+        }
+    }
 
     /** First line of defense — call from Application.attachBaseContext. */
     fun earlyInit(app: Context) {
@@ -69,28 +81,13 @@ object Diag {
     /** Record a boot milestone — visible even after a native death. */
     fun checkpoint(ctx: Context, tag: String) {
         if (!BuildConfig.DIAG) return
-        runCatching {
-            synchronized(boot) {
-                boot.append(ts.format(Date())).append(' ')
-                    .append(android.os.Process.myPid()).append(' ')
-                    .append(tag).append('\n')
-                writeDownloads(ctx, BOOT_LOG, boot.toString().toByteArray())
-            }
-        }
+        runCatching { line(ctx, "boot", tag) }
     }
 
-    /** Sync join/pair step log — append-only, arkos-sync.log in
-     *  Downloads, DIAG builds only. */
-    private val syncLog = StringBuilder()
+    /** Sync join/pair step log — same single diag file, DIAG only. */
     fun sync(ctx: Context, tag: String) {
         if (!BuildConfig.DIAG) return
-        runCatching {
-            synchronized(syncLog) {
-                syncLog.append(ts.format(Date())).append(' ')
-                    .append(tag).append('\n')
-                writeDownloads(ctx, "arkos-sync.log", syncLog.toString().toByteArray())
-            }
-        }
+        runCatching { line(ctx, "sync", tag) }
     }
 
     /** The fatal-Java path — every step guarded so nothing can silence it. */
@@ -120,7 +117,7 @@ object Diag {
      */
     private fun dumpExitReasons(app: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            writeDownloads(app, EXIT_LOG, "device < API 30 — no exit reasons\n".toByteArray())
+            line(app, "exit", "device < API 30 — no exit reasons")
             return
         }
         val am = app.getSystemService(ActivityManager::class.java) ?: return
@@ -146,7 +143,10 @@ object Diag {
             }
             out.append('\n')
         }
-        writeDownloads(app, EXIT_LOG, out.toString().toByteArray())
+        synchronized(log) {
+            log.append(out)
+            writeDownloads(app, DIAG_LOG, log.toString().toByteArray())
+        }
     }
 
     /** GeckoView's own minidump reports — unreadable binary but the
