@@ -122,8 +122,11 @@ class SuggestionsAdapter(
         }
         val webPage: WebPage = filteredList[position]
 
-        holder.titleView.text = webPage.title
-        holder.urlView.text = webPage.url
+        // Truncation matters: breakLineOptimal is quadratic on a
+        // giant unbreakable string — a mega-URL in history ANR'd the
+        // dropdown's measure pass (the breaker runs before ellipsize).
+        holder.titleView.text = webPage.title.take(256)
+        holder.urlView.text = webPage.url.take(256)
 
         val image = when (webPage) {
             is Bookmark -> bookmarkIcon
