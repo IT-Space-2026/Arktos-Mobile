@@ -35,6 +35,16 @@ class SyncRepository @Inject constructor(
         private val inAppHandler =
             android.os.Handler(android.os.Looper.getMainLooper())
         private var inAppTick: Runnable? = null
+        private var inAppServeTick: Runnable? = null
+
+        /**
+         * Inbound-serve cadence: a peer's dial only gets an answer
+         * while our transport queue is being drained — the exchange
+         * tick can be 15min out, but the dialer gives up after tens
+         * of seconds.  10s keeps replies well inside that window;
+         * the drain is an in-memory queue check, no wakelock.
+         */
+        private const val SERVE_MS = 10_000L
 
         /**
          * Re-arm sync cadence from pref_sync_interval.  <15min runs
@@ -50,6 +60,20 @@ class SyncRepository @Inject constructor(
                 ?.toLongOrNull()?.coerceAtLeast(1L) ?: 15L
 
             inAppTick?.let { inAppHandler.removeCallbacks(it) }
+            inAppServeTick?.let { inAppHandler.removeCallbacks(it) }
+            val serve = object : Runnable {
+                override fun run() {
+                    kotlin.concurrent.thread(name = "arktos-sync-serve") {
+                        runCatching {
+                            ArktosCore.syncTransportDrain(
+                                ctx.filesDir.absolutePath)
+                        }
+                    }
+                    inAppHandler.postDelayed(this, SERVE_MS)
+                }
+            }
+            inAppServeTick = serve
+            inAppHandler.postDelayed(serve, SERVE_MS)
             if (minutes < 15L) {
                 val tick = object : Runnable {
                     override fun run() {

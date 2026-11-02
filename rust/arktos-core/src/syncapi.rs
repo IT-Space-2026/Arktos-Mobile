@@ -622,25 +622,52 @@ pub fn sync_transport_drain(data_root: String) -> String {
         if crate::syncpair::claim_event(root, &t, &ev) {
             continue;
         }
-        if let crate::synctransport::TransportEvent::Frame { payload, .. } = ev {
+        if let crate::synctransport::TransportEvent::Frame { link, payload } = ev {
             frames += 1;
             if let Ok(eng) = try_engine(&data_root) {
                 let eng = eng.lock().unwrap_or_else(|x| x.into_inner());
-                // Wire shape is {"ops":[...]}; a bare op array is
-                // accepted too so mem-loopback tests stay readable.
-                let docs: Vec<serde_json::Value> =
-                    match serde_json::from_slice::<serde_json::Value>(&payload) {
-                        Ok(v) => v
-                            .get("ops")
+                // Wire shape is {"t":"sync_ops","ops":[...]}; the
+                // untyped {"ops":[...]} form and a bare op array are
+                // accepted too — the desktop speaks the typed form
+                // and older mobile builds emitted the untyped one.
+                let parsed = serde_json::from_slice::<serde_json::Value>(&payload).ok();
+                let is_ops_doc = parsed
+                    .as_ref()
+                    .map(|v| v.get("ops").is_some() || v.is_array())
+                    .unwrap_or(false);
+                let docs: Vec<serde_json::Value> = parsed
+                    .map(|v| {
+                        v.get("ops")
                             .and_then(|o| o.as_array())
                             .cloned()
                             .or_else(|| v.as_array().cloned())
-                            .unwrap_or_default(),
-                        Err(_) => Vec::new(),
-                    };
+                            .unwrap_or_default()
+                    })
+                    .unwrap_or_default();
                 if !docs.is_empty() {
                     if let Ok(rep) = eng.import(&docs) {
                         imported += rep.applied;
+                    }
+                }
+                // The desktop exchange is request/reply: it dials,
+                // sends its ops, and waits for our export on the
+                // same link — unanswered frames read as a timeout
+                // there.  Reply with our own export on the link the
+                // frame arrived on (the link's send cursor keeps the
+                // payload a delta once the link persists).
+                if is_ops_doc {
+                    let since = crate::synctransport::sent_seq(root, link);
+                    if let Ok(tagged) = eng.export_tagged(since) {
+                        let max_seq =
+                            tagged.iter().map(|(s, _)| *s).max().unwrap_or(since);
+                        let reply: Vec<serde_json::Value> =
+                            tagged.iter().map(|(_, o)| o.to_json()).collect();
+                        let frame = serde_json::json!({"t":"sync_ops","ops": reply})
+                            .to_string()
+                            .into_bytes();
+                        if t.send(link, &frame).is_ok() {
+                            crate::synctransport::mark_sent(root, link, max_seq);
+                        }
                     }
                 }
             }
@@ -649,8 +676,9 @@ pub fn sync_transport_drain(data_root: String) -> String {
     serde_json::json!({"ok": true, "frames": frames, "applied": imported}).to_string()
 }
 
-/// Outbound dispatch: export the op-log into one `{"ops":[...]}`
-/// frame and fan it out to every live link — opening an outbound
+/// Outbound dispatch: export the op-log into one
+/// `{"t":"sync_ops","ops":[...]}` frame (the desktop's request/reply
+/// wire shape) and fan it out to every live link — opening an outbound
 /// link to each member endpoint that lacks one.  The export
 /// cursor stays stateless (since_seq 0): content-addressed dedup
 /// makes resends free, so a full snapshot per push is correct.
@@ -705,7 +733,9 @@ pub fn sync_transport_push(data_root: String) -> String {
         let max_seq = tagged.iter().map(|(s, _)| *s).max().unwrap_or(since);
         let docs: Vec<serde_json::Value> =
             tagged.iter().map(|(_, o)| o.to_json()).collect();
-        let frame = serde_json::json!({"ops": docs}).to_string().into_bytes();
+        let frame = serde_json::json!({"t": "sync_ops", "ops": docs})
+            .to_string()
+            .into_bytes();
         match t.send(link, &frame) {
             Ok(()) => {
                 sent += 1;

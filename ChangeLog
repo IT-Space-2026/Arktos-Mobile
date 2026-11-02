@@ -6,6 +6,20 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.8 — Sync actually exchanges
+
+- Wire-protocol interop with the desktop exchange: the drain now
+  replies to inbound op frames on the same link (typed
+  {"t":"sync_ops"} doc matching the desktop's request/reply), and
+  outbound push frames carry the same typed shape.  Before this, a
+  desktop dial got its ops imported but never a reply — every round
+  ended "exchange timed out" on that side and our own ops never
+  landed there either.
+- A 10s inbound-serve ticker drains the transport queue while the
+  app runs — a peer's dial is now answered inside its tens-of-
+  seconds dial budget instead of waiting out the 15-minute exchange
+  tick.
+
 1.2.7 — Mobile sync (MSYNC02–10)
 
 - The desktop sync engine is ported into arktos-core: the op-log

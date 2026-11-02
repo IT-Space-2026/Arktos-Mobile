@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion = rootProject.minSdkVersion
         targetSdkVersion = rootProject.targetSdkVersion
-        versionName = "1.2.7"
-        versionCode = 168
+        versionName = "1.2.8"
+        versionCode = 169
         // -ParktosDiag builds the launch-crash instrumentation (boot
         // beacons + ApplicationExitInfo tombstone dump in
         // crash/Diag.kt). Release builds pass nothing — the code ships
