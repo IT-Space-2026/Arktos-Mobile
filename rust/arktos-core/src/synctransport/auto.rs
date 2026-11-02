@@ -167,13 +167,14 @@ impl AutoTransport {
     /// the tor slot; anything else is a tor endpoint — resolved
     /// through LAN discovery first when the peer announced its
     /// onion there.
-    fn route(&self, endpoint: &str) -> (u8, String) {
+    fn route(&self, endpoint: &str, as_nickname: &str) -> (u8, String) {
         if endpoint.starts_with("lan://") {
             return (LEG_LAN, endpoint.to_string());
         }
         if endpoint.starts_with("mem:") {
             return (LEG_TOR, endpoint.to_string());
         }
+        let _ = as_nickname;
         if let Some(lan) = &self.lan {
             if let Some(p) = lan.discovered_by_onion(endpoint) {
                 return (LEG_LAN, format!("lan://{}", p.device_id));
@@ -341,7 +342,7 @@ impl SyncTransport for AutoTransport {
             && !endpoint.starts_with("mem:")
         {
             for _ in 0..30 {
-                if self.route(endpoint).0 == LEG_LAN {
+                if self.route(endpoint, as_nickname).0 == LEG_LAN {
                     break;
                 }
                 std::thread::sleep(std::time::Duration::from_millis(500));
@@ -350,7 +351,7 @@ impl SyncTransport for AutoTransport {
         // A tor-routed dial right after bring-up: the leg fills on a
         // background thread once Arti finishes bootstrapping — wait
         // for it instead of failing the connect cold.
-        if self.route(endpoint).0 == LEG_TOR {
+        if self.route(endpoint, as_nickname).0 == LEG_TOR {
             for _ in 0..180 {
                 if self.leg(LEG_TOR).is_some() {
                     break;
@@ -358,7 +359,7 @@ impl SyncTransport for AutoTransport {
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }
         }
-        let (leg, target) = self.route(endpoint);
+        let (leg, target) = self.route(endpoint, as_nickname);
         let l = self.leg(leg).ok_or_else(|| Fail {
             status: RcStatus::Unavailable,
             msg: format!(
@@ -366,7 +367,19 @@ impl SyncTransport for AutoTransport {
                 leg_name(leg)
             ),
         })?;
-        let inner = l.connect(&target, as_nickname)?;
+        let inner = match l.connect(&target, as_nickname) {
+            Ok(id) => id,
+            Err(e) if leg == LEG_LAN && !endpoint.starts_with("lan://") => {
+                // The LAN fast path failed (unresolvable name, blocked
+                // UDP, NAT'd emulator, …) — the endpoint is an onion,
+                // so the tor leg can still reach it.
+                eprintln!("arktos-sync: lan dial failed ({}), falling back to tor", e.msg);
+                let tor = self.leg(LEG_TOR).ok_or(e)?;
+                let id = tor.connect(endpoint, as_nickname)?;
+                return Ok(self.outer_id(LEG_TOR, id));
+            }
+            Err(e) => return Err(e),
+        };
         Ok(self.outer_id(leg, inner))
     }
 

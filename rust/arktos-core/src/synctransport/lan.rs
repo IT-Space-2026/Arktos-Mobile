@@ -151,10 +151,14 @@ fn admit_peer(
     }
     let id16 = &id[..16.min(id.len())];
     let nick = format!("member-{id16}");
-    let granted = authorized
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .contains_key(&nick);
+    let granted = {
+        let set = authorized.lock().unwrap_or_else(|e| e.into_inner());
+        // An open pairing window (a `pair-*` invite grant) admits the
+        // cert at TLS — Noise authenticates the one-time token and
+        // pins the inviter's static against the invite, so a `pair-`
+        // link can't be spent by an unrelated device.
+        set.contains_key(&nick) || set.keys().any(|k| k.starts_with("pair-"))
+    };
     if !granted {
         return Err(denied(format!(
             "peer device {id16} has no member grant — not a paired device"
@@ -614,16 +618,27 @@ impl LanTransport {
     /// Resolve a `connect` endpoint string into dial candidates.
     fn resolve(&self, endpoint: &str, as_nickname: &str) -> RcResult<Dial> {
         let body = endpoint.strip_prefix("lan://").unwrap_or(endpoint);
-        // Discovered-device dial: a bare 64-hex (or id16) token.
-        let looks_like_id = !body.contains(':')
-            && body.chars().all(|c| c.is_ascii_hexdigit())
-            && (body.len() == 64 || body.len() == 16);
+        // Discovered-device dial: a bare 64-hex (or id16) token, an
+        // `arktos-<id16>.local` hostname, or either with a trailing
+        // `:port` — discovery owns the dial so a platform without
+        // `.local` DNS (Android) never re-resolves the name.
+        let core = body.split('@').next().unwrap_or(body);
+        let token = core
+            .rsplit_once(':')
+            .and_then(|(h, p)| p.parse::<u16>().ok().map(|_| h))
+            .unwrap_or(core);
+        let id_token = token
+            .strip_suffix(".local")
+            .and_then(|h| h.strip_prefix("arktos-"))
+            .unwrap_or(token);
+        let looks_like_id = id_token.chars().all(|c| c.is_ascii_hexdigit())
+            && (id_token.len() == 64 || id_token.len() == 16);
         if looks_like_id {
             let peer = self
-                .discovered(body)
+                .discovered(id_token)
                 .ok_or_else(|| Fail {
                     status: RcStatus::NotFound,
-                    msg: format!("device {}… is not discovered on the LAN", &body[..8.min(body.len())]),
+                    msg: format!("device {}… is not discovered on the LAN", &id_token[..8.min(id_token.len())]),
                 })?;
             let addrs: Vec<SocketAddr> = peer
                 .addrs
@@ -631,9 +646,9 @@ impl LanTransport {
                 .map(|a| SocketAddr::from((*a, peer.port)))
                 .collect();
             if addrs.is_empty() {
-                return Err(io_fail("dial", format!("peer {body} has no LAN address")));
+                return Err(io_fail("dial", format!("peer {id_token} has no LAN address")));
             }
-            return Ok(Dial::Peer(addrs, body.to_string()));
+            return Ok(Dial::Peer(addrs, id_token.to_string()));
         }
         // Direct host:port (bracketed v6 refused — LAN is v4 only).
         let (host, port) = body
@@ -645,7 +660,7 @@ impl LanTransport {
             })?;
         let mut addrs = Vec::new();
         for a in std::net::ToSocketAddrs::to_socket_addrs(&(host, port))
-            .map_err(|e| io_fail("resolve lan endpoint", e))?
+            .map_err(|e| io_fail("resolve lan endpoint", format!("{host}:{port}: {e}")))?
         {
             addrs.push(a);
         }

@@ -118,7 +118,8 @@ android {
                 // Release scope: the gecko flavor ships arm64-v8a only —
                 // GeckoView does not publish armeabi-v7a, and x86 is
                 // emulator-only; v7a users take the Lite flavor.
-                abiFilters "arm64-v8a"
+                // x86_64 kept so the debug variant can run on x86 emulators.
+                abiFilters "arm64-v8a", "x86_64"
             }
             // 178MB of stored native libs compress to ~76MB — extract at
             // install instead, halving the direct-download APK size.
@@ -356,7 +357,7 @@ tasks.register('generateUniffiBindings', Exec) {
 // tree); the webview release stays lean — no Arti in Arktos Light.
 // Debug pulls synclan only — the LAN leg without the Arti tree's
 // compile cost; real device-to-device sync stays testable on wifi.
-[['Debug', rustJniLibsDebug, 'synclan'],
+[['Debug', rustJniLibsDebug, 'synctor,synclan'],
  ['ReleaseGecko', rustJniLibsReleaseGecko, 'synctor,synclan'],
  ['ReleaseWebview', rustJniLibsReleaseWebview, '']].each { type, outDir, feats ->
     tasks.register("cargoNdkBuild${type}", Exec) {
