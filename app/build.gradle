@@ -118,8 +118,7 @@ android {
                 // Release scope: the gecko flavor ships arm64-v8a only —
                 // GeckoView does not publish armeabi-v7a, and x86 is
                 // emulator-only; v7a users take the Lite flavor.
-                // x86_64 kept so the debug variant can run on x86 emulators.
-                abiFilters "arm64-v8a", "x86_64"
+                abiFilters "arm64-v8a"
             }
             // 178MB of stored native libs compress to ~76MB — extract at
             // install instead, halving the direct-download APK size.
