@@ -6,7 +6,17 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
-1.2.8 — Sync actually exchanges
+1.2.8 — Sync actually exchanges (now also via rendezvous relay)
+
+- Pairing can rendezvous through a relay: set ARKTOS_RELAY=<onion>
+  (or write it to the sync data dir's 'relay' file) and the invite
+  advertises relay://<onion>.  The inviter OFFERs H(token), the
+  joiner CLAIMs it — the server splices the two streams and Noise
+  runs through them unchanged.  Both devices only dial out, so
+  pairing no longer depends on a device-hosted onion service.
+- First-run bookmark seeding can no longer crash the app: the
+  subscribe() error path logs via Diag instead of propagating.
+
 
 - Wire-protocol interop with the desktop exchange: the drain now
   replies to inbound op frames on the same link (typed

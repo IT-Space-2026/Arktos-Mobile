@@ -176,7 +176,9 @@
     <div class="entry">
         <h2>1.2.8 — Sync actually exchanges</h2>
         <ul>
-            <li>Wire-protocol interop with the desktop exchange: the drain now replies to inbound op frames on the same link (typed sync_ops doc matching the desktop's request/reply), and outbound push frames carry the same typed shape — desktop rounds used to end "exchange timed out" and our ops never landed there.</li>
+                        <li>Pairing can rendezvous through a relay: a configured relay onion makes the invite advertise relay:// — the inviter OFFERs H(token), the joiner CLAIMs it, and the server splices the streams.  Both devices only dial out, so pairing no longer depends on a device-hosted onion.</li>
+            <li>First-run bookmark seeding can no longer crash the app: the subscribe() error path logs via Diag instead of propagating.</li>
+<li>Wire-protocol interop with the desktop exchange: the drain now replies to inbound op frames on the same link (typed sync_ops doc matching the desktop's request/reply), and outbound push frames carry the same typed shape — desktop rounds used to end "exchange timed out" and our ops never landed there.</li>
             <li>A 10-second inbound-serve ticker drains the transport queue while the app runs, so a peer's dial is answered inside its dial budget instead of waiting out the 15-minute exchange tick.</li>
         </ul>
         <h2>1.2.7 — Mobile sync (MSYNC02–10)</h2>
