@@ -190,7 +190,13 @@ class BrowserApp : Application() {
                     bookmarkModel.addBookmarkList(assetsBookmarks)
                 }
                 .subscribeOn(databaseScheduler)
-                .subscribe()
+                .subscribe(
+                        {},
+                        { err ->
+                            Diag.checkpoint(
+                                    this,
+                                    "bookmark-seed failed: ${err.javaClass.simpleName}: ${err.message}")
+                        })
 
         registerActivityLifecycleCallbacks(object : MemoryLeakUtils.LifecycleAdapter() {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
