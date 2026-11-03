@@ -54,7 +54,7 @@ html5gum = "=0.8.4"
 serde_json = "=1.0.154"
 quick-xml = { version = "=0.42.0", features = ["encoding"] }
 aes-gcm = "=0.10.3"
-zeroize = "=1.8.1"
+zeroize = "=1.9.1"
 getrandom = "=0.2.15"
 # PORT01 — download filename/MIME core: extension↔type mapping for
 mime_guess = "=2.0.5"
