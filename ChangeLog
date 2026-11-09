@@ -6,6 +6,14 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.9 — GeckoView 159 respin
+
+- GeckoView engine bumped to 159.0.20261102144711 (was
+  159.0.20261022150525) — the latest published stable-channel
+  build on maven.mozilla.org, carrying upstream engine fixes.
+  Dependency-verification metadata regenerated for the new
+  artifact.
+
 1.2.8 — Sync actually exchanges (now also via rendezvous relay)
 
 - Pairing can rendezvous through a relay: set ARKTOS_RELAY=<onion>
