@@ -172,7 +172,7 @@ dependencies {
     // support libraries
     implementation "androidx.palette:palette-ktx:1.1.0"
     // Sync deps are gecko-only — Light ships no sync code.
-    geckoImplementation "com.google.zxing:core:3.5.3"
+    geckoImplementation "com.google.zxing:core:3.5.4"
     // Join-a-device QR scanning — the camera UI ships with this lib;
     // CAMERA permission + autofocus features were already declared.
     geckoImplementation "com.journeyapps:zxing-android-embedded:4.3.0"
