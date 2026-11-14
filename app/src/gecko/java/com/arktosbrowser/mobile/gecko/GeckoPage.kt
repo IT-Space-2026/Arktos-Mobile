@@ -365,6 +365,11 @@ class GeckoPage(
     override fun reload() {
         // Same proxy-readiness gate as the WebView's reload.
         if (!engine.proxyUtils.isProxyReady(activity)) return
+        // Dead session — recover the tab, don't no-op on the corpse.
+        if (!session.isOpen) {
+            reloadIfStale()
+            return
+        }
         // Reloading a generated error/interstitial page reloads the
         // `data:` document — re-issue the real navigation instead,
         // like `reloadIncludingErrorPage` on the WebView client.
@@ -384,9 +389,24 @@ class GeckoPage(
     override val canGoForward: Boolean
         get() = forwardable
 
-    override fun back() = session.goBack()
+    override fun back() {
+        // A closed session eats navigation calls silently (dead
+        // content process) — recover the tab instead of standing on
+        // a black surface.
+        if (!session.isOpen) {
+            reloadIfStale()
+            return
+        }
+        session.goBack()
+    }
 
-    override fun forward() = session.goForward()
+    override fun forward() {
+        if (!session.isOpen) {
+            reloadIfStale()
+            return
+        }
+        session.goForward()
+    }
 
     override fun historyItems(): List<HistoryEntry> =
         latestHistory?.mapIndexed { index, item ->
@@ -661,6 +681,13 @@ class GeckoPage(
         val state = latestSessionState
         if (!session.isOpen) {
             session.open(engine.runtime)
+            // A session reopened while still bound to the shared
+            // view keeps no compositor — the surface stays dead
+            // (black). Re-bind so the fresh process composites.
+            view?.takeIf { it.session === session }?.let { v ->
+                v.releaseSession()
+                v.setSession(session)
+            }
             if (state != null) session.restoreState(state) else session.loadUri(currentUrl)
         } else if (wasCrashed && state != null) {
             // Crash/kill recovery — re-apply the state to keep scroll.

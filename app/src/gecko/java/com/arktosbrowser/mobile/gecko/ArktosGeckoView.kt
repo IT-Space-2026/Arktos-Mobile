@@ -44,7 +44,11 @@ class ArktosGeckoView(context: Context) : GeckoView(context) {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (session == null) {
-            pendingSession?.let { setSession(it) }
+            // A session that closed while detached (content-process
+            // kill mid-swap) must not be bound — setSession() on a
+            // closed session leaves the surface unbound. The engine's
+            // next acquireView reopens and re-binds it.
+            pendingSession?.takeIf { it.isOpen }?.let { setSession(it) }
         }
     }
 }

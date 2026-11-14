@@ -6,6 +6,22 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.10 — GeckoView 160 + dead-tab recovery
+
+- GeckoView engine bumped to 160.0.20261104181552 (was
+  159.0.20261102144711) — the latest published stable-channel
+  build on maven.mozilla.org.  Dependency-verification metadata
+  regenerated for the new artifact.
+- Dead-tab fix: a session that lost its content process could
+  leave the tab on a black surface that ignored Back —
+  the shared view bound the closed session back on re-attach,
+  the same-page acquire path skipped all session healing, and a
+  reopened session kept no compositor.  acquireView now checks
+  session health on every bind (reopen + re-bind even when the
+  page never changed), the view refuses to re-bind a closed
+  session, recovery re-binds the display, and Back/Forward/
+  Reload on a dead session trigger recovery instead of no-op.
+
 1.2.9 — GeckoView 159 respin
 
 - GeckoView engine bumped to 159.0.20261102144711 (was

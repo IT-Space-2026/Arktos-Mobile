@@ -174,6 +174,11 @@
     </div>
 
     <div class="entry">
+        <h2>1.2.10 — GeckoView 160 + dead-tab recovery</h2>
+        <ul>
+            <li>GeckoView engine bumped to 160.0.20261104181552 (was 159.0.20261102144711) — the latest published stable-channel build on maven.mozilla.org.</li>
+            <li>Dead-tab fix: a session that lost its content process could leave the tab on a black surface that ignored Back — the shared view bound the closed session back on re-attach, the same-page acquire path skipped session healing, and a reopened session kept no compositor. Session health is now checked on every bind, the view refuses to re-bind a closed session, recovery re-binds the display, and Back/Forward/Reload on a dead session trigger recovery instead of doing nothing.</li>
+        </ul>
         <h2>1.2.9 — GeckoView 159 respin</h2>
         <ul>
             <li>GeckoView engine bumped to 159.0.20261102144711 (was 159.0.20261022150525) — the latest published stable-channel build on maven.mozilla.org, carrying upstream engine fixes.</li>

@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion = rootProject.minSdkVersion
         targetSdkVersion = rootProject.targetSdkVersion
-        versionName = "1.2.9"
-        versionCode = 170
+        versionName = "1.2.10"
+        versionCode = 171
         // -ParktosDiag builds the launch-crash instrumentation (boot
         // beacons + ApplicationExitInfo tombstone dump in
         // crash/Diag.kt). Release builds pass nothing — the code ships
@@ -241,7 +241,7 @@ dependencies {
     // CVE fixes. 158.0.2 (20261021001945) regressed restored
     // background tabs (loads abort without recovery) — verify
     // restored background tabs still load after every bump.
-    geckoImplementation 'org.mozilla.geckoview:geckoview:159.0.20261102144711'
+    geckoImplementation 'org.mozilla.geckoview:geckoview:160.0.20261104181552'
 
     // lifecycleScope for coroutine-backed background work (MOD02)
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'

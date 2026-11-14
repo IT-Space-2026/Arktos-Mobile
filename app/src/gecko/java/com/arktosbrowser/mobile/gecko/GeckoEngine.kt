@@ -247,58 +247,72 @@ class GeckoEngine(
         }
         val gv = sharedView
             ?: ArktosGeckoView(page.activity).also { sharedView = it }
-        if (boundPage !== page) {
+        val switching = boundPage !== page
+        if (switching) {
             boundPage?.let {
                 it.view = null
                 if (it.session.isOpen) it.session.setFocused(false)
             }
-            if (gv.session !== page.session) {
-                gv.releaseSession()
-                // A session that died (crash/kill) must be re-opened
-                // before binding — setSession() on a closed session
-                // silently leaves the surface unbound.
-                val coldStart = !page.session.isOpen
-                if (coldStart) page.session.open(runtime)
-                // Activate before the display binds — a session bound
-                // while inactive can leave the surface unpainted
-                // (black) until its next invalidation, the same reason
-                // mozilla-components runs markActive() ahead of
-                // render().
-                page.session.setActive(true)
-                gv.setSession(page.session)
-                // Cover only on a cold/recovery bind — a live session's
-                // rebind repaints immediately, and holding the cover
-                // until its next composite made every switch look like
-                // a slow page load. mozilla-components uses the cover
-                // for theme changes, never per-swap.
-                if (coldStart) {
-                    gv.coverUntilFirstPaint(backgroundColor(page.activity))
-                }
+        }
+        // Session health runs on every acquire, not only page swaps:
+        // a session that was closed while this page still owned the
+        // view (content-process kill during a detach, a missed
+        // recovery) must be reopened and re-bound here — a closed
+        // session left bound paints a dead surface and silently eats
+        // navigation (goBack & co no-op on it).
+        var coldStart = false
+        if (gv.session !== page.session || !page.session.isOpen) {
+            gv.releaseSession()
+            // A session that died (crash/kill) must be re-opened
+            // before binding — setSession() on a closed session
+            // silently leaves the surface unbound.
+            coldStart = !page.session.isOpen
+            if (coldStart) page.session.open(runtime)
+            // Activate before the display binds — a session bound
+            // while inactive can leave the surface unpainted
+            // (black) until its next invalidation, the same reason
+            // mozilla-components runs markActive() ahead of
+            // render().
+            page.session.setActive(true)
+            gv.setSession(page.session)
+            // Cover only on a cold/recovery bind — a live session's
+            // rebind repaints immediately, and holding the cover
+            // until its next composite made every switch look like
+            // a slow page load. mozilla-components uses the cover
+            // for theme changes, never per-swap.
+            if (coldStart) {
+                gv.coverUntilFirstPaint(backgroundColor(page.activity))
             }
-            gv.pendingSession = page.session
-            // AUTOF01 — the Android autofill delegate is enabled by
-            // default (GeckoView wires AndroidAutofillDelegate into
-            // every setSession); private-mode pages must neither
-            // offer fills nor hand session commits to the system
-            // autofill service, so the flag follows the bound
-            // profile's privacy on every swap. geckoview-158's
-            // setAutofillEnabled does NOT mark the view important —
-            // AUTO resolves to "not autofillable" on a custom view,
-            // which left Bitwarden blind (no fill, no context menu).
-            gv.autofillEnabled = !page.isOffTheRecord
-            gv.importantForAutofill = if (page.isOffTheRecord) {
-                android.view.View.IMPORTANT_FOR_AUTOFILL_NO
-            } else {
-                android.view.View.IMPORTANT_FOR_AUTOFILL_YES
-            }
-            page.session.setFocused(true)
-            boundPage = page
-            // A reopened-but-empty session never paints, so the
-            // cold-start cover would hold as a dark screen until a
-            // tab switch forced a rebind. Kick the stale-load
-            // recovery once the surface is up — it no-ops when the
-            // session is healthy and reloads the tracked URL when
-            // the restore produced no document.
+        }
+        gv.pendingSession = page.session
+        // AUTOF01 — the Android autofill delegate is enabled by
+        // default (GeckoView wires AndroidAutofillDelegate into
+        // every setSession); private-mode pages must neither
+        // offer fills nor hand session commits to the system
+        // autofill service, so the flag follows the bound
+        // profile's privacy on every swap. geckoview-158's
+        // setAutofillEnabled does NOT mark the view important —
+        // AUTO resolves to "not autofillable" on a custom view,
+        // which left Bitwarden blind (no fill, no context menu).
+        gv.autofillEnabled = !page.isOffTheRecord
+        gv.importantForAutofill = if (page.isOffTheRecord) {
+            android.view.View.IMPORTANT_FOR_AUTOFILL_NO
+        } else {
+            android.view.View.IMPORTANT_FOR_AUTOFILL_YES
+        }
+        // The acquired page is the one being shown — a session left
+        // inactive or unfocused from an earlier pause paints black /
+        // drops input until something re-marks it.
+        page.session.setActive(true)
+        page.session.setFocused(true)
+        boundPage = page
+        // A reopened-but-empty session never paints, so the
+        // cold-start cover would hold as a dark screen until a
+        // tab switch forced a rebind. Kick the stale-load
+        // recovery once the surface is up — it no-ops when the
+        // session is healthy and reloads the tracked URL when
+        // the restore produced no document.
+        if (switching || coldStart) {
             gv.postDelayed({ page.reloadIfStale() }, 400)
         }
         page.view = gv
