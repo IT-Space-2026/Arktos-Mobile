@@ -267,7 +267,8 @@ class BrowserPresenter(
         // Feed the History screen's "Recently closed tabs" section —
         // the in-memory model only restores the last tab; this
         // records title+url persistently for the Iceraven-style row.
-        (view as? android.content.Context)?.let { ctx ->
+        // Never incognito — that list survives the session.
+        if (!isIncognito) (view as? android.content.Context)?.let { ctx ->
             runCatching {
                 com.arktosbrowser.mobile.history.RecentlyClosedTabs.add(
                     ctx, tabToDelete.title.orEmpty(), tabToDelete.url.orEmpty()

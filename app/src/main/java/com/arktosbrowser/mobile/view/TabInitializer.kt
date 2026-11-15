@@ -198,8 +198,11 @@ class BundleInitializer(
         // URL (bundle's own, then the positional line from the plain
         // URL file) is the fallback when the bundle holds no usable
         // state or its Parcelable can't unmarshal.
-        if (!page.restoreState(bundle)) {
-            (bundle.getString(TabsManager.URL_KEY) ?: fallbackUrl)
+        if (!runCatching { page.restoreState(bundle) }.getOrDefault(false)) {
+            // Both lookups can hit a bad Parcelable on lazy unmarshal —
+            // a throw here would error the restore stream, so each step
+            // degrades to the next fallback instead of propagating.
+            (runCatching { bundle.getString(TabsManager.URL_KEY) }.getOrNull() ?: fallbackUrl)
                 ?.let { page.load(it, headers) }
         }
     }

@@ -807,7 +807,13 @@ class ArktosCookieView(
     }
 
     override fun restoreState(state: Bundle): Boolean =
-        webView?.restoreState(state) != null
+        // The serialized back/forward list unparcels lazily — a bundle
+        // written before a system-WebView update (or carrying a bad
+        // entry) throws BadParcelableException here, and an uncaught
+        // throw inside tab-restore errors the whole restore stream and
+        // drops every tab. Report failure so the caller falls back to a
+        // plain URL load, same contract as the gecko backend.
+        runCatching { webView?.restoreState(state) != null }.getOrDefault(false)
 
     override fun historyItems(): List<HistoryEntry> =
         webView?.copyBackForwardList()?.let { list ->
