@@ -39,7 +39,8 @@ pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
 }
 
 // ── SYNC08 vault crypto (ported byte-compatible from desktop) ────
-use aes_gcm::aead::{consts::U12, generic_array::GenericArray, Aead, KeyInit};
+use aes_gcm::aead::{consts::U12, Aead, KeyInit};
+use aes_gcm::Nonce;
 use aes_gcm::Aes256Gcm;
 use argon2::{Algorithm, Argon2, Params, Version};
 use zeroize::Zeroizing;
@@ -56,7 +57,7 @@ const TAG_SIZE: usize = 16;
 const SEAL_MAGIC: &[u8; 6] = b"ARSEC1";
 const HEADER_SIZE: usize = 6 + NONCE_SIZE + TAG_SIZE;
 
-type Nonce96 = GenericArray<u8, U12>;
+type Nonce96 = Nonce<U12>;
 
 pub(crate) fn derive_key(pass: &[u8], m: u32, t: u32, p: u32, salt: &[u8]) -> RcResult<Key> {
     let params = Params::new(m, t, p, Some(KEY_SIZE)).map_err(|e| Fail {
