@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.11 — Dependency refresh + restore hardening
+
+Rust core updated to current releases (Arti/Tor 0.48.0, aes-gcm 0.11, sha2 0.11, x25519/curve25519-dalek 5.0). Tab restore hardened on the WebView build — a stale serialized session can no longer drop every open tab — and incognito tab closes no longer land in the persistent recently-closed list.
+
 ## 1.2.7 — Mobile sync
 
 The desktop sync engine is ported into arktos-core and wired end-to-end: pair devices over QR or manual code with a six-word fingerprint confirm, then ops exchange encrypted — LAN (QUIC + mDNS) and Tor onion legs on the gecko build. All five stores sync: bookmarks, history, tab presence (Settings → Synced data → Remote tabs), settings, and the passphrase-gated E2E password vault.
