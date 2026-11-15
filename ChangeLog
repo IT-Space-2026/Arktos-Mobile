@@ -6,6 +6,27 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.11 — Rust dependency refresh + sync durability fix
+
+- Rust core dependencies updated to current releases:
+  Arti/Tor tree 0.47.0 → 0.48.0 (arti-client plus nine
+  tor-* companion pins), aes-gcm 0.11.1, sha2 0.11.1,
+  hmac 0.13.0, base64 0.23.1, zeroize 1.9.1, ring 0.17.14,
+  getrandom 0.2.17, safelog 0.10.1, html5gum 0.9.1,
+  dom_smoothie 0.19.0, x25519-dalek 3.0.0 and
+  curve25519-dalek 5.0.0 (unified with the versions Arti
+  0.48 already pulls transitively).  Sync wire format
+  unchanged — 262/262 rust tests pass.
+- Sync durability fix: concurrent bookmark/setting saves
+  on the same file shared a fixed .tmp staging name, so one
+  writer's atomic rename could steal the other's staging file
+  and the loser failed with rename(ENOENT).  The staging
+  name is now unique per write (pid + sequence).
+- OSV gate: rustix 1.1.6 (RUSTSEC-2026-0486); the
+  RUSTSEC-2026-0459 libsqlite3-sys finding is documented-
+  ignored — the fix requires rusqlite ≥0.41 which Arti's
+  tor-dirmgr <0.41 bound forbids.
+
 1.2.10 — GeckoView 160 + dead-tab recovery
 
 - GeckoView engine bumped to 160.0.20261104181552 (was
