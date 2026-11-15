@@ -8,7 +8,16 @@ use std::path::Path;
 
 /// Write `bytes` atomically — temp file in the same dir, then rename.
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> RcResult<()> {
-    let tmp = path.with_extension("tmp");
+    // The staging name must be unique per call: two writers saving the
+    // same path concurrently would otherwise race on <path>.tmp — one
+    // writer's rename steals the other's staging file and the loser
+    // dies on rename(ENOENT).
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let tmp = path.with_extension(format!(
+        "tmp.{}.{}",
+        std::process::id(),
+        SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    ));
     fs::write(&tmp, bytes).map_err(|e| Fail { status: RcStatus::Io, msg: format!("write tmp {e}") })?;
     fs::rename(&tmp, path).map_err(|e| Fail { status: RcStatus::Io, msg: format!("rename {e}") })?;
     tighten_perms(path);
