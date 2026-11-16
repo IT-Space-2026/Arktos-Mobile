@@ -1915,7 +1915,13 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
     }
 
     protected fun saveOpenTabs() {
-        if (userPreferences.restoreLostTabsEnabled) {
+        // Skip while the restored session is still materializing: every
+        // restored tab's load event would otherwise serialize the whole
+        // tab list on the main thread (an O(N²) storm that stalls the
+        // restore), and a save mid-restore can overwrite the saved
+        // session with a partial tab list. The pre-restore state on
+        // disk is authoritative until initialization finishes.
+        if (userPreferences.restoreLostTabsEnabled && tabsManager.isInitialized) {
             tabsManager.saveState()
         }
     }

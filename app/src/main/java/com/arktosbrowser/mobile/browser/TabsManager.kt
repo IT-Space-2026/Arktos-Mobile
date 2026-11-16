@@ -59,7 +59,8 @@ class TabsManager @Inject constructor(
 
     private var tabNumberListeners = emptySet<(Int) -> Unit>()
 
-    private var isInitialized = false
+    var isInitialized = false
+        private set
     private var postInitializationWorkList = emptyList<() -> Unit>()
 
     /**
@@ -122,6 +123,11 @@ class TabsManager @Inject constructor(
             .map { newTab(activity, it, incognito) }
             .lastOrError()
             .doAfterSuccess { finishInitialization() }
+            // Error/dispose paths must not leave isInitialized false —
+            // saveOpenTabs is gated on it, and a failed restore that
+            // never finishes would silently disable session saves for
+            // the rest of the run.
+            .doFinally { if (!isInitialized) finishInitialization() }
 
     /**
      * Returns an [Observable] that emits the [TabInitializer] for incognito mode.
