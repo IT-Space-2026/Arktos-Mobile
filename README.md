@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.14 — Incognito crash + reflow fix
+
+Fixes the incognito-process startup crash (WebView data-directory suffix set too late) and the text-reflow pinch-zoom collapsing text into a one-character column.
+
 ## 1.2.13 — Restore performance fix
 
 Cold-start restore no longer stalls with 0 tabs for tens of seconds — per-tab save storms during restore are skipped until the session is materialized.

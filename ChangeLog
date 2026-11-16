@@ -6,6 +6,21 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.14 — Incognito crash + text-reflow zoom fix
+
+- Fixed a crash when the browser starts in the incognito process:
+  the WebView data-directory suffix was set in onCreate, but
+  providers or injected singletons can initialize WebView earlier —
+  IllegalStateException: WebView already initialized. The suffix is
+  now applied in attachBaseContext, before any provider runs.
+- Text reflow on zoom no longer collapses text into a
+  one-character column: the zoom baseline was captured during page
+  load when getScale() returns transient values, exploding the
+  computed text width downward. The baseline now waits for load
+  completion and re-baselines per page; widths under 40px are
+  released instead of applied. Deprecated NARROW_COLUMNS /
+  TEXT_AUTOSIZING layout modes removed — the JS reflow handles it.
+
 1.2.13 — Slow cold-start restore fix
 
 - Session restore no longer stalls for tens of seconds with the
