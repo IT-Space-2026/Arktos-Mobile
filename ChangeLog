@@ -6,6 +6,14 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.12 — Search-bar crash fix
+
+- Fixed a NullPointerException when touching the URL bar while a
+  restored session was still materializing (or with no tabs open):
+  the search focus listener force-unwrapped currentTab. This is
+  the crash some users hit right after the 1.2.11 install when
+  tapping the address bar before their tabs came back.
+
 1.2.11 — Rust dependency refresh + sync durability fix
 
 - Rust core dependencies updated to current releases:

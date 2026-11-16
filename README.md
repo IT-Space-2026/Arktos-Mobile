@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.12 — Search-bar crash fix
+
+Hotfix for the NPE on touching the URL bar while a restored session was still materializing — the crash some users hit right after installing 1.2.11.
+
 ## 1.2.11 — Dependency refresh + restore hardening
 
 Rust core updated to current releases (Arti/Tor 0.48.0, aes-gcm 0.11, sha2 0.11, x25519/curve25519-dalek 5.0). Tab restore hardened on the WebView build — a stale serialized session can no longer drop every open tab — and incognito tab closes no longer land in the persistent recently-closed list.
