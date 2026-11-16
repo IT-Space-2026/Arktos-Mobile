@@ -983,12 +983,17 @@ abstract class BrowserActivity : ThemableBrowserActivity(), BrowserView, UIContr
         }
 
         override fun onFocusChange(v: View, hasFocus: Boolean) {
+            // currentTab is null while the restored session is still
+            // materializing (and whenever the tab list is empty) —
+            // touching the bar in that window must not NPE.
             val currentView = tabsManager.currentTab
-            if (currentView?.url!!.contains("data:text/html;charset=utf-8")) {
+            if (currentView?.url?.contains("data:text/html;charset=utf-8") == true) {
 
             } else if (!hasFocus) {
-                setIsLoading(currentView.progress < 100)
-                updateUrl(currentView.url, false)
+                currentView?.let {
+                    setIsLoading(it.progress < 100)
+                    updateUrl(it.url, false)
+                }
             } else if (hasFocus) {
 
                 // Hack to make sure the text gets selected
