@@ -5,6 +5,7 @@ package com.arktosbrowser.mobile.browser
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Process
+import android.webkit.WebView
 import com.arktosbrowser.mobile.DeviceCapabilities
 import com.arktosbrowser.mobile.engine.Engines
 import com.arktosbrowser.mobile.engine.StorageArea
@@ -61,6 +62,22 @@ object IncognitoPartition {
 
     fun isIncognitoProcess(packageName: String, processName: String): Boolean =
         processName == packageName + PROCESS_NAME_SUFFIX
+
+    private var suffixApplied = false
+
+    /**
+     * Apply the WebView data-directory suffix once. Called from
+     * [BrowserApp.attachBaseContext] — the earliest point in the
+     * process, before ContentProviders or injected singletons can
+     * initialize the WebView stack (once WebView is up, setting the
+     * suffix throws). The engine's initialize() calls it too — the
+     * flag makes the second call a no-op.
+     */
+    fun applyDataDirectorySuffix() {
+        if (suffixApplied) return
+        WebView.setDataDirectorySuffix(WEB_VIEW_DATA_DIR_SUFFIX)
+        suffixApplied = true
+    }
 
     /**
      * The directory name the WebView suffix produces:

@@ -59,6 +59,14 @@
     }
 
     function setWidth(width) {
+        /* A computed width under ~40px is always a math error upstream
+         * (bad baseline, transient viewport read) — a max-width that
+         * narrow collapses text to a one-character column. Release
+         * instead of applying it. */
+        if (!(width >= 40)) {
+            release();
+            return;
+        }
         document.documentElement.style.setProperty(MAX_WIDTH_VAR, width + 'px');
         if (document.body && !document.body.querySelector('.' + TEXT_CLASS)) {
             tagTextIn(document.body);

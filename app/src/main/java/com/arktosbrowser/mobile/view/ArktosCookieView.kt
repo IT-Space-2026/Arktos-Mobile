@@ -121,6 +121,15 @@ class ArktosCookieView(
             }
             @Suppress("DEPRECATION")
             val scale = wv.scale
+            // The baseline must be the page's RESTING scale — captured
+            // during load it reads transient layout values (a tiny base
+            // makes later ratios explode → max-width ~30px → text
+            // collapses to a 1-char column). Re-baseline per page.
+            if (wv.progress < 100) {
+                reflowBaseScale = 0f
+                reflowHandler.postDelayed(this, 300)
+                return
+            }
             if (reflowBaseScale <= 0f) {
                 reflowBaseScale = scale
             }
@@ -420,14 +429,10 @@ class ArktosCookieView(
         }
 
         if (userPreferences.textReflowEnabled) {
-            settings.layoutAlgorithm = LayoutAlgorithm.NARROW_COLUMNS
-            try {
-                settings.layoutAlgorithm = LayoutAlgorithm.TEXT_AUTOSIZING
-            } catch (e: Exception) {
-                // This shouldn't be necessary, but there are a number
-                // of KitKat devices that crash trying to set this
-                logger.log(TAG, "Problem setting LayoutAlgorithm to TEXT_AUTOSIZING")
-            }
+            // NARROW_COLUMNS/TEXT_AUTOSIZING are deprecated and broken
+            // on modern WebView (they collapse text on zoom) — the JS
+            // reflow below does the real work; keep NORMAL.
+            settings.layoutAlgorithm = LayoutAlgorithm.NORMAL
             // initializePreferences runs when the page is already
             // loaded (toggled in settings → back) — onPageFinished
             // won't re-fire, so inject directly. The unlock runs

@@ -85,9 +85,9 @@ class WebViewEngine @Inject constructor(
                 context.packageName, Application.getProcessName()
             )
             if (incognitoProcess) {
-                WebView.setDataDirectorySuffix(
-                    IncognitoPartition.WEB_VIEW_DATA_DIR_SUFFIX
-                )
+                // Usually already applied in attachBaseContext — this
+                // stays as the backstop for process paths that skip it.
+                IncognitoPartition.applyDataDirectorySuffix()
                 // INCOG01 — wipe whatever a previous incognito session
                 // left on disk before the first page exists: a
                 // swipe-away kills this process without onDestroy, so

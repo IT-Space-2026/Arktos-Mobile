@@ -57,6 +57,15 @@ class BrowserApp : Application() {
         // DIAG — earliest possible catch: runs before every
         // ContentProvider, so a provider-init crash is reported too.
         Diag.earlyInit(this)
+        // The WebView data-directory suffix must be set before ANYTHING
+        // in the :incognito process touches the WebView stack —
+        // providers and injected singletons can initialize WebView
+        // before onCreate, and the suffix call then throws. Doing it
+        // here beats every one of them.
+        if (Build.VERSION.SDK_INT >= 28 &&
+            IncognitoPartition.isIncognitoProcess(packageName, getProcessName())) {
+            IncognitoPartition.applyDataDirectorySuffix()
+        }
         if (BuildConfig.DEBUG && Build.VERSION.SDK_INT < 21) {
             installMultiDex(context = base)
         }
