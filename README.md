@@ -14,6 +14,10 @@
 
 ---
 
+## 1.2.13 — Restore performance fix
+
+Cold-start restore no longer stalls with 0 tabs for tens of seconds — per-tab save storms during restore are skipped until the session is materialized.
+
 ## 1.2.12 — Search-bar crash fix
 
 Hotfix for the NPE on touching the URL bar while a restored session was still materializing — the crash some users hit right after installing 1.2.11.

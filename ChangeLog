@@ -6,6 +6,16 @@ notes; `app/src/main/assets/changelog.html` renders the same entries
 inside the app (Settings → About → Changelog, or arktos://changelog).
 When you add an entry here, mirror it in the HTML page.
 
+1.2.13 — Slow cold-start restore fix
+
+- Session restore no longer stalls for tens of seconds with the
+  tab counter stuck at 0: every restored tab's load event used to
+  serialize the whole tab list on the main thread (O(N²) with the
+  tab count). Saves are skipped until the restored session is
+  fully materialized — the on-disk state is authoritative during
+  restore anyway, and this also prevents a mid-restore save from
+  overwriting the session with a partial tab list.
+
 1.2.12 — Search-bar crash fix
 
 - Fixed a NullPointerException when touching the URL bar while a
