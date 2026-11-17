@@ -93,7 +93,7 @@ jobs:
       # exists to document the reusable-workflow form. Scoped to rust/
       # because a repo-wide scan parses verification-metadata.xml as a
       # Maven manifest and flags Gradle's build-time tooling deps.
-      uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+      uses: google/osv-scanner-action/osv-scanner-action@v2.7.1
       with:
         scan-args: |-
           --recursive
